@@ -9,8 +9,7 @@ __pycache__/
 .DS_Store
 *.log
 
-# Training artifacts and datasets
-datasets/
+# Raw data and generated training artifacts
 dataset_raw/
 runs/
 *.pt

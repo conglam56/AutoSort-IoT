@@ -32,7 +32,8 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
 5. Để train, mở [`training/AutoSort_Train.ipynb`](training/AutoSort_Train.ipynb) trên Colab và tải `autosort-training.zip` lên khi được hỏi.
 
 Chỉ dùng dataset `datasets/kumquat/` đã lọc: 1.761 ảnh thuộc `GREEN`, `RIPE`,
-`REJECT`. Dataset và ZIP Colab được giữ ở máy, không đưa vào Git.
+`REJECT`. Dataset đã được đưa vào Git để cả nhóm lấy về huấn luyện; ZIP Colab
+và các trọng số `.pt` vẫn được bỏ qua.
 Xem [nguồn và cách tạo lại dữ liệu](docs/PUBLIC_DATASET.md), cùng
 [hướng dẫn train và chạy API](docs/AI_TRAIN_DEPLOY.md).
 

@@ -6,12 +6,17 @@
 - `autosort-training.zip`: gói dataset và code để tải lên Colab.
 - `training/AutoSort_Train.ipynb`: notebook huấn luyện.
 
-Dataset và ZIP huấn luyện chỉ lưu trên máy, không nằm trong Git. Giữ ZIP COCO
-nguồn riêng để có thể tạo lại dữ liệu theo hướng dẫn bên dưới. Ba ảnh mẫu gốc
-nằm trong `cloud-ai/` và được đưa vào Git để chạy kiểm thử và parity.
+Dataset đã nằm trong Git để các thành viên lấy về huấn luyện. ZIP huấn luyện
+được tạo cục bộ và không đưa vào Git. Giữ ZIP COCO nguồn riêng để có thể tạo lại
+dữ liệu theo hướng dẫn bên dưới. Ba ảnh mẫu gốc nằm trong `cloud-ai/` và được
+đưa vào Git để chạy kiểm thử và parity.
 
 Để train ngay, mở notebook và tải gói ZIP lên Colab; không cần giải nén lại,
 chuyển nhãn hoặc tạo thêm thư mục dataset.
+
+Người mới clone repository chưa có ZIP: cài Pillow bằng `python -m pip install pillow`,
+rồi chạy `python training/package_colab.py` từ thư mục gốc để tạo
+`autosort-training.zip`. Sau đó mở notebook Colab và tải ZIP lên khi được hỏi.
 
 ## Nguồn đã xác định
 

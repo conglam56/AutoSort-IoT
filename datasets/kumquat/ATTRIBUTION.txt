@@ -1,0 +1,5 @@
+Calamansi-ripeness dataset by Jobbie (2025)
+Source: https://universe.roboflow.com/jobbie/calamansi-ripeness-cvxus
+License: CC BY 4.0 - https://creativecommons.org/licenses/by/4.0/
+Changes: bounding-box crops, padding, and class-name mapping.
+This is reference data, not a guarantee of field accuracy.
