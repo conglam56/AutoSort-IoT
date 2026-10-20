@@ -1,6 +1,10 @@
-# QuatSort IoT — Cloud AI service (giai đoạn MOCK, ngày 1–3)
+# AutoSort IoT — Cloud AI service
 
-Mục đích: chứng minh ảnh JPEG được gửi tới Google Cloud Run qua Internet và API trả JSON có `fruit_id`. Đây chỉ là MOCK, **chưa phải AI nhận diện quả**. Không nối API MOCK với quyết định điều khiển servo.
+FastAPI nhận JPEG tại `/infer` và phân loại bằng ONNX khi có model. Hiện chưa
+huấn luyện nên API trả `MOCK`. Không nối phản hồi MOCK với quyết định điều khiển servo.
+
+Hướng dẫn huấn luyện: [AI_TRAIN_DEPLOY.md](../docs/AI_TRAIN_DEPLOY.md).
+Nguồn dataset và notebook Colab: [PUBLIC_DATASET.md](../docs/PUBLIC_DATASET.md).
 
 ## A. Chạy trên Windows 10/11 bằng PowerShell
 
@@ -22,9 +26,19 @@ py -m venv .venv
 curl.exe -X POST -F "fruit_id=F0001" -F "camera_id=cam01" -F "image=@quatsample.jpg;type=image/jpeg" http://127.0.0.1:8000/infer
 ```
 
-5. Phản hồi phải có `"fruit_id":"F0001"`, `"label":"MOCK"`, `"image_bytes":...`.
+5. Khi chưa có model, phản hồi có `"fruit_id":"F0001"`, `"label":"MOCK"`,
+   `"decision_reason":"MOCK_MODE"` và `"image_bytes":...`.
 
-## B. Deploy lên Google Cloud Run (ngày 2)
+## B. Bật mô hình đã huấn luyện
+
+Đặt `best.onnx` và `classes.json` từ kết quả export vào `cloud-ai/model/` rồi
+khởi động lại API. `/health` phải trả `"mode":"onnx"`, `"model_ready":true`.
+Nếu không nạp được model, API ghi lỗi vào log và tiếp tục ở chế độ MOCK.
+
+Luồng ONNX dùng chung xử lý ảnh với công cụ parity, đọc trực tiếp xác suất và
+chuyển dự đoán có confidence dưới ngưỡng sang `REJECT`.
+
+## C. Deploy lên Google Cloud Run (tùy chọn)
 
 1. Tạo project trong https://console.cloud.google.com/ và kích hoạt Billing phù hợp. Đặt cảnh báo/ngưỡng chi phí và giới hạn mở rộng. Chú ý cảnh báo ngân sách thường không tự chặn phát sinh phí.
 2. Cài Google Cloud CLI: https://cloud.google.com/sdk/docs/install
@@ -49,20 +63,22 @@ curl.exe -X POST -F "fruit_id=F0002" -F "camera_id=cam01" -F "image=@quatsample.
 
 **Lưu ý bảo mật:** `--allow-unauthenticated` chỉ dùng với endpoint MOCK không chứa bí mật cho bài thử ban đầu. Trước khi sử dụng thật, thêm xác thực (ví dụ API key trong Secret Manager hoặc cơ chế định danh phù hợp), giới hạn truy cập và không đưa Wi-Fi password/MQTT secret lên GitHub. Không nhúng secret thật vào ảnh, URL hay log.
 
-## C. Ngày 3 — Nối camera
+## D. Kết nối camera (phát triển tiếp)
 
 1. Người B nạp ví dụ CameraWebServer lên ESP32-CAM, kiểm tra ảnh qua IP nội bộ.
 2. Tải một ảnh JPEG từ camera về máy tính, dùng lệnh POST ở trên gửi tới URL Cloud Run để kiểm chứng định dạng.
 3. Sau khi HTTPS từ ESP32-CAM được kiểm tra (CA certificate, PSRAM, timeout), mới thay thao tác thủ công bằng firmware tự chụp và POST `/infer`.
 4. Người A đối chiếu `fruit_id` gửi đi, trả về và log Cloud Run.
 
-## Các nhãn AI thật sẽ dùng từ ngày 6–8
+## Nhãn phân loại
 
 - `GREEN`: quả xanh → servo 1.
 - `RIPE`: quả chín → servo 2.
 - `REJECT`: quả lỗi/không chắc chắn → khay thẳng.
 
-`MOCK` **không thuộc ba nhãn hợp lệ**, nên ESP32 không được dùng phản hồi MOCK để gạt quả. Khi thay YOLO thật, bổ sung `confidence`, `model_version`, MQTT publish, timestamp và xử lý trùng `fruit_id`.
+`MOCK` **không thuộc ba nhãn hợp lệ**, nên ESP32 không được dùng phản hồi MOCK để gạt quả.
+API đã trả `confidence`, `model_version` và `decision_reason`; phần MQTT,
+timestamp và xử lý trùng `fruit_id` cần được phát triển tiếp.
 
 ## Tài liệu chính thức
 
@@ -70,4 +86,5 @@ curl.exe -X POST -F "fruit_id=F0002" -F "camera_id=cam01" -F "image=@quatsample.
 - EMQX Cloud Serverless: https://docs.emqx.com/en/cloud/latest/create/serverless.html
 - EMQX + ESP32 TLS: https://docs.emqx.com/en/cloud/latest/connect_to_deployments/esp32.html
 
-**Lưu ý:** Các bước ở đây mới kiểm thử upload ảnh lên Cloud; chưa có YOLO, chưa kết nối MQTT. Đây là phần lõi sẽ được nâng cấp dần, không phải chương trình toàn hệ thống hoàn chỉnh.
+**Hiện trạng:** Có code suy luận ONNX và bộ công cụ huấn luyện; chưa có trọng số
+đã train, chưa kết nối MQTT và firmware. Cần kiểm tra model bằng ảnh camera thực tế.

@@ -8,3 +8,12 @@ __pycache__/
 .idea/
 .DS_Store
 *.log
+
+# Training artifacts and datasets
+datasets/
+dataset_raw/
+runs/
+*.pt
+*.pth
+autosort-training*.zip
+autosort-model-artifacts.zip
