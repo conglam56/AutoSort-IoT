@@ -1,4 +1,4 @@
-# QuatSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
+# AutoSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
 
 **Đây là bộ khung của dự án cho 3 thành viên, không phải hệ thống đã hoàn thiện.**
 
