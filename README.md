@@ -2,7 +2,7 @@
 
 **Đây là bộ khung của dự án cho 3 thành viên, không phải hệ thống đã hoàn thiện.**
 
-Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đúng vị trí → ESP32-CAM chụp JPEG → gửi Internet tới Cloud → AI phân loại GREEN / RIPE / REJECT → ESP32 điều khiển băng chuyền/servo → Dashboard hiển thị kết quả.
+Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đúng vị trí → Điện thoại (IP Webcam) chụp JPEG → Máy tính gửi Internet tới Cloud → AI phân loại GREEN / RIPE / REJECT → ESP32 điều khiển băng chuyền & 2 servo gạt → Dashboard hiển thị kết quả.
 
 ## Cấu trúc
 
@@ -11,10 +11,10 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
 | `cloud-ai/` | A — AI & Cloud | FastAPI có luồng suy luận ONNX; hiện trả `MOCK` vì chưa có model đã train |
 | `training/` | A — AI & Cloud | Notebook Colab, kiểm tra dataset, train YOLO11, export ONNX và kiểm tra parity |
 | `tests/` | Cả nhóm | Kiểm thử confidence, xử lý ảnh, chuyển dữ liệu và đóng gói |
-| `esp32-controller/` | B — IoT | Chưa viết firmware motor, IR, servo, MQTT |
-| `esp32-camera/` | B — IoT | Chưa viết firmware chụp và gửi ảnh |
-| `dashboard/` | C — Web | Chưa làm giao diện và dữ liệu |
-| `hardware/` | C và B | Chứa sơ đồ điện, cơ khí, danh sách linh kiện sau này |
+| `esp32-controller/` | B — IoT | Chưa viết firmware motor, IR, 2 servo qua Serial USB |
+| `camera-bridge/` | B — IoT | Script Python lấy ảnh từ Điện thoại (IP Webcam) và gọi Cloud FastAPI |
+| `dashboard/` | C — Web | Đã hoàn thiện giao diện giám sát thời gian thực, quản lý phiên và xuất CSV |
+| `hardware/` | C và B | Chứa sơ đồ đấu dây (`wiring.md`), bố trí cơ khí (`layout.md`) |
 | `docs/` | Cả nhóm | Hướng dẫn train/deploy và nguồn dữ liệu |
 
 ## Bắt đầu ngay (Người A)

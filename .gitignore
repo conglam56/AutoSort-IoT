@@ -16,3 +16,14 @@ runs/
 *.pth
 autosort-training*.zip
 autosort-model-artifacts.zip
+
+# Plans and planning documentation
+plan.md
+*plan*.md
+PLAN.md
+*PLAN*.md
+
+# AI Agent skills and local configurations
+.agent/
+.agents/
+skills-lock.json

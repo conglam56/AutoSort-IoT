@@ -4,6 +4,8 @@ Supports real ONNX Runtime inference (YOLO11n Classification) with graceful mock
 Uses single-thread CPU inference for small cloud instances.
 """
 
+import base64
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
@@ -11,6 +13,8 @@ import time
 from typing import Dict, List, Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
@@ -27,6 +31,79 @@ app = FastAPI(
     description="Kumquat classification service with YOLO11 ONNX Runtime & fallback mode",
     version="1.0.0",
 )
+
+# Enable CORS for local and cross-origin dashboard access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount Dashboard frontend if exists
+DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
+if DASHBOARD_DIR.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
+
+# In-Memory Session Storage for Web Monitoring Dashboard
+active_sessions: List[dict] = []
+current_session_id: Optional[str] = None
+
+
+def init_session() -> dict:
+    global current_session_id
+    now = datetime.now()
+    s_id = f"SES-{now.strftime('%Y%m%d')}-01"
+    session = {
+        "id": s_id,
+        "name": f"Phiên #01 — {now.strftime('%d/%m/%Y')}",
+        "startTime": now.isoformat(),
+        "endTime": None,
+        "status": "RUNNING",
+        "fruits": [],
+    }
+    active_sessions.append(session)
+    current_session_id = s_id
+    return session
+
+
+def get_current_session() -> dict:
+    if not active_sessions:
+        return init_session()
+    return active_sessions[-1]
+
+
+def record_fruit_to_session(infer_result: dict, image_bytes: Optional[bytes] = None) -> dict:
+    session = get_current_session()
+    now_iso = datetime.now().isoformat()
+
+    img_data_url = "samples/ripe_1.jpg"
+    if image_bytes and len(image_bytes) < 300_000:
+        b64 = base64.b64encode(image_bytes).decode("ascii")
+        img_data_url = f"data:image/jpeg;base64,{b64}"
+
+    label = infer_result.get("label", "REJECT")
+    servo_action = (
+        "Gạt Cổng 1 (Green)"
+        if label == "GREEN"
+        else ("Gạt Cổng 2 (Ripe)" if label == "RIPE" else "Trôi Cuối (Reject)")
+    )
+
+    fruit_record = {
+        "id": infer_result.get("fruit_id", "F0000"),
+        "sessionId": session["id"],
+        "label": label,
+        "confidence": infer_result.get("confidence", 0.0),
+        "timestamp": now_iso,
+        "inferenceMs": infer_result.get("inference_ms", 0.0),
+        "image": img_data_url,
+        "decisionReason": infer_result.get("decision_reason", "CLASSIFIED"),
+        "servoAction": servo_action,
+    }
+    session["fruits"].append(fruit_record)
+    return fruit_record
+
 
 MAX_IMAGE_BYTES = 1_000_000  # 1 MB max upload limit
 MODEL_DIR = Path(__file__).parent / "model"
@@ -127,7 +204,7 @@ async def infer(
     # Fallback mode if ONNX model is not available
     if not model_ready or ort_session is None:
         logger.info("MOCK mode: received fruit_id=%s, camera_id=%s, bytes=%s", fruit_id, camera_id, len(content))
-        return {
+        mock_result = {
             "fruit_id": fruit_id,
             "camera_id": camera_id,
             "label": "MOCK",
@@ -139,6 +216,8 @@ async def infer(
             "inference_ms": 0.0,
             "note": "AI model not ready on server; running in mock fallback mode",
         }
+        record_fruit_to_session(mock_result, content)
+        return mock_result
 
     # Real ONNX inference
     t_start = time.perf_counter()
@@ -178,7 +257,7 @@ async def infer(
             inference_ms,
         )
 
-        return {
+        real_result = {
             "fruit_id": fruit_id,
             "camera_id": camera_id,
             "label": label,
@@ -189,6 +268,65 @@ async def infer(
             "image_bytes": len(content),
             "inference_ms": round(inference_ms, 2),
         }
+        record_fruit_to_session(real_result, content)
+        return real_result
     except Exception as e:
         logger.error("Inference failure for fruit_id=%s: %s", fruit_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+
+
+# --- SESSION MANAGEMENT ENDPOINTS FOR MONITORING DASHBOARD ---
+@app.get("/api/session/current")
+def get_current_session_endpoint():
+    """Retrieve active session state, metrics and fruit list for Live Monitor."""
+    return get_current_session()
+
+
+@app.get("/api/sessions")
+def list_sessions_endpoint():
+    """Retrieve all stored session summaries for Session History selector."""
+    return [
+        {
+            "id": s["id"],
+            "name": s["name"],
+            "startTime": s["startTime"],
+            "endTime": s["endTime"],
+            "status": s["status"],
+            "fruitCount": len(s["fruits"]),
+        }
+        for s in active_sessions
+    ]
+
+
+@app.get("/api/sessions/{session_id}")
+def get_session_detail_endpoint(session_id: str):
+    """Retrieve full details and fruit records of a specific session."""
+    for s in active_sessions:
+        if s["id"] == session_id:
+            return s
+    raise HTTPException(status_code=404, detail="Session not found")
+
+
+@app.post("/api/sessions/new")
+def new_session_endpoint():
+    """Start a new sorting session."""
+    global current_session_id
+    now = datetime.now()
+    if active_sessions:
+        active_sessions[-1]["endTime"] = now.isoformat()
+        active_sessions[-1]["status"] = "COMPLETED"
+
+    next_idx = len(active_sessions) + 1
+    s_id = f"SES-{now.strftime('%Y%m%d')}-{next_idx:02d}"
+    session = {
+        "id": s_id,
+        "name": f"Phiên #{next_idx:02d} — {now.strftime('%d/%m/%Y')}",
+        "startTime": now.isoformat(),
+        "endTime": None,
+        "status": "RUNNING",
+        "fruits": [],
+    }
+    active_sessions.append(session)
+    current_session_id = s_id
+    return session
+
