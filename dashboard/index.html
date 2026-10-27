@@ -3,383 +3,370 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoSort IoT — Hệ Thống Giám Sát Phân Loại Quất Bằng AI</title>
-  <meta name="description" content="Dashboard giám sát băng chuyền phân loại quả quất bằng trí tuệ nhân tạo Cloud AI (YOLO ONNX) và IoT ESP32.">
+  <title>AutoSort IoT — Trạm Phân Loại Quất Quang Học</title>
+  <meta name="description" content="Giao diện giám sát trạm phân loại quả quất bằng buồng soi quang học Cloud AI và vi điều khiển IoT.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Header Bar -->
-  <header class="top-header">
-    <div class="header-left">
-      <div class="brand-logo">
-        <span class="logo-icon">🍊</span>
-        <div class="brand-text">
-          <h1 class="brand-title">AUTOSORT IoT</h1>
-          <span class="brand-subtitle">Trạm Giám Sát Phân Loại Quất Thông Minh #01</span>
-        </div>
+
+  <!-- Console Header -->
+  <header class="console-header">
+    <div class="header-station">
+      <div class="station-mark">
+        <svg class="station-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 3v18M3 12h18" stroke-dasharray="2 2" />
+          <circle cx="12" cy="12" r="3" fill="#e67e22" stroke="none" />
+        </svg>
+      </div>
+      <div class="station-meta">
+        <div class="station-title">Trạm phân loại quất quang học</div>
+        <div class="station-id">Mã trạm: CITRUS-SRT-01</div>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <nav class="nav-tabs" aria-label="Chuyển chế độ xem">
-      <button id="tab-live-btn" class="nav-tab-btn active" data-tab="tab-live">
-        <span class="pulse-dot"></span>
-        <span>Giám Sát Trực Tiếp</span>
+    <!-- Navigation Modes -->
+    <nav class="console-nav" aria-label="Chế độ giám sát">
+      <button id="tab-live-btn" class="nav-btn active" data-tab="tab-live">
+        <span class="live-pip"></span>
+        <span>Buồng soi trực tiếp</span>
       </button>
-      <button id="tab-history-btn" class="nav-tab-btn" data-tab="tab-history">
-        <span class="tab-icon">🗂️</span>
-        <span>Lịch Sử Phiên & KPI</span>
+      <button id="tab-history-btn" class="nav-btn" data-tab="tab-history">
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"/>
+        </svg>
+        <span>Lịch sử các mẻ</span>
       </button>
     </nav>
 
-    <!-- Header Right Telemetry & Actions -->
-    <div class="header-right">
-      <div class="system-status-pills">
-        <div class="status-pill" id="cloud-status-pill" title="Trạng thái kết nối Cloud FastAPI">
-          <span class="status-indicator online"></span>
-          <span class="status-label">Cloud AI:</span>
-          <span class="status-val" id="cloud-latency">18ms</span>
-        </div>
-        <div class="status-pill" id="model-status-pill" title="Mô hình AI đang vận hành">
-          <span class="status-label">Model:</span>
-          <span class="status-val highlight" id="model-ver">YOLO11 ONNX</span>
-        </div>
-        <div class="status-pill clock-pill">
-          <span class="status-val mono" id="live-clock">--:--:--</span>
-        </div>
+    <!-- Telemetry & Actions -->
+    <div class="header-telemetry">
+      <div class="telemetry-pill" id="cloud-status-pill" title="Trạng thái kết nối máy chủ AI">
+        <span class="pip online"></span>
+        <span class="pill-label">Máy chủ AI</span>
+        <span class="pill-val mono" id="cloud-latency">18 ms</span>
       </div>
+      <div class="telemetry-pill" title="Phiên bản mô hình suy luận">
+        <span class="pill-label">Mô hình</span>
+        <span class="pill-val mono" id="model-ver">YOLO11 ONNX</span>
+      </div>
+      <div class="telemetry-pill mono" id="live-clock">--:--:--</div>
 
-      <div class="quick-actions">
-        <button id="btn-sim-trigger" class="btn btn-secondary btn-sm" title="Kích hoạt chụp quả giả lập">
-          <span>⚡ Thử Quả Mới</span>
+      <div class="header-actions">
+        <button id="btn-sim-trigger" class="btn btn-neutral" title="Mô phỏng 1 lượt quả đi qua buồng soi">
+          <span>Thử quả mới</span>
         </button>
-        <button id="btn-new-session" class="btn btn-primary btn-sm" title="Bắt đầu một phiên làm việc mới">
-          <span>➕ Phiên Mới</span>
+        <button id="btn-new-session" class="btn btn-action" title="Khởi động một mẻ đóng gói mới">
+          <span>Bắt đầu mẻ mới</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Main Application Body -->
-  <main class="main-container">
+  <!-- Workspace Container -->
+  <main class="console-workspace">
     
     <!-- ========================================== -->
-    <!-- TAB 1: GIÁM SÁT TRỰC TIẾP (LIVE MONITOR)    -->
+    <!-- VIEW 1: BUỒNG SOI TRỰC TIẾP (LIVE CHAMBER) -->
     <!-- ========================================== -->
-    <section id="tab-live" class="tab-content active">
+    <section id="tab-live" class="view-panel active">
       
-      <!-- Current Session Header Banner -->
-      <div class="session-banner">
-        <div class="session-banner-info">
-          <span class="badge badge-live">PHIÊN ĐANG CHẠY</span>
-          <h2 class="session-name" id="live-session-name">Phiên #01 — 27/10/2026</h2>
-          <span class="session-meta">
-            Bắt đầu: <strong id="live-session-start" class="mono">--:--</strong>
-            <span class="divider">•</span>
-            Thời gian chạy: <strong id="live-session-uptime" class="mono">00:00:00</strong>
-          </span>
-        </div>
-        <div class="session-banner-stats">
-          <div class="banner-stat-item">
-            <span class="stat-caption">ĐÃ XỬ LÝ</span>
-            <span class="stat-number mono" id="live-total-count">0</span>
+      <!-- Batch Overview Banner -->
+      <div class="batch-strip">
+        <div class="batch-identity">
+          <span class="batch-status-tag">Mẻ đang chạy</span>
+          <h2 class="batch-heading" id="live-session-name">Mẻ quất 01</h2>
+          <div class="batch-timestamps">
+            <span>Bắt đầu: <strong id="live-session-start" class="mono">--:--</strong></span>
+            <span class="meta-separator">/</span>
+            <span>Thời gian vận hành: <strong id="live-session-uptime" class="mono">00:00:00</strong></span>
           </div>
-          <div class="banner-stat-item">
-            <span class="stat-caption">TỐC ĐỘ</span>
-            <span class="stat-number mono" id="live-ppm-rate">0 <small>PPM</small></span>
+        </div>
+
+        <div class="batch-kpi-summary">
+          <div class="kpi-mini">
+            <span class="kpi-mini-label">Sản lượng mẻ này</span>
+            <span class="kpi-mini-value mono" id="live-total-count">0</span>
+          </div>
+          <div class="kpi-mini">
+            <span class="kpi-mini-label">Tốc độ băng tải</span>
+            <span class="kpi-mini-value mono" id="live-ppm-rate">0 <span class="unit">quả/phút</span></span>
           </div>
         </div>
       </div>
 
-      <!-- Hero Grid: Live Camera Feed & Session Donut Chart -->
-      <div class="hero-grid">
+      <!-- Hero Console: Optical Chamber (Left) & Batch Balance (Right) -->
+      <div class="console-stage">
         
-        <!-- Left Column: Live Camera Inspection Feed -->
-        <div class="card feed-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <span class="card-icon">📷</span>
-              <h3 class="card-title">Live Camera Inspection Feed</h3>
+        <!-- Left: Optical Inspection Chamber -->
+        <section class="panel optical-chamber">
+          <header class="panel-header">
+            <div class="panel-heading">
+              <span class="heading-pip"></span>
+              <h3>Buồng chụp quang học</h3>
             </div>
-            <div class="camera-status-indicator">
-              <span class="camera-fps-badge mono" id="camera-fps">Phone IP Webcam (1080p)</span>
-            </div>
-          </div>
+            <div class="panel-aux mono" id="camera-fps">Độ phân giải 1080p / Chiếu sáng chuẩn</div>
+          </header>
 
-          <div class="card-body feed-card-body">
-            <!-- Viewport Container with Reticle Lines -->
-            <div class="camera-viewport" id="camera-viewport">
-              <div class="reticle-corner tl"></div>
-              <div class="reticle-corner tr"></div>
-              <div class="reticle-corner bl"></div>
-              <div class="reticle-corner br"></div>
+          <div class="chamber-body">
+            <!-- Inspection Window -->
+            <div class="optical-aperture" id="camera-viewport">
+              <div class="crosshair-h"></div>
+              <div class="crosshair-v"></div>
+              <div class="corner-gauge top-left"></div>
+              <div class="corner-gauge top-right"></div>
+              <div class="corner-gauge bottom-left"></div>
+              <div class="corner-gauge bottom-right"></div>
 
-              <img id="latest-fruit-img" src="samples/ripe_1.jpg" alt="Ảnh chụp quả quất mới nhất" class="fruit-inspection-img">
-              
-              <!-- Floating AI Result Tag -->
-              <div class="ai-overlay-tag" id="ai-overlay-tag">
-                <span class="overlay-badge badge-ripe" id="overlay-label-badge">RIPE</span>
-                <span class="overlay-confidence mono" id="overlay-conf-badge">96.4%</span>
+              <img id="latest-fruit-img" src="samples/ripe_1.jpg" alt="Ảnh chụp quả quất trong buồng soi" class="optical-subject">
+
+              <!-- Grade Stamp Overlay -->
+              <div class="grade-stamp" id="ai-overlay-tag">
+                <span class="grade-badge badge-ripe" id="overlay-label-badge">RIPE</span>
+                <span class="grade-score mono" id="overlay-conf-badge">96.4%</span>
               </div>
             </div>
 
-            <!-- Inspection Telemetry Strip -->
-            <div class="inspection-telemetry">
-              <!-- Confidence Level Meter -->
-              <div class="confidence-container">
-                <div class="confidence-header">
-                  <span class="telemetry-label">Độ Tin Cậy AI (Confidence)</span>
-                  <span class="confidence-number mono" id="telemetry-conf">96.4%</span>
+            <!-- Optical Sensor Readouts -->
+            <div class="readout-console">
+              
+              <!-- Confidence Spectrometer Gauge -->
+              <div class="spectro-gauge">
+                <div class="spectro-header">
+                  <span class="spectro-title">Độ tin cậy nhận diện</span>
+                  <span class="spectro-value mono" id="telemetry-conf">96.4%</span>
                 </div>
-                <div class="confidence-bar-bg">
-                  <div class="confidence-bar-fill" id="telemetry-conf-fill" style="width: 96.4%;"></div>
-                  <div class="confidence-threshold-marker" title="Ngưỡng an toàn 0.70 (70%)"></div>
+                <div class="spectro-track">
+                  <div class="spectro-fill" id="telemetry-conf-fill" style="width: 96.4%;"></div>
+                  <div class="spectro-threshold" title="Ngưỡng phân loại an toàn: 70%"></div>
                 </div>
-                <div class="confidence-scale">
+                <div class="spectro-ticks mono">
                   <span>0%</span>
-                  <span class="threshold-label">Ngưỡng 70%</span>
+                  <span class="tick-mark">Ngưỡng đạt 70%</span>
                   <span>100%</span>
                 </div>
               </div>
 
-              <!-- Metadata Grid: ID, Timestamp, Latency, Reason -->
-              <div class="meta-metrics-grid">
-                <div class="meta-box">
-                  <span class="meta-label">MÃ QUẢ</span>
-                  <span class="meta-value mono highlight" id="telemetry-fruit-id">#F0001</span>
+              <!-- Technical Telemetry Matrix -->
+              <div class="telemetry-matrix">
+                <div class="matrix-cell">
+                  <span class="cell-label">Mã số quả</span>
+                  <span class="cell-value mono cell-highlight" id="telemetry-fruit-id">#F0001</span>
                 </div>
-                <div class="meta-box">
-                  <span class="meta-label">THỜI ĐIỂM CHỤP</span>
-                  <span class="meta-value mono" id="telemetry-timestamp">14:32:05 - 27/10/2026</span>
+                <div class="matrix-cell">
+                  <span class="cell-label">Thời điểm ghi nhận</span>
+                  <span class="cell-value mono" id="telemetry-timestamp">14:32:05 - 27/10/2026</span>
                 </div>
-                <div class="meta-box">
-                  <span class="meta-label">ĐỘ TRỄ SUY LUẬN</span>
-                  <span class="meta-value mono" id="telemetry-latency">18.2 ms</span>
+                <div class="matrix-cell">
+                  <span class="cell-label">Thời gian suy luận AI</span>
+                  <span class="cell-value mono" id="telemetry-latency">18.2 ms</span>
                 </div>
-                <div class="meta-box">
-                  <span class="meta-label">QUYẾT ĐỊNH CỔNG</span>
-                  <span class="meta-value mono" id="telemetry-decision">Cổng 2 (Khay RIPE)</span>
+                <div class="matrix-cell">
+                  <span class="cell-label">Điều khiển tay gạt</span>
+                  <span class="cell-value" id="telemetry-decision">Cổng 2 (Khay Ripe)</span>
                 </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- Right: Batch Balance & Quality Distribution -->
+        <section class="panel batch-balance">
+          <header class="panel-header">
+            <div class="panel-heading">
+              <span class="heading-pip amber"></span>
+              <h3>Phân bố chất lượng mẻ hiện tại</h3>
+            </div>
+            <div class="panel-aux mono" id="donut-session-tag">Mẻ 01</div>
+          </header>
+
+          <div class="balance-body">
+            <!-- Donut Gauge Ring -->
+            <div class="donut-frame">
+              <canvas id="current-session-donut" width="200" height="200"></canvas>
+              <div class="donut-core">
+                <span class="core-number mono" id="donut-center-total">0</span>
+                <span class="core-label">Tổng số quả</span>
+              </div>
+            </div>
+
+            <!-- Quality Tiers -->
+            <div class="grade-tier-stack">
+              <div class="tier-card tier-green">
+                <div class="tier-head">
+                  <span class="tier-color-pip green"></span>
+                  <span class="tier-name">Quất xanh tươi</span>
+                  <span class="tier-count mono" id="donut-green-count">0 quả</span>
+                </div>
+                <div class="tier-bar-track">
+                  <div class="tier-bar-fill green" id="donut-green-bar" style="width: 0%;"></div>
+                </div>
+                <span class="tier-percent mono" id="donut-green-pct">0%</span>
+              </div>
+
+              <div class="tier-card tier-ripe">
+                <div class="tier-head">
+                  <span class="tier-color-pip ripe"></span>
+                  <span class="tier-name">Quất chín đều</span>
+                  <span class="tier-count mono" id="donut-ripe-count">0 quả</span>
+                </div>
+                <div class="tier-bar-track">
+                  <div class="tier-bar-fill ripe" id="donut-ripe-bar" style="width: 0%;"></div>
+                </div>
+                <span class="tier-percent mono" id="donut-ripe-pct">0%</span>
+              </div>
+
+              <div class="tier-card tier-reject">
+                <div class="tier-head">
+                  <span class="tier-color-pip reject"></span>
+                  <span class="tier-name">Quả loại / tì vết</span>
+                  <span class="tier-count mono" id="donut-reject-count">0 quả</span>
+                </div>
+                <div class="tier-bar-track">
+                  <div class="tier-bar-fill reject" id="donut-reject-bar" style="width: 0%;"></div>
+                </div>
+                <span class="tier-percent mono" id="donut-reject-pct">0%</span>
+              </div>
+            </div>
+
+            <!-- Batch Key Indicators -->
+            <div class="batch-indicators">
+              <div class="indicator-unit">
+                <span class="unit-caption">Tốc độ trung bình</span>
+                <span class="unit-data mono" id="session-avg-ppm">0 quả/phút</span>
+              </div>
+              <div class="indicator-unit">
+                <span class="unit-caption">Độ trễ trung bình</span>
+                <span class="unit-data mono" id="session-avg-latency">-- ms</span>
+              </div>
+              <div class="indicator-unit">
+                <span class="unit-caption">Tỉ lệ đạt chuẩn</span>
+                <span class="unit-data mono" id="session-pass-rate">100%</span>
               </div>
             </div>
 
           </div>
-        </div>
-
-        <!-- Right Column: Current Session Distribution & Metrics -->
-        <div class="card chart-card">
-          <div class="card-header">
-            <div class="card-title-group">
-              <span class="card-icon">🍩</span>
-              <h3 class="card-title">Phân Bố Tỉ Lệ Phiên Hiện Tại</h3>
-            </div>
-            <span class="badge badge-neutral" id="donut-session-tag">Phiên #01</span>
-          </div>
-
-          <div class="card-body chart-card-body">
-            <!-- Donut Chart Canvas Container -->
-            <div class="donut-chart-wrapper">
-              <canvas id="current-session-donut" width="220" height="220"></canvas>
-              <div class="donut-center-info">
-                <span class="donut-total-num mono" id="donut-center-total">0</span>
-                <span class="donut-total-caption">Tổng Quả</span>
-              </div>
-            </div>
-
-            <!-- Custom Category Breakdown List -->
-            <div class="category-breakdown-list">
-              <div class="category-item green">
-                <div class="cat-header">
-                  <span class="cat-indicator"></span>
-                  <span class="cat-name">Quất Xanh (GREEN)</span>
-                  <span class="cat-count mono" id="donut-green-count">0 quả</span>
-                </div>
-                <div class="cat-bar-bg">
-                  <div class="cat-bar-fill green" id="donut-green-bar" style="width: 0%;"></div>
-                </div>
-                <span class="cat-pct mono" id="donut-green-pct">0%</span>
-              </div>
-
-              <div class="category-item ripe">
-                <div class="cat-header">
-                  <span class="cat-indicator"></span>
-                  <span class="cat-name">Quất Chín (RIPE)</span>
-                  <span class="cat-count mono" id="donut-ripe-count">0 quả</span>
-                </div>
-                <div class="cat-bar-bg">
-                  <div class="cat-bar-fill ripe" id="donut-ripe-bar" style="width: 0%;"></div>
-                </div>
-                <span class="cat-pct mono" id="donut-ripe-pct">0%</span>
-              </div>
-
-              <div class="category-item reject">
-                <div class="cat-header">
-                  <span class="cat-indicator"></span>
-                  <span class="cat-name">Quả Loại (REJECT)</span>
-                  <span class="cat-count mono" id="donut-reject-count">0 quả</span>
-                </div>
-                <div class="cat-bar-bg">
-                  <div class="cat-bar-fill reject" id="donut-reject-bar" style="width: 0%;"></div>
-                </div>
-                <span class="cat-pct mono" id="donut-reject-pct">0%</span>
-              </div>
-            </div>
-
-            <!-- Session Summary Mini Metrics -->
-            <div class="session-micro-stats">
-              <div class="micro-stat">
-                <span class="micro-stat-label">Tốc Độ Trung Bình</span>
-                <span class="micro-stat-val mono" id="session-avg-ppm">0 PPM</span>
-              </div>
-              <div class="micro-stat">
-                <span class="micro-stat-label">Độ Trễ Trung Bình</span>
-                <span class="micro-stat-val mono" id="session-avg-latency">-- ms</span>
-              </div>
-              <div class="micro-stat">
-                <span class="micro-stat-label">Tỉ Lệ Đạt Chuẩn</span>
-                <span class="micro-stat-val mono" id="session-pass-rate">100%</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
+        </section>
 
       </div>
 
-      <!-- Bottom: Recent Stream (Last 10 Fruits Strip) -->
-      <div class="card recent-stream-card">
-        <div class="card-header">
-          <div class="card-title-group">
-            <span class="card-icon">⏩</span>
-            <h3 class="card-title">Dòng Quả Vừa Phân Loại (10 Quả Gần Nhất)</h3>
+      <!-- Bottom: Inspection Filmstrip -->
+      <section class="panel filmstrip-panel">
+        <header class="panel-header">
+          <div class="panel-heading">
+            <span class="heading-pip cyan"></span>
+            <h3>Cuộn kiểm tra 10 quả vừa qua</h3>
           </div>
-          <span class="stream-hint">Cập nhật tức thì thời gian thực</span>
+          <div class="panel-aux">Cập nhật tức thời theo dòng quả</div>
+        </header>
+        <div class="filmstrip-viewport" id="recent-fruits-strip">
+          <div class="filmstrip-empty">Đang chờ quả quất đầu tiên lăn qua buồng soi...</div>
         </div>
-        <div class="card-body">
-          <div class="recent-strip-container" id="recent-fruits-strip">
-            <!-- Dynamic stream items inserted via JS -->
-            <div class="strip-empty-placeholder">Đang chờ quả quất đầu tiên qua băng chuyền...</div>
-          </div>
-        </div>
-      </div>
+      </section>
 
     </section>
 
     <!-- ========================================== -->
-    <!-- TAB 2: LỊCH SỬ PHIÊN & KPI (SESSION ARCHIVES) -->
+    <!-- VIEW 2: LỊCH SỬ MẺ & BÁO CÁO (BATCH LOGS)  -->
     <!-- ========================================== -->
-    <section id="tab-history" class="tab-content">
+    <section id="tab-history" class="view-panel">
       
-      <!-- Session Selector & Filter Bar -->
-      <div class="history-controls-card card">
-        <div class="history-controls-inner">
-          <div class="session-picker-group">
-            <label for="session-dropdown" class="control-label">Chọn Phiên Làm Việc:</label>
-            <div class="select-wrapper">
-              <select id="session-dropdown" class="custom-select">
-                <!-- Populated dynamically with stored sessions -->
+      <!-- Session Switcher Header -->
+      <div class="panel session-filter-panel">
+        <div class="filter-controls-row">
+          <div class="filter-field">
+            <label for="session-dropdown" class="filter-label">Chọn mẻ đóng gói:</label>
+            <div class="select-shell">
+              <select id="session-dropdown" class="select-element">
+                <!-- Populated dynamically -->
               </select>
             </div>
           </div>
 
-          <div class="history-actions-group">
-            <button id="btn-export-csv" class="btn btn-success" title="Tải xuống tệp CSV báo cáo cho phiên đang chọn">
-              <span>📥 Xuất Báo Cáo CSV</span>
+          <div class="filter-actions">
+            <button id="btn-export-csv" class="btn btn-download" title="Tải xuống tệp CSV báo cáo cho mẻ được chọn">
+              <span>Xuất bảng CSV</span>
             </button>
-            <button id="btn-refresh-history" class="btn btn-secondary" title="Làm mới dữ liệu từ server">
-              <span>🔄 Làm Mới</span>
+            <button id="btn-refresh-history" class="btn btn-neutral" title="Làm mới lại dữ liệu từ hệ thống">
+              <span>Làm mới</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- KPI Summary Cards for Selected Session -->
-      <div class="kpi-grid">
-        <div class="card kpi-card total">
-          <div class="kpi-icon-wrap">📦</div>
-          <div class="kpi-info">
-            <span class="kpi-label">Tổng Quả Xử Lý</span>
-            <span class="kpi-number mono" id="kpi-total-val">0</span>
-            <span class="kpi-subtext" id="kpi-total-sub">Trong phiên này</span>
-          </div>
+      <!-- 4 KPI Metrics for Selected Batch -->
+      <div class="metrics-quad">
+        <div class="metric-card card-total">
+          <span class="metric-lead">Tổng số quả mẻ này</span>
+          <span class="metric-big mono" id="kpi-total-val">0</span>
+          <span class="metric-note" id="kpi-total-sub">Đã qua buồng phân loại</span>
         </div>
 
-        <div class="card kpi-card green">
-          <div class="kpi-icon-wrap">🟢</div>
-          <div class="kpi-info">
-            <span class="kpi-label">Quất Xanh (GREEN)</span>
-            <span class="kpi-number mono" id="kpi-green-val">0</span>
-            <span class="kpi-subtext" id="kpi-green-sub">0% tổng sản lượng</span>
-          </div>
+        <div class="metric-card card-green">
+          <span class="metric-lead">Quất xanh tươi</span>
+          <span class="metric-big mono" id="kpi-green-val">0</span>
+          <span class="metric-note" id="kpi-green-sub">0% mẻ này</span>
         </div>
 
-        <div class="card kpi-card ripe">
-          <div class="kpi-icon-wrap">🟠</div>
-          <div class="kpi-info">
-            <span class="kpi-label">Quất Chín (RIPE)</span>
-            <span class="kpi-number mono" id="kpi-ripe-val">0</span>
-            <span class="kpi-subtext" id="kpi-ripe-sub">0% tổng sản lượng</span>
-          </div>
+        <div class="metric-card card-ripe">
+          <span class="metric-lead">Quất chín đều</span>
+          <span class="metric-big mono" id="kpi-ripe-val">0</span>
+          <span class="metric-note" id="kpi-ripe-sub">0% mẻ này</span>
         </div>
 
-        <div class="card kpi-card reject">
-          <div class="kpi-icon-wrap">🔴</div>
-          <div class="kpi-info">
-            <span class="kpi-label">Quả Loại (REJECT)</span>
-            <span class="kpi-number mono" id="kpi-reject-val">0</span>
-            <span class="kpi-subtext" id="kpi-reject-sub">0% tổng sản lượng</span>
-          </div>
+        <div class="metric-card card-reject">
+          <span class="metric-lead">Quả loại / tì vết</span>
+          <span class="metric-big mono" id="kpi-reject-val">0</span>
+          <span class="metric-note" id="kpi-reject-sub">0% mẻ này</span>
         </div>
       </div>
 
-      <!-- Detailed Fruit Log Table -->
-      <div class="card history-table-card">
-        <div class="card-header table-card-header">
-          <div class="card-title-group">
-            <span class="card-icon">📋</span>
-            <h3 class="card-title" id="history-table-title">Danh Sách Chi Tiết Từng Quả — Phiên #01</h3>
+      <!-- Detailed Inspection Ledger Table -->
+      <div class="panel ledger-panel">
+        <header class="panel-header ledger-header">
+          <div class="panel-heading">
+            <span class="heading-pip"></span>
+            <h3 id="history-table-title">Sổ nhật ký phân loại chi tiết</h3>
           </div>
 
-          <!-- Table Search & Filter Toolbar -->
-          <div class="table-toolbar">
-            <div class="search-box-wrap">
-              <input type="text" id="table-search-input" placeholder="Tìm theo Mã quả (VD: F0001)..." class="custom-input">
+          <!-- Table Search & Filters -->
+          <div class="ledger-tools">
+            <div class="search-shell">
+              <input type="text" id="table-search-input" placeholder="Tìm theo mã quả (VD: F0001)..." class="search-input">
             </div>
-            <div class="filter-pills" id="table-filter-pills">
-              <button class="filter-pill active" data-filter="ALL">Tất cả</button>
-              <button class="filter-pill filter-green" data-filter="GREEN">Quất Xanh</button>
-              <button class="filter-pill filter-ripe" data-filter="RIPE">Quất Chín</button>
-              <button class="filter-pill filter-reject" data-filter="REJECT">Quả Loại</button>
+            <div class="filter-segment" id="table-filter-pills">
+              <button class="segment-btn active" data-filter="ALL">Tất cả</button>
+              <button class="segment-btn seg-green" data-filter="GREEN">Quất xanh</button>
+              <button class="segment-btn seg-ripe" data-filter="RIPE">Quất chín</button>
+              <button class="segment-btn seg-reject" data-filter="REJECT">Quả loại</button>
             </div>
           </div>
-        </div>
+        </header>
 
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="custom-table" id="fruits-log-table">
-              <thead>
-                <tr>
-                  <th>MÃ QUẢ</th>
-                  <th>ẢNH CHỤP</th>
-                  <th>PHÂN LOẠI AI</th>
-                  <th>ĐỘ TIN CẬY</th>
-                  <th>THỜI GIAN CHỤP</th>
-                  <th>ĐỘ TRỄ</th>
-                  <th>HÀNH ĐỘNG CỔNG</th>
-                  <th>LÝ DO</th>
-                </tr>
-              </thead>
-              <tbody id="fruits-table-body">
-                <!-- Dynamically populated rows -->
-              </tbody>
-            </table>
-          </div>
-          
-          <div class="table-empty-message" id="table-empty-msg" style="display: none;">
-            Không tìm thấy quả nào phù hợp với bộ lọc.
+        <div class="ledger-table-wrap">
+          <table class="ledger-table" id="fruits-log-table">
+            <thead>
+              <tr>
+                <th>Mã quả</th>
+                <th>Ảnh buồng soi</th>
+                <th>Kết quả phân loại</th>
+                <th>Độ tin cậy</th>
+                <th>Thời điểm chụp</th>
+                <th>Độ trễ AI</th>
+                <th>Tay gạt</th>
+                <th>Quyết định</th>
+              </tr>
+            </thead>
+            <tbody id="fruits-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+          <div class="table-empty-notice" id="table-empty-msg" style="display: none;">
+            Không có dữ liệu quả nào phù hợp với bộ lọc hiện tại.
           </div>
         </div>
       </div>
@@ -388,8 +375,8 @@
 
   </main>
 
-  <!-- Notification Toast Container -->
-  <div class="toast-container" id="toast-container"></div>
+  <!-- System Feedback Toast -->
+  <div class="toast-shelf" id="toast-container"></div>
 
   <script src="app.js"></script>
 </body>

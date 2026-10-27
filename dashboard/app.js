@@ -1,6 +1,6 @@
 /**
- * AutoSort IoT — Dashboard Application Logic
- * Feature: Live Session Monitoring, Donut Chart, Session Archives & CSV Export
+ * AutoSort IoT — Optical Citrus Sorting Console Logic
+ * Design System: Agricultural Precision Instrumentation
  */
 
 (function () {
@@ -25,7 +25,7 @@
     ]
   };
 
-  // --- STATE MANAGEMENT ---
+  // --- STATE STORE ---
   const state = {
     activeTab: 'tab-live',
     currentSession: null,
@@ -41,8 +41,8 @@
 
   // --- DOM SELECTORS ---
   const DOM = {
-    tabs: document.querySelectorAll('.nav-tab-btn'),
-    tabContents: document.querySelectorAll('.tab-content'),
+    tabs: document.querySelectorAll('.nav-btn'),
+    tabContents: document.querySelectorAll('.view-panel'),
     liveClock: document.getElementById('live-clock'),
     cloudStatusPill: document.getElementById('cloud-status-pill'),
     cloudLatency: document.getElementById('cloud-latency'),
@@ -51,7 +51,7 @@
     btnExportCsv: document.getElementById('btn-export-csv'),
     btnRefreshHistory: document.getElementById('btn-refresh-history'),
 
-    // Live Tab Elements
+    // Live Chamber Viewport & Readouts
     liveSessionName: document.getElementById('live-session-name'),
     liveSessionStart: document.getElementById('live-session-start'),
     liveSessionUptime: document.getElementById('live-session-uptime'),
@@ -87,7 +87,7 @@
 
     recentFruitsStrip: document.getElementById('recent-fruits-strip'),
 
-    // History Tab Elements
+    // History View Elements
     sessionDropdown: document.getElementById('session-dropdown'),
     historyTableTitle: document.getElementById('history-table-title'),
     kpiTotalVal: document.getElementById('kpi-total-val'),
@@ -126,13 +126,11 @@
       }
     }
 
-    // If no sessions exist, generate realistic seed demo data
     if (!state.sessions || state.sessions.length === 0) {
       state.sessions = generateInitialSeedSessions();
       saveSessions();
     }
 
-    // Set current active session (last one or new one)
     state.currentSession = state.sessions[state.sessions.length - 1];
     state.selectedHistorySessionId = state.currentSession.id;
   }
@@ -144,27 +142,25 @@
   function generateInitialSeedSessions() {
     const now = new Date();
 
-    // Session 1 (Past completed run)
     const s1Start = new Date(now.getTime() - 4 * 3600000);
-    const s1End = new Date(s1Start.getTime() + 42 * 60000);
-    const s1Fruits = generateSeedFruits('SES-20261027-01', 45, s1Start);
+    const s1End = new Date(s1Start.getTime() + 45 * 60000);
+    const s1Fruits = generateSeedFruits('BATCH-20261027-01', 48, s1Start);
 
-    // Session 2 (Current active session)
     const s2Start = new Date(now.getTime() - 25 * 60000);
-    const s2Fruits = generateSeedFruits('SES-20261027-02', 28, s2Start);
+    const s2Fruits = generateSeedFruits('BATCH-20261027-02', 32, s2Start);
 
     return [
       {
-        id: 'SES-20261027-01',
-        name: 'Phiên #01 — ' + formatDateShort(s1Start),
+        id: 'BATCH-20261027-01',
+        name: 'Mẻ quất 01, ' + formatDateShort(s1Start),
         startTime: s1Start.toISOString(),
         endTime: s1End.toISOString(),
         status: 'COMPLETED',
         fruits: s1Fruits
       },
       {
-        id: 'SES-20261027-02',
-        name: 'Phiên #02 — ' + formatDateShort(s2Start),
+        id: 'BATCH-20261027-02',
+        name: 'Mẻ quất 02, ' + formatDateShort(s2Start),
         startTime: s2Start.toISOString(),
         endTime: null,
         status: 'RUNNING',
@@ -179,12 +175,12 @@
     let curTime = new Date(startTime.getTime());
 
     for (let i = 1; i <= count; i++) {
-      curTime = new Date(curTime.getTime() + (Math.floor(Math.random() * 8) + 3) * 1000);
+      curTime = new Date(curTime.getTime() + (Math.floor(Math.random() * 7) + 3) * 1000);
       const label = labels[Math.floor(Math.random() * labels.length)];
       const conf = label === 'REJECT'
-        ? Number((Math.random() * 0.25 + 0.40).toFixed(4))
-        : Number((Math.random() * 0.10 + 0.89).toFixed(4));
-      const lat = Number((Math.random() * 8 + 14).toFixed(1));
+        ? Number((Math.random() * 0.22 + 0.45).toFixed(4))
+        : Number((Math.random() * 0.08 + 0.91).toFixed(4));
+      const lat = Number((Math.random() * 6 + 14).toFixed(1));
       const imgList = SAMPLE_IMAGES[label];
       const imgSrc = imgList[i % imgList.length];
 
@@ -196,8 +192,8 @@
         timestamp: curTime.toISOString(),
         inferenceMs: lat,
         image: imgSrc,
-        decisionReason: conf >= 0.70 ? 'CLASSIFIED' : 'LOW_CONFIDENCE',
-        servoAction: label === 'GREEN' ? 'Gạt Cổng 1 (Green)' : label === 'RIPE' ? 'Gạt Cổng 2 (Ripe)' : 'Trôi Cuối (Reject)'
+        decisionReason: conf >= 0.70 ? 'Phân loại đạt' : 'Độ tin cậy thấp',
+        servoAction: label === 'GREEN' ? 'Cổng 1 (Khay Green)' : label === 'RIPE' ? 'Cổng 2 (Khay Ripe)' : 'Cuối băng (Khay Reject)'
       });
     }
     return fruits;
@@ -231,22 +227,24 @@
     DOM.btnRefreshHistory.addEventListener('click', () => {
       checkBackendHealth();
       renderHistoryView();
-      showToast('Đã làm mới dữ liệu lịch sử thành công', 'info');
+      showToast('Đã làm mới dữ liệu mẻ phân loại', 'info');
     });
 
     DOM.btnExportCsv.addEventListener('click', () => {
       exportCurrentSessionCsv();
     });
 
-    // History Filter Pills
-    DOM.tableFilterPills.querySelectorAll('.filter-pill').forEach(pill => {
-      pill.addEventListener('click', () => {
-        DOM.tableFilterPills.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        state.tableFilter = pill.getAttribute('data-filter');
-        renderHistoryTable();
+    // History Segment Filter Buttons
+    if (DOM.tableFilterPills) {
+      DOM.tableFilterPills.querySelectorAll('.segment-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          DOM.tableFilterPills.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.tableFilter = btn.getAttribute('data-filter');
+          renderHistoryTable();
+        });
       });
-    });
+    }
 
     // History Search Box
     DOM.tableSearchInput.addEventListener('input', (e) => {
@@ -277,7 +275,6 @@
       const now = new Date();
       DOM.liveClock.textContent = now.toLocaleTimeString('vi-VN');
 
-      // Update Uptime for running session
       if (state.currentSession && state.currentSession.startTime) {
         const start = new Date(state.currentSession.startTime);
         const diffMs = Math.max(0, now - start);
@@ -296,18 +293,17 @@
   function createNewSession() {
     const now = new Date();
 
-    // Close previous session
     if (state.currentSession) {
       state.currentSession.endTime = now.toISOString();
       state.currentSession.status = 'COMPLETED';
     }
 
     const nextIndex = state.sessions.length + 1;
-    const newSessionId = `SES-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(nextIndex).padStart(2,'0')}`;
+    const newSessionId = `BATCH-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(nextIndex).padStart(2,'0')}`;
 
     const newSession = {
       id: newSessionId,
-      name: `Phiên #${String(nextIndex).padStart(2, '0')} — ${formatDateShort(now)}`,
+      name: `Mẻ quất ${String(nextIndex).padStart(2, '0')}, ${formatDateShort(now)}`,
       startTime: now.toISOString(),
       endTime: null,
       status: 'RUNNING',
@@ -321,7 +317,7 @@
 
     renderLiveView();
     renderHistoryView();
-    showToast(`Đã khởi tạo ${newSession.name}!`, 'success');
+    showToast(`Đã bắt đầu ${newSession.name}`, 'success');
   }
 
   // --- SIMULATION MODE ---
@@ -336,10 +332,10 @@
     const chosenLabel = labels[Math.floor(Math.random() * labels.length)];
 
     const conf = chosenLabel === 'REJECT'
-      ? Number((Math.random() * 0.25 + 0.42).toFixed(4))
+      ? Number((Math.random() * 0.24 + 0.43).toFixed(4))
       : Number((Math.random() * 0.08 + 0.91).toFixed(4));
 
-    const latency = Number((Math.random() * 7 + 15).toFixed(1));
+    const latency = Number((Math.random() * 6 + 14).toFixed(1));
     const now = new Date();
     const imgs = SAMPLE_IMAGES[chosenLabel];
     const imageSrc = imgs[nextNum % imgs.length];
@@ -352,15 +348,15 @@
       timestamp: now.toISOString(),
       inferenceMs: latency,
       image: imageSrc,
-      decisionReason: conf >= 0.70 ? 'CLASSIFIED' : 'LOW_CONFIDENCE',
-      servoAction: chosenLabel === 'GREEN' ? 'Gạt Cổng 1 (Green)' : chosenLabel === 'RIPE' ? 'Gạt Cổng 2 (Ripe)' : 'Trôi Cuối (Reject)'
+      decisionReason: conf >= 0.70 ? 'Phân loại đạt' : 'Độ tin cậy thấp',
+      servoAction: chosenLabel === 'GREEN' ? 'Cổng 1 (Khay Green)' : chosenLabel === 'RIPE' ? 'Cổng 2 (Khay Ripe)' : 'Cuối băng (Khay Reject)'
     };
 
     state.currentSession.fruits.push(fruit);
     saveSessions();
 
     renderLiveView();
-    showToast(`Phát hiện quả ${fruit.id}: ${fruit.label} (${(conf * 100).toFixed(1)}%)`, 'info');
+    showToast(`Quả ${fruit.id}: ${fruit.label} (${(conf * 100).toFixed(1)}%)`, 'info');
   }
 
   // --- RENDER LIVE VIEW (TAB 1) ---
@@ -368,7 +364,6 @@
     const session = state.currentSession;
     if (!session) return;
 
-    // Session Banner
     DOM.liveSessionName.textContent = session.name;
     const startTimeObj = new Date(session.startTime);
     DOM.liveSessionStart.textContent = startTimeObj.toLocaleTimeString('vi-VN');
@@ -378,8 +373,8 @@
     const now = new Date();
     const durationMins = Math.max(0.5, (now - startTimeObj) / 60000);
     const ppm = (session.fruits.length / durationMins).toFixed(1);
-    DOM.livePpmRate.innerHTML = `${ppm} <small>PPM</small>`;
-    DOM.sessionAvgPpm.textContent = `${ppm} PPM`;
+    DOM.livePpmRate.innerHTML = `${ppm} <span class="unit">quả/phút</span>`;
+    DOM.sessionAvgPpm.textContent = `${ppm} quả/phút`;
 
     // Latest Fruit Feed
     const latestFruit = session.fruits.length > 0 ? session.fruits[session.fruits.length - 1] : null;
@@ -390,10 +385,10 @@
 
       // Overlay Tag
       DOM.overlayLabelBadge.textContent = latestFruit.label;
-      DOM.overlayLabelBadge.className = `overlay-badge badge-${latestFruit.label.toLowerCase()}`;
+      DOM.overlayLabelBadge.className = `grade-badge badge-${latestFruit.label.toLowerCase()}`;
       DOM.overlayConfBadge.textContent = `${(latestFruit.confidence * 100).toFixed(1)}%`;
 
-      // Telemetry Section
+      // Spectrometer Gauge
       const confPct = (latestFruit.confidence * 100).toFixed(1);
       DOM.telemetryConf.textContent = `${confPct}%`;
       DOM.telemetryConfFill.style.width = `${Math.min(100, Math.max(0, confPct))}%`;
@@ -419,7 +414,7 @@
     const total = session.fruits.length;
 
     DOM.donutCenterTotal.textContent = total;
-    DOM.donutSessionTag.textContent = session.name.split('—')[0].trim();
+    DOM.donutSessionTag.textContent = session.name.split(',')[0].trim();
 
     DOM.donutGreenCount.textContent = `${counts.green} quả`;
     DOM.donutGreenPct.textContent = `${counts.greenPct}%`;
@@ -439,7 +434,7 @@
     // Draw Donut Chart
     drawDonutChart(DOM.currentSessionDonut, counts);
 
-    // Recent 10 Fruits Strip
+    // Recent Filmstrip
     renderRecentFruitsStrip(session.fruits);
   }
 
@@ -449,8 +444,8 @@
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
 
-    const width = 220;
-    const height = 220;
+    const width = 200;
+    const height = 200;
     canvas.width = width * dpr;
     canvas.height = height * dpr;
     canvas.style.width = `${width}px`;
@@ -461,29 +456,28 @@
 
     const centerX = width / 2;
     const centerY = height / 2;
-    const radius = 90;
-    const lineWidth = 24;
+    const radius = 80;
+    const lineWidth = 20;
 
     const total = counts.green + counts.ripe + counts.reject;
 
     if (total === 0) {
-      // Empty placeholder ring
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = '#1E293B';
+      ctx.strokeStyle = '#1C2636';
       ctx.stroke();
       return;
     }
 
     const segments = [
-      { count: counts.green, color: '#10B981' },
-      { count: counts.ripe, color: '#F59E0B' },
-      { count: counts.reject, color: '#EF4444' }
+      { count: counts.green, color: '#27AE60' },
+      { count: counts.ripe, color: '#E67E22' },
+      { count: counts.reject, color: '#C0392B' }
     ];
 
     let startAngle = -Math.PI / 2;
-    const gap = (segments.filter(s => s.count > 0).length > 1) ? 0.04 : 0;
+    const gap = (segments.filter(s => s.count > 0).length > 1) ? 0.05 : 0;
 
     segments.forEach(seg => {
       if (seg.count === 0) return;
@@ -501,17 +495,16 @@
     });
   }
 
-  // --- RECENT 10 FRUITS STRIP ---
+  // --- RECENT INSPECTION FILMSTRIP ---
   function renderRecentFruitsStrip(fruits) {
     if (!DOM.recentFruitsStrip) return;
     DOM.recentFruitsStrip.innerHTML = '';
 
     if (!fruits || fruits.length === 0) {
-      DOM.recentFruitsStrip.innerHTML = '<div class="strip-empty-placeholder">Đang chờ quả quất đầu tiên qua băng chuyền...</div>';
+      DOM.recentFruitsStrip.innerHTML = '<div class="filmstrip-empty">Đang chờ quả quất đầu tiên lăn qua buồng soi...</div>';
       return;
     }
 
-    // Show last 10 fruits in reverse order (newest first)
     const recent = fruits.slice(-10).reverse();
 
     recent.forEach(fruit => {
@@ -543,21 +536,20 @@
     const selectedSession = state.sessions.find(s => s.id === state.selectedHistorySessionId) || state.currentSession;
     if (!selectedSession) return;
 
-    DOM.historyTableTitle.textContent = `Danh Sách Chi Tiết Từng Quả — ${selectedSession.name}`;
+    DOM.historyTableTitle.textContent = `Sổ nhật ký: ${selectedSession.name}`;
 
-    // KPI Counters for Selected Session
     const stats = calculateSessionStats(selectedSession.fruits);
     const total = selectedSession.fruits.length;
 
     DOM.kpiTotalVal.textContent = total;
     DOM.kpiGreenVal.textContent = stats.green;
-    DOM.kpiGreenSub.textContent = `${stats.greenPct}% tổng sản lượng`;
+    DOM.kpiGreenSub.textContent = `${stats.greenPct}% mẻ này`;
 
     DOM.kpiRipeVal.textContent = stats.ripe;
-    DOM.kpiRipeSub.textContent = `${stats.ripePct}% tổng sản lượng`;
+    DOM.kpiRipeSub.textContent = `${stats.ripePct}% mẻ này`;
 
     DOM.kpiRejectVal.textContent = stats.reject;
-    DOM.kpiRejectSub.textContent = `${stats.rejectPct}% tổng sản lượng`;
+    DOM.kpiRejectSub.textContent = `${stats.rejectPct}% mẻ này`;
 
     renderHistoryTable(selectedSession);
   }
@@ -569,7 +561,7 @@
       const opt = document.createElement('option');
       opt.value = session.id;
       const count = session.fruits.length;
-      const statusLabel = session.status === 'RUNNING' ? '🟢 Đang chạy' : '✓ Hoàn thành';
+      const statusLabel = session.status === 'RUNNING' ? 'Đang chạy' : 'Đã hoàn thành';
       opt.textContent = `${session.name} (${count} quả) — ${statusLabel}`;
       if (session.id === state.selectedHistorySessionId) {
         opt.selected = true;
@@ -584,7 +576,6 @@
 
     DOM.fruitsTableBody.innerHTML = '';
 
-    // Apply Filter & Search
     let filtered = session.fruits.slice();
 
     if (state.tableFilter !== 'ALL') {
@@ -605,25 +596,24 @@
 
     DOM.tableEmptyMsg.style.display = 'none';
 
-    // Render in reverse chronological order
     filtered.slice().reverse().forEach(f => {
       const tr = document.createElement('tr');
       const timeStr = formatDateTimeFull(new Date(f.timestamp));
 
       tr.innerHTML = `
-        <td class="mono font-bold text-primary">#${f.id}</td>
+        <td class="mono font-semibold" style="color: var(--ink-primary)">#${f.id}</td>
         <td>
           <img src="${f.image}" alt="${f.id}" class="table-thumb">
         </td>
         <td>
           <span class="badge badge-${f.label.toLowerCase()}">${f.label}</span>
         </td>
-        <td class="mono font-semibold">${(f.confidence * 100).toFixed(2)}%</td>
-        <td class="mono text-muted">${timeStr}</td>
+        <td class="mono">${(f.confidence * 100).toFixed(2)}%</td>
+        <td class="mono" style="color: var(--ink-muted)">${timeStr}</td>
         <td class="mono">${f.inferenceMs} ms</td>
-        <td class="text-secondary">${f.servoAction}</td>
+        <td style="color: var(--ink-secondary)">${f.servoAction}</td>
         <td>
-          <span class="badge badge-neutral">${f.decisionReason}</span>
+          <span class="badge badge-tag-neutral">${f.decisionReason}</span>
         </td>
       `;
       DOM.fruitsTableBody.appendChild(tr);
@@ -660,13 +650,12 @@
   function exportCurrentSessionCsv() {
     const session = state.sessions.find(s => s.id === state.selectedHistorySessionId);
     if (!session || !session.fruits || session.fruits.length === 0) {
-      showToast('Không có dữ liệu trong phiên này để xuất CSV', 'error');
+      showToast('Không có dữ liệu trong mẻ này để xuất CSV', 'error');
       return;
     }
 
-    // CSV Header with UTF-8 BOM
     let csvContent = '\uFEFF';
-    csvContent += 'STT,Mã Quả,Phân Loại AI,Độ Tin Cậy (%),Thời Gian Chụp,Độ Trễ (ms),Hành Động Servo,Lý Do Quyết Định\n';
+    csvContent += 'STT,Mã Quả,Phân Loại AI,Độ Tin Cậy (%),Thời Gian Chụp,Độ Trễ (ms),Tay Gạt,Quyết Định\n';
 
     session.fruits.forEach((f, idx) => {
       const timeFormatted = formatDateTimeFull(new Date(f.timestamp)).replace(',', '');
@@ -683,18 +672,17 @@
       csvContent += row + '\n';
     });
 
-    // Create Download Link
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `AutoSort_BaoCao_${session.id}.csv`);
+    link.setAttribute('download', `AutoSort_${session.id}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    showToast(`Đã xuất file báo cáo AutoSort_BaoCao_${session.id}.csv!`, 'success');
+    showToast(`Đã xuất bảng AutoSort_${session.id}.csv`, 'success');
   }
 
   // --- BACKEND HEALTH CHECK ---
@@ -709,9 +697,9 @@
         state.cloudOnline = true;
         state.cloudLatency = Math.round(t1 - t0);
 
-        DOM.cloudStatusPill.querySelector('.status-indicator').className = 'status-indicator online';
-        DOM.cloudLatency.textContent = `${state.cloudLatency}ms`;
-        DOM.cloudStatusPill.setAttribute('title', `Cloud AI Online (Mode: ${data.mode || 'onnx'})`);
+        DOM.cloudStatusPill.querySelector('.pip').className = 'pip online';
+        DOM.cloudLatency.textContent = `${state.cloudLatency} ms`;
+        DOM.cloudStatusPill.setAttribute('title', `Máy chủ AI Online (${data.mode || 'onnx'})`);
         if (data.model_version) {
           document.getElementById('model-ver').textContent = data.model_version;
         }
@@ -720,9 +708,9 @@
       }
     } catch (e) {
       state.cloudOnline = false;
-      DOM.cloudStatusPill.querySelector('.status-indicator').className = 'status-indicator offline';
-      DOM.cloudLatency.textContent = 'MOCK / DEMO';
-      DOM.cloudStatusPill.setAttribute('title', 'Cloud AI chưa kết nối. Đang chạy chế độ Giả Lập / Mock');
+      DOM.cloudStatusPill.querySelector('.pip').className = 'pip offline';
+      DOM.cloudLatency.textContent = 'Mô phỏng';
+      DOM.cloudStatusPill.setAttribute('title', 'Đang chạy độc lập ở chế độ mô phỏng');
     }
   }
 
@@ -731,19 +719,17 @@
     if (!DOM.toastContainer) return;
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    const icon = type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️';
-    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    toast.textContent = message;
     DOM.toastContainer.appendChild(toast);
 
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateX(100%)';
-      toast.style.transition = 'all 0.3s ease';
-      setTimeout(() => toast.remove(), 300);
-    }, 3200);
+      toast.style.transform = 'translateY(8px)';
+      toast.style.transition = 'all 0.2s ease';
+      setTimeout(() => toast.remove(), 250);
+    }, 3000);
   }
 
-  // --- DATE FORMATTING HELPERS ---
   function formatDateShort(d) {
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
   }
@@ -754,7 +740,6 @@
     return `${time} - ${date}`;
   }
 
-  // Run on DOM Ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
