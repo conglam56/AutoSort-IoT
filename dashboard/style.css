@@ -1,57 +1,63 @@
 /* ==========================================================================
-   AutoSort IoT — Optical Citrus Sorting Console
-   Design System: Agricultural Precision Instrumentation
-   Type: Space Grotesk (Primary) + JetBrains Mono (Telemetry/Tabular)
-   Palette: Deep Charcoal (#0A0E14), Kumquat Amber (#E67E22), Citrus Green (#27AE60), Cull Red (#C0392B)
+   AutoSort IoT — Optical Citrus Sorting Console (Light Theme)
+   Design System: UI/UX Pro Max — Minimalism & Swiss Industrial Precision
+   Palette: Bright Slate Canvas (#F8FAFC), Pure White Panels (#FFFFFF),
+            Kumquat Amber (#D97706), Citrus Leaf (#059669), Cull Red (#DC2626)
    ========================================================================== */
 
 :root {
-  /* Surface Layers */
-  --surface-base: #0A0E14;
-  --surface-panel: #111722;
-  --surface-panel-alt: #161F2E;
-  --surface-interactive: #1B2638;
-  --surface-active: #223047;
+  /* Surface Layers (Light Theme) */
+  --surface-base: #F8FAFC;
+  --surface-panel: #FFFFFF;
+  --surface-panel-alt: #F1F5F9;
+  --surface-interactive: #E2E8F0;
+  --surface-active: #CBD5E1;
 
   /* Structural Borders */
-  --line-subtle: #1C2636;
-  --line-medium: #27364D;
-  --line-focus: #388BFD;
+  --line-subtle: #E2E8F0;
+  --line-medium: #CBD5E1;
+  --line-focus: #2563EB;
 
   /* Ink / Typography */
-  --ink-primary: #F1F5F9;
-  --ink-secondary: #94A3B8;
+  --ink-primary: #0F172A;
+  --ink-secondary: #334155;
   --ink-muted: #64748B;
-  --ink-faint: #334155;
+  --ink-faint: #94A3B8;
 
-  /* Agricultural Semantic Accents */
-  --color-green: #27AE60;
-  --color-green-tint: rgba(39, 174, 96, 0.12);
-  --color-green-edge: rgba(39, 174, 96, 0.35);
+  /* Agricultural Semantic Accents (WCAG AAA Compliant on Light) */
+  --color-green: #059669;
+  --color-green-tint: #ECFDF5;
+  --color-green-edge: #A7F3D0;
 
-  --color-ripe: #E67E22;
-  --color-ripe-tint: rgba(230, 126, 34, 0.12);
-  --color-ripe-edge: rgba(230, 126, 34, 0.35);
+  --color-ripe: #D97706;
+  --color-ripe-tint: #FFFBEB;
+  --color-ripe-edge: #FDE68A;
 
-  --color-reject: #C0392B;
-  --color-reject-tint: rgba(192, 57, 43, 0.12);
-  --color-reject-edge: rgba(192, 57, 43, 0.35);
+  --color-reject: #DC2626;
+  --color-reject-tint: #FEF2F2;
+  --color-reject-edge: #FECACA;
 
   --color-cyan: #0284C7;
-  --color-cyan-tint: rgba(2, 132, 199, 0.12);
+  --color-cyan-tint: #F0F9FF;
+  --color-cyan-edge: #BAE6FD;
+
+  /* Elevation Shadows */
+  --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-float: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
 
   /* Typography Scales */
   --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Restrained Mechanical Radius */
-  --radius-xs: 3px;
-  --radius-sm: 5px;
-  --radius-md: 8px;
+  /* Precision Radii */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
   --radius-pill: 999px;
 
   --transition-instant: 0.12s ease;
-  --transition-smooth: 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Base Reset */
@@ -86,6 +92,14 @@ body {
   background: var(--ink-muted);
 }
 
+/* Accessible Focus States */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--line-focus);
+  outline-offset: 2px;
+}
+
 /* Utility Class */
 .mono {
   font-family: var(--font-mono);
@@ -93,7 +107,7 @@ body {
 }
 
 /* ==========================================================================
-   Console Header
+   Console Header (Light)
    ========================================================================== */
 .console-header {
   display: flex;
@@ -102,6 +116,7 @@ body {
   padding: 0.85rem 1.75rem;
   background-color: var(--surface-panel);
   border-bottom: 1px solid var(--line-subtle);
+  box-shadow: var(--shadow-subtle);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -115,10 +130,10 @@ body {
 }
 
 .station-mark {
-  width: 34px;
-  height: 34px;
-  background-color: var(--surface-panel-alt);
-  border: 1px solid var(--line-medium);
+  width: 36px;
+  height: 36px;
+  background-color: var(--color-ripe-tint);
+  border: 1px solid var(--color-ripe-edge);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -126,8 +141,8 @@ body {
   color: var(--color-ripe);
 }
 .station-svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .station-meta {
@@ -152,11 +167,11 @@ body {
 /* Console Nav */
 .console-nav {
   display: flex;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-sm);
-  padding: 0.2rem;
-  gap: 0.2rem;
+  padding: 0.25rem;
+  gap: 0.25rem;
 }
 
 .nav-btn {
@@ -182,8 +197,8 @@ body {
 
 .nav-btn.active {
   color: var(--ink-primary);
-  background-color: var(--surface-active);
-  box-shadow: inset 0 0 0 1px var(--line-medium);
+  background-color: var(--surface-panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .live-pip {
@@ -191,7 +206,7 @@ body {
   height: 7px;
   border-radius: 50%;
   background-color: var(--color-reject);
-  box-shadow: 0 0 6px var(--color-reject);
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.5);
   animation: liveBeacon 2s infinite ease-in-out;
 }
 @keyframes liveBeacon {
@@ -200,8 +215,8 @@ body {
 }
 
 .nav-icon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
 }
 
 /* Header Telemetry */
@@ -216,7 +231,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   padding: 0.35rem 0.65rem;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-xs);
   font-size: 0.75rem;
@@ -227,11 +242,11 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: var(--ink-muted);
+  background-color: var(--ink-faint);
 }
 .pip.online {
   background-color: var(--color-green);
-  box-shadow: 0 0 5px var(--color-green);
+  box-shadow: 0 0 4px var(--color-green);
 }
 .pip.offline {
   background-color: var(--color-reject);
@@ -268,32 +283,41 @@ body {
   white-space: nowrap;
 }
 
+.btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
 .btn-neutral {
-  background-color: var(--surface-panel-alt);
+  background-color: var(--surface-panel);
   border-color: var(--line-medium);
   color: var(--ink-primary);
+  box-shadow: var(--shadow-subtle);
 }
 .btn-neutral:hover {
-  background-color: var(--surface-interactive);
-  border-color: var(--line-focus);
+  background-color: var(--surface-panel-alt);
+  border-color: var(--ink-secondary);
 }
 
 .btn-action {
   background-color: var(--line-focus);
-  color: #fff;
+  color: #FFFFFF;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
 }
 .btn-action:hover {
-  background-color: #2563EB;
+  background-color: #1D4ED8;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
 }
 
 .btn-download {
   background-color: var(--color-green-tint);
   border-color: var(--color-green-edge);
-  color: #4ADE80;
+  color: var(--color-green);
 }
 .btn-download:hover {
   background-color: var(--color-green);
-  color: #051A0E;
+  color: #FFFFFF;
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25);
 }
 
 /* ==========================================================================
@@ -317,6 +341,7 @@ body {
   background-color: var(--surface-panel);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-subtle);
   overflow: hidden;
 }
 
@@ -325,7 +350,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  background-color: rgba(10, 14, 20, 0.4);
+  background-color: var(--surface-panel);
   border-bottom: 1px solid var(--line-subtle);
 }
 
@@ -357,56 +382,57 @@ body {
 }
 
 /* ==========================================================================
-   VIEW 1: LIVE CHAMBER
+   VIEW 1: LIVE CHAMBER (LIGHT)
    ========================================================================== */
-/* Batch Strip Banner */
-.batch-strip {
+/* Session Strip Banner */
+.session-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.5rem;
   background-color: var(--surface-panel);
-  border: 1px solid var(--line-medium);
+  border: 1px solid var(--line-subtle);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-subtle);
   margin-bottom: 1.5rem;
 }
 
-.batch-identity {
+.session-identity {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.batch-status-tag {
+.session-status-tag {
   display: inline-block;
   padding: 0.25rem 0.55rem;
   background-color: var(--color-reject-tint);
   border: 1px solid var(--color-reject-edge);
-  color: #F87171;
+  color: var(--color-reject);
   font-size: 0.72rem;
   font-weight: 700;
   border-radius: var(--radius-xs);
 }
 
-.batch-heading {
+.session-heading {
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.batch-timestamps {
+.session-timestamps {
   font-size: 0.82rem;
   color: var(--ink-secondary);
 }
-.batch-timestamps strong {
-  color: var(--color-cyan);
+.session-timestamps strong {
+  color: var(--line-focus);
 }
 .meta-separator {
   margin: 0 0.5rem;
   color: var(--line-medium);
 }
 
-.batch-kpi-summary {
+.session-kpi-summary {
   display: flex;
   gap: 2rem;
 }
@@ -455,13 +481,14 @@ body {
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  background-color: #04070A;
+  background-color: #0F172A; /* High-contrast optical darkroom */
   border: 1px solid var(--line-medium);
   border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .optical-subject {
@@ -477,7 +504,7 @@ body {
   left: 10%;
   right: 10%;
   height: 1px;
-  background-color: rgba(2, 132, 199, 0.25);
+  background-color: rgba(56, 189, 248, 0.3);
   pointer-events: none;
 }
 .crosshair-v {
@@ -486,7 +513,7 @@ body {
   top: 10%;
   bottom: 10%;
   width: 1px;
-  background-color: rgba(2, 132, 199, 0.25);
+  background-color: rgba(56, 189, 248, 0.3);
   pointer-events: none;
 }
 
@@ -494,9 +521,9 @@ body {
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: var(--color-cyan);
+  border-color: #38BDF8;
   pointer-events: none;
-  opacity: 0.7;
+  opacity: 0.75;
 }
 .corner-gauge.top-left { top: 10px; left: 10px; border-top: 2px solid; border-left: 2px solid; }
 .corner-gauge.top-right { top: 10px; right: 10px; border-top: 2px solid; border-right: 2px solid; }
@@ -511,11 +538,11 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: rgba(10, 14, 20, 0.92);
-  border: 1px solid var(--line-medium);
+  background-color: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   padding: 0.4rem 0.75rem;
   border-radius: var(--radius-xs);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .grade-badge {
@@ -525,14 +552,14 @@ body {
   border-radius: var(--radius-xs);
   letter-spacing: 0.04em;
 }
-.badge-green { background-color: var(--color-green); color: #051A0E; }
-.badge-ripe { background-color: var(--color-ripe); color: #1E0F03; }
-.badge-reject { background-color: var(--color-reject); color: #fff; }
+.badge-green { background-color: var(--color-green); color: #FFFFFF; }
+.badge-ripe { background-color: var(--color-ripe); color: #FFFFFF; }
+.badge-reject { background-color: var(--color-reject); color: #FFFFFF; }
 
 .grade-score {
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--ink-primary);
+  color: #FFFFFF;
 }
 
 /* Spectro Meter Gauge */
@@ -543,7 +570,7 @@ body {
 }
 
 .spectro-gauge {
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-xs);
   padding: 0.85rem 1rem;
@@ -571,15 +598,15 @@ body {
 .spectro-track {
   position: relative;
   width: 100%;
-  height: 7px;
-  background-color: var(--surface-active);
+  height: 8px;
+  background-color: var(--line-medium);
   border-radius: var(--radius-pill);
 }
 
 .spectro-fill {
   height: 100%;
   border-radius: var(--radius-pill);
-  background: linear-gradient(90deg, #388BFD 0%, var(--color-green) 100%);
+  background: linear-gradient(90deg, #3B82F6 0%, var(--color-green) 100%);
   transition: width var(--transition-smooth);
 }
 
@@ -612,7 +639,7 @@ body {
 }
 
 .matrix-cell {
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-xs);
   padding: 0.65rem 0.8rem;
@@ -632,7 +659,7 @@ body {
   color: var(--ink-primary);
 }
 .cell-highlight {
-  color: var(--color-cyan);
+  color: var(--line-focus);
 }
 
 /* Batch Balance (Right Panel) */
@@ -689,7 +716,7 @@ body {
   row-gap: 0.35rem;
   column-gap: 0.75rem;
   align-items: center;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   border: 1px solid var(--line-subtle);
   padding: 0.65rem 0.85rem;
   border-radius: var(--radius-sm);
@@ -725,15 +752,15 @@ body {
   font-weight: 700;
   text-align: right;
 }
-.tier-green .tier-percent { color: #4ADE80; }
-.tier-ripe .tier-percent { color: #FBBF24; }
-.tier-reject .tier-percent { color: #F87171; }
+.tier-green .tier-percent { color: var(--color-green); }
+.tier-ripe .tier-percent { color: var(--color-ripe); }
+.tier-reject .tier-percent { color: var(--color-reject); }
 
 .tier-bar-track {
   grid-column: 1 / 3;
   width: 100%;
-  height: 5px;
-  background-color: var(--surface-active);
+  height: 6px;
+  background-color: var(--line-medium);
   border-radius: var(--radius-pill);
   overflow: hidden;
 }
@@ -783,7 +810,7 @@ body {
 
 .strip-item-card {
   flex: 0 0 135px;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   border: 1px solid var(--line-subtle);
   border-radius: var(--radius-xs);
   padding: 0.55rem;
@@ -799,7 +826,7 @@ body {
 .strip-thumb-wrap {
   width: 100%;
   aspect-ratio: 1;
-  background-color: #030609;
+  background-color: #0F172A;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -841,12 +868,12 @@ body {
   text-align: center;
   color: var(--ink-muted);
   font-size: 0.82rem;
-  border: 1px dashed var(--line-subtle);
+  border: 1px dashed var(--line-medium);
   border-radius: var(--radius-xs);
 }
 
 /* ==========================================================================
-   VIEW 2: BATCH HISTORY & ARCHIVES
+   VIEW 2: SESSION HISTORY & ARCHIVES (LIGHT)
    ========================================================================== */
 .session-filter-panel {
   margin-bottom: 1.5rem;
@@ -882,7 +909,7 @@ body {
 .select-element {
   width: 100%;
   padding: 0.55rem 0.85rem;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel);
   border: 1px solid var(--line-medium);
   border-radius: var(--radius-xs);
   color: var(--ink-primary);
@@ -891,6 +918,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   outline: none;
+  box-shadow: var(--shadow-subtle);
 }
 .select-element:focus {
   border-color: var(--line-focus);
@@ -917,6 +945,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  box-shadow: var(--shadow-subtle);
 }
 
 .metric-card::before {
@@ -971,7 +1000,7 @@ body {
 .search-input {
   width: 100%;
   padding: 0.4rem 0.75rem;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel);
   border: 1px solid var(--line-medium);
   border-radius: var(--radius-xs);
   color: var(--ink-primary);
@@ -986,7 +1015,7 @@ body {
 .filter-segment {
   display: flex;
   gap: 0.25rem;
-  background-color: var(--surface-base);
+  background-color: var(--surface-panel-alt);
   padding: 0.2rem;
   border-radius: var(--radius-xs);
   border: 1px solid var(--line-subtle);
@@ -1006,15 +1035,16 @@ body {
 }
 .segment-btn:hover {
   color: var(--ink-primary);
-  background-color: var(--surface-panel);
+  background-color: var(--surface-interactive);
 }
 .segment-btn.active {
-  background-color: var(--surface-interactive);
+  background-color: var(--surface-panel);
   color: var(--ink-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
-.segment-btn.seg-green.active { background-color: var(--color-green); color: #051A0E; }
-.segment-btn.seg-ripe.active { background-color: var(--color-ripe); color: #1E0F03; }
-.segment-btn.seg-reject.active { background-color: var(--color-reject); color: #fff; }
+.segment-btn.seg-green.active { color: var(--color-green); font-weight: 700; }
+.segment-btn.seg-ripe.active { color: var(--color-ripe); font-weight: 700; }
+.segment-btn.seg-reject.active { color: var(--color-reject); font-weight: 700; }
 
 .ledger-table-wrap {
   width: 100%;
@@ -1030,7 +1060,7 @@ body {
 }
 
 .ledger-table th {
-  background-color: var(--surface-panel);
+  background-color: var(--surface-panel-alt);
   padding: 0.75rem 1rem;
   color: var(--ink-muted);
   font-weight: 600;
@@ -1052,7 +1082,7 @@ body {
   transition: background-color var(--transition-instant);
 }
 .ledger-table tbody tr:hover {
-  background-color: rgba(22, 31, 46, 0.5);
+  background-color: var(--surface-panel-alt);
 }
 
 .table-thumb {
@@ -1061,7 +1091,7 @@ body {
   border-radius: var(--radius-xs);
   object-fit: cover;
   border: 1px solid var(--line-medium);
-  background-color: #000;
+  background-color: #0F172A;
 }
 
 .badge {
@@ -1073,8 +1103,8 @@ body {
 }
 
 .badge-tag-neutral {
-  background-color: var(--surface-base);
-  border: 1px solid var(--line-subtle);
+  background-color: var(--surface-panel-alt);
+  border: 1px solid var(--line-medium);
   color: var(--ink-muted);
 }
 
@@ -1098,10 +1128,10 @@ body {
 
 .toast {
   padding: 0.65rem 1.15rem;
-  background-color: var(--surface-panel-alt);
+  background-color: var(--surface-panel);
   border: 1px solid var(--line-medium);
   border-radius: var(--radius-xs);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-float);
   font-size: 0.82rem;
   color: var(--ink-primary);
   display: flex;
@@ -1138,12 +1168,12 @@ body {
   .header-telemetry {
     flex-wrap: wrap;
   }
-  .batch-strip {
+  .session-strip {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  .batch-kpi-summary {
+  .session-kpi-summary {
     width: 100%;
     justify-content: space-between;
   }

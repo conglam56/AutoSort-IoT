@@ -121,6 +121,13 @@
     if (saved) {
       try {
         state.sessions = JSON.parse(saved);
+        if (Array.isArray(state.sessions)) {
+          state.sessions.forEach(s => {
+            if (s && s.name && s.name.startsWith('Mẻ')) {
+              s.name = s.name.replace(/^Mẻ/, 'Phiên');
+            }
+          });
+        }
       } catch (e) {
         state.sessions = [];
       }
@@ -152,7 +159,7 @@
     return [
       {
         id: 'BATCH-20261027-01',
-        name: 'Mẻ quất 01, ' + formatDateShort(s1Start),
+        name: 'Phiên quất 01, ' + formatDateShort(s1Start),
         startTime: s1Start.toISOString(),
         endTime: s1End.toISOString(),
         status: 'COMPLETED',
@@ -160,7 +167,7 @@
       },
       {
         id: 'BATCH-20261027-02',
-        name: 'Mẻ quất 02, ' + formatDateShort(s2Start),
+        name: 'Phiên quất 02, ' + formatDateShort(s2Start),
         startTime: s2Start.toISOString(),
         endTime: null,
         status: 'RUNNING',
@@ -227,7 +234,7 @@
     DOM.btnRefreshHistory.addEventListener('click', () => {
       checkBackendHealth();
       renderHistoryView();
-      showToast('Đã làm mới dữ liệu mẻ phân loại', 'info');
+      showToast('Đã làm mới dữ liệu phiên phân loại', 'info');
     });
 
     DOM.btnExportCsv.addEventListener('click', () => {
@@ -303,7 +310,7 @@
 
     const newSession = {
       id: newSessionId,
-      name: `Mẻ quất ${String(nextIndex).padStart(2, '0')}, ${formatDateShort(now)}`,
+      name: `Phiên quất ${String(nextIndex).padStart(2, '0')}, ${formatDateShort(now)}`,
       startTime: now.toISOString(),
       endTime: null,
       status: 'RUNNING',
@@ -465,15 +472,15 @@
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = '#1C2636';
+      ctx.strokeStyle = '#E2E8F0';
       ctx.stroke();
       return;
     }
 
     const segments = [
-      { count: counts.green, color: '#27AE60' },
-      { count: counts.ripe, color: '#E67E22' },
-      { count: counts.reject, color: '#C0392B' }
+      { count: counts.green, color: '#059669' },
+      { count: counts.ripe, color: '#D97706' },
+      { count: counts.reject, color: '#DC2626' }
     ];
 
     let startAngle = -Math.PI / 2;
@@ -543,13 +550,13 @@
 
     DOM.kpiTotalVal.textContent = total;
     DOM.kpiGreenVal.textContent = stats.green;
-    DOM.kpiGreenSub.textContent = `${stats.greenPct}% mẻ này`;
+    DOM.kpiGreenSub.textContent = `${stats.greenPct}% phiên này`;
 
     DOM.kpiRipeVal.textContent = stats.ripe;
-    DOM.kpiRipeSub.textContent = `${stats.ripePct}% mẻ này`;
+    DOM.kpiRipeSub.textContent = `${stats.ripePct}% phiên này`;
 
     DOM.kpiRejectVal.textContent = stats.reject;
-    DOM.kpiRejectSub.textContent = `${stats.rejectPct}% mẻ này`;
+    DOM.kpiRejectSub.textContent = `${stats.rejectPct}% phiên này`;
 
     renderHistoryTable(selectedSession);
   }
@@ -650,7 +657,7 @@
   function exportCurrentSessionCsv() {
     const session = state.sessions.find(s => s.id === state.selectedHistorySessionId);
     if (!session || !session.fruits || session.fruits.length === 0) {
-      showToast('Không có dữ liệu trong mẻ này để xuất CSV', 'error');
+      showToast('Không có dữ liệu trong phiên này để xuất CSV', 'error');
       return;
     }
 
