@@ -19,14 +19,18 @@ def read_allowed_origins():
 ALLOWED_ORIGINS = read_allowed_origins()
 
 
+class ConfigurationError(RuntimeError):
+    """A diagnostic message written by us, containing names rather than secret values."""
+
+
 def validate_config():
     if not DATABASE_URL.startswith(("postgresql://", "postgres://")):
-        raise RuntimeError("Set DATABASE_URL to a PostgreSQL connection URL in cloud-ai/.env")
+        raise ConfigurationError("Set DATABASE_URL to a PostgreSQL connection URL (postgresql:// or postgres://)")
     if len(DEVICE_API_KEY) < 32 or DEVICE_API_KEY.startswith("replace_"):
-        raise RuntimeError("Set DEVICE_API_KEY to a random secret of at least 32 characters")
+        raise ConfigurationError("Set DEVICE_API_KEY to a random secret of at least 32 characters")
     if not ALLOWED_ORIGINS or "*" in ALLOWED_ORIGINS:
-        raise RuntimeError("ALLOWED_ORIGINS must contain explicit dashboard origins")
+        raise ConfigurationError("ALLOWED_ORIGINS must contain explicit dashboard origins")
     if os.getenv("RENDER") == "true" and (not COOKIE_SECURE or any(not v.startswith("https://") for v in ALLOWED_ORIGINS)):
-        raise RuntimeError("Render deployment requires COOKIE_SECURE=true and HTTPS origins")
+        raise ConfigurationError("Render deployment requires COOKIE_SECURE=true and HTTPS origins")
     if not COOKIE_SECURE and any(not v.startswith(("http://127.0.0.1:", "http://localhost:")) for v in ALLOWED_ORIGINS):
-        raise RuntimeError("COOKIE_SECURE=false is only allowed for localhost development")
+        raise ConfigurationError("COOKIE_SECURE=false is only allowed for localhost development")

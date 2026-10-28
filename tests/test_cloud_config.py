@@ -7,9 +7,23 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "cloud-ai"))
 import config
+import render_start
 
 
 class CloudConfigurationTests(unittest.TestCase):
+    def test_deploy_logs_actionable_configuration_errors_but_redacts_driver_secrets(self):
+        cases = [
+            (config.ConfigurationError("Set DATABASE_URL to a PostgreSQL connection URL"), "DATABASE_URL"),
+            (RuntimeError("private-database-password"), "RuntimeError"),
+        ]
+        for failure, expected in cases:
+            with self.subTest(error=type(failure).__name__), patch.object(render_start, "prepare_database", side_effect=failure):
+                with self.assertLogs("autosort-deploy", level="ERROR") as captured:
+                    with self.assertRaises(SystemExit):
+                        render_start.main()
+                self.assertIn(expected, " ".join(captured.output))
+                self.assertNotIn("private-database-password", " ".join(captured.output))
+
     def test_render_uses_exact_service_https_origin(self):
         with patch.dict(os.environ, {"RENDER": "true", "RENDER_EXTERNAL_URL": "https://autosort-iot.onrender.com/"}, clear=True):
             self.assertEqual(config.read_allowed_origins(), ["https://autosort-iot.onrender.com"])

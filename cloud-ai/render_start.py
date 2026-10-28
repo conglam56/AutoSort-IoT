@@ -21,20 +21,20 @@ def prepare_database():
         exists = db.execute("SELECT to_regclass('schema_version') AS name").fetchone()["name"]
         if not exists:
             if os.getenv("INITIALIZE_DATABASE") != "true":
-                raise RuntimeError("Run manage.py init-db or set INITIALIZE_DATABASE=true for the first deploy")
+                raise config.ConfigurationError("Run manage.py init-db or set INITIALIZE_DATABASE=true for the first deploy")
             db.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
             logger.info("Initialized PostgreSQL schema v1")
         version = db.execute("SELECT version FROM schema_version WHERE version=1").fetchone()
         if not version:
-            raise RuntimeError("Unsupported database schema; migration required")
+            raise config.ConfigurationError("Unsupported database schema; migration required")
         if db.execute("SELECT id FROM app_users WHERE active AND role='admin' LIMIT 1").fetchone():
             return  # Never change an existing administrator or password on restart.
         if db.execute("SELECT id FROM app_users LIMIT 1").fetchone():
-            raise RuntimeError("No active admin; use manage.py to recover the existing accounts")
+            raise config.ConfigurationError("No active admin; use manage.py to recover the existing accounts")
         username = os.getenv("BOOTSTRAP_ADMIN_USERNAME", "admin").strip().lower()
         password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD", "")
         if not re.fullmatch(r"[a-z0-9_.-]{3,64}", username) or not 12 <= len(password) <= 256:
-            raise RuntimeError("An empty database requires a valid BOOTSTRAP_ADMIN_USERNAME and a 12–256 character BOOTSTRAP_ADMIN_PASSWORD")
+            raise config.ConfigurationError("An empty database requires a valid BOOTSTRAP_ADMIN_USERNAME and a 12–256 character BOOTSTRAP_ADMIN_PASSWORD")
         user_id = uuid4()
         db.execute("INSERT INTO app_users(id,username,password_hash,role) VALUES (%s,%s,%s,'admin')",
                    (user_id, username, password_hasher.hash(password)))
@@ -50,6 +50,9 @@ def main():
         port = int(os.getenv("PORT", "8000"))
         if not 1 <= port <= 65535:
             raise ValueError("Invalid port")
+    except config.ConfigurationError as error:
+        logger.error("Deployment configuration invalid: %s", error)
+        raise SystemExit(1) from None
     except Exception as error:
         # Connection errors may contain a DSN. Keep credentials out of build/runtime logs.
         logger.error("Deployment initialization failed (%s). Check database connectivity and deployment environment.", type(error).__name__)
