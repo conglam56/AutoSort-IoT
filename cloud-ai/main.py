@@ -286,3 +286,9 @@ def audit_logs_endpoint():
                              FROM audit_logs a LEFT JOIN app_users u ON u.id=a.user_id
                              ORDER BY a.id DESC LIMIT 100""").fetchall()
 
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True, app_dir=str(Path(__file__).parent))
+
+
