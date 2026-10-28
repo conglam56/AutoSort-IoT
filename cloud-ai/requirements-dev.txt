@@ -1,2 +1,3 @@
 -r requirements.txt
+-r ../camera-bridge/requirements.txt
 httpx>=0.28,<1

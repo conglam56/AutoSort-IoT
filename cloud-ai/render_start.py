@@ -1,4 +1,4 @@
-"""Explicit Render entrypoint: initialize an empty DB, bootstrap once, then serve."""
+"""Explicit Render entrypoint: initialize/migrate with opt-in, bootstrap once, serve."""
 import logging
 import os
 from pathlib import Path
@@ -23,10 +23,15 @@ def prepare_database():
             if os.getenv("INITIALIZE_DATABASE") != "true":
                 raise config.ConfigurationError("Run manage.py init-db or set INITIALIZE_DATABASE=true for the first deploy")
             db.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
-            logger.info("Initialized PostgreSQL schema v1")
+            logger.info("Initialized PostgreSQL schema v2")
         version = db.execute("SELECT version FROM schema_version WHERE version=1").fetchone()
         if not version:
             raise config.ConfigurationError("Unsupported database schema; migration required")
+        if not db.execute("SELECT version FROM schema_version WHERE version=2").fetchone():
+            if os.getenv("MIGRATE_DATABASE") != "true":
+                raise config.ConfigurationError("Schema v2 required; run manage.py init-db or set MIGRATE_DATABASE=true to apply the additive migration")
+            db.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
+            logger.info("Migrated PostgreSQL schema to v2; existing accounts and sorting data preserved")
         if db.execute("SELECT id FROM app_users WHERE active AND role='admin' LIMIT 1").fetchone():
             return  # Never change an existing administrator or password on restart.
         if db.execute("SELECT id FROM app_users LIMIT 1").fetchone():

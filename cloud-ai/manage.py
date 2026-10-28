@@ -13,7 +13,7 @@ from auth import lock_account_changes, password_hasher
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("init-db", help="Create initial PostgreSQL schema; does not delete existing data")
+    sub.add_parser("init-db", help="Create/migrate PostgreSQL schema; preserves existing data and accounts")
     create = sub.add_parser("create-user")
     create.add_argument("username")
     create.add_argument("--role", required=True, choices=["admin", "viewer"])
@@ -25,8 +25,9 @@ def main():
     config.validate_config()
     if args.command == "init-db":
         with database.connect() as db:
+            db.execute("SELECT pg_advisory_xact_lock(83417002)")
             db.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
-        print("PostgreSQL schema v1 ready.")
+        print("PostgreSQL schema v2 ready.")
         return
     username = args.username.strip().lower()
     if not re.fullmatch(r"[a-z0-9_.-]{3,64}", username):

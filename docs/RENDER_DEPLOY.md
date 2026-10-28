@@ -49,7 +49,7 @@ Không đặt `ALLOWED_ORIGINS` thì trên Render ứng dụng tự lấy đúng
 không dùng `*`. Không đặt giá trị localhost trên cloud.
 
 `render_start.py` là bước khởi tạo tường minh trước khi chạy Uvicorn. Khi cho phép
-`INITIALIZE_DATABASE=true`, nó tạo schema v1 nếu chưa có; chỉ tạo admin khi
+`INITIALIZE_DATABASE=true`, nó tạo schema v2 nếu chưa có; chỉ tạo admin khi
 database chưa có tài khoản nào. Nếu lỗi tạo tài khoản thì giao dịch tạo schema
 cũng rollback. Khởi động lại không đổi mật khẩu hoặc tái tạo tài khoản đã khóa.
 API chạy trực tiếp bằng Uvicorn vẫn yêu cầu schema đã được tạo trước như cũ.
@@ -58,7 +58,25 @@ Sau lần đầu thành công, có thể đặt `INITIALIZE_DATABASE=false` và 
 `BOOTSTRAP_ADMIN_PASSWORD` khỏi môi trường nếu không cần giữ để tra lại mật khẩu.
 Mật khẩu tài khoản đã được băm trong PostgreSQL; không bị đổi theo biến bootstrap.
 Thao tác này không làm mất dữ liệu. Khi nâng schema sau này, cần migration riêng;
-script này không tự nâng schema của một database đã có.
+script chỉ nâng schema đã có khi bật cờ migration rõ ràng như phần dưới.
+
+## Nâng schema v1 → v2 cho Camera Bridge
+
+Nhánh camera điện thoại bổ sung bảng `inference_requests` để lưu biên nhận
+chống ghi trùng cùng giao dịch với kết quả phân loại. Migration chỉ thêm bảng
+và phiên bản schema; không xóa phiên, kết quả, nhật ký hoặc thay mật khẩu.
+
+Trước khi triển khai mã của nhánh này vào dịch vụ hiện có, đặt biến
+`MIGRATE_DATABASE=true` và triển khai bằng `python cloud-ai/render_start.py`.
+Entrypoint áp dụng `schema.sql` trong giao dịch có khóa, rồi kiểm tra tài khoản
+admin như cũ. Sau khi thành công có thể gỡ cờ hoặc đặt `false`.
+Nếu v1 chưa được nâng và chưa bật cờ, ứng dụng dừng với hướng dẫn rõ ràng.
+`INITIALIZE_DATABASE=true` chỉ cho phép tạo database trống, không tự nâng database cũ.
+Máy có kết nối database cũng có thể chạy `python cloud-ai/manage.py init-db`.
+Database mới được tạo thẳng ở v2. Không hạ schema/xóa bảng khi quay lại mã v1.
+
+Việc push nhánh riêng không tự cập nhật dịch vụ đang theo dõi `main`.
+Chỉ triển khai khi nhánh đã được nhóm xem xét và chọn đưa vào môi trường chạy.
 
 `/ready` kiểm tra schema và kết nối database, trả 503 khi PostgreSQL không khả dụng.
 `/health` cho biết model ONNX hay MOCK. Dịch vụ vẫn sẵn sàng thử nghiệm khi chưa có

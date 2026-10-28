@@ -95,14 +95,28 @@ quản lý tài khoản và tạo phiên; không ghi mật khẩu hay API key.
 
 ## Camera Bridge và triển khai
 
+Camera là điện thoại cung cấp snapshot JPEG; ESP32 là controller, không phải
+ESP32-CAM. Xem [cấu hình và giao thức bridge](../camera-bridge/README.md).
+Bridge mới cần model ONNX thật và `/health` có `idempotency_supported=true`.
+`POST /infer` nhận header `Idempotency-Key` tùy chọn; retry cùng key và cùng input
+trả nguyên kết quả đã lưu, không ghi thêm quả. Key trùng với input khác trả 409.
+Để tương thích, client không gửi key vẫn chạy luồng cũ, không có bảo đảm chống trùng.
+
+Schema v2 thêm bảng `inference_requests`, không đổi/xóa dữ liệu cũ. Chạy lại
+`python cloud-ai/manage.py init-db` để nâng database hiện có trước khi chạy API
+của nhánh này. Với Render Free, xem mục nâng schema trong hướng dẫn triển khai.
+
 Triển khai Render: xem [hướng dẫn cloud](../docs/RENDER_DEPLOY.md) và `render.yaml`
 ở root repository. Bản Free có entrypoint riêng khởi tạo database trước khi chạy API.
 
-Đặt cùng `DEVICE_API_KEY` vào môi trường chạy bridge, không chèn key trong code:
+Đặt cùng `DEVICE_API_KEY` trong `camera-bridge/.env` hoặc môi trường chạy bridge,
+cùng URL snapshot điện thoại và cổng Serial, không chèn key trong code:
 
 ```powershell
 $env:DEVICE_API_KEY = '<key từ cấu hình riêng>'
 $env:CLOUD_INFER_URL = 'http://127.0.0.1:8000/infer'
+$env:PHONE_IP_WEBCAM_URL = 'http://192.168.1.15:8080/shot.jpg'
+$env:SERIAL_PORT = 'COM3'
 python camera-bridge/bridge.py
 ```
 

@@ -352,6 +352,120 @@ class AuthenticationPostgresTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT count(*) AS n FROM fruit_results").fetchone()["n"], 24)
             self.assertEqual(db.execute("SELECT count(*) AS n FROM sorting_sessions WHERE status='RUNNING'").fetchone()["n"], 1)
 
+    def send_image(self, key="request-test", fruit="F-test", camera="phone_cam01", content=None, client=None):
+        return (client or self.client).post("/infer", headers={"X-API-Key": self.key, "Idempotency-Key": key},
+            data={"fruit_id": fruit, "camera_id": camera},
+            files={"image": ("fruit.jpg", content or (ROOT / "cloud-ai/quatsample.jpg").read_bytes(), "image/jpeg")})
+
+    def test_inference_receipt_survives_rollover_restart_and_model_change(self):
+        with patch.multiple(main, model_ready=False, ort_session=None):
+            first = self.send_image()
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.json()["request_id"], "request-test")
+        _, headers = self.login()
+        original = self.client.get("/api/session/current").json()["id"]
+        self.client.post("/api/sessions/new", headers=headers).raise_for_status()
+        with TestClient(main.app) as restarted, patch.object(main, "classify_image", side_effect=AssertionError("Must replay, not classify")):
+            repeat = self.send_image(client=restarted)
+        self.assertEqual(repeat.json(), first.json())
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM fruit_results").fetchone()["n"], 1)
+            self.assertEqual(str(db.execute("SELECT session_id FROM fruit_results").fetchone()["session_id"]), original)
+
+    def test_idempotency_key_cannot_be_reused_for_other_input(self):
+        with patch.multiple(main, model_ready=False, ort_session=None):
+            self.assertEqual(self.send_image().status_code, 200)
+            for change in ({"fruit": "other"}, {"camera": "other"}, {"content": (ROOT / "cloud-ai/ripe.jpg").read_bytes()}):
+                with self.subTest(change=list(change)):
+                    result = self.send_image(**change)
+                    self.assertEqual(result.status_code, 409, result.text)
+                    self.assertEqual(result.json()["detail"], "IDEMPOTENCY_KEY_REUSED")
+            self.assertEqual(self.send_image(key="bad key").status_code, 422)
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM fruit_results").fetchone()["n"], 1)
+
+    def test_concurrent_identical_requests_create_one_fruit_and_one_receipt(self):
+        with patch.multiple(main, model_ready=False, ort_session=None):
+            with ThreadPoolExecutor(max_workers=6) as workers:
+                replies = list(workers.map(lambda _: self.send_image(), range(12)))
+        self.assertTrue(all(r.status_code == 200 for r in replies))
+        self.assertTrue(all(r.json() == replies[0].json() for r in replies))
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM fruit_results").fetchone()["n"], 1)
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM inference_requests").fetchone()["n"], 1)
+
+    def test_inference_receipt_and_result_roll_back_together(self):
+        data = {"fruit_id": "F-test", "camera_id": "phone_cam01", "label": "GREEN", "confidence": .9,
+                "inference_ms": 1., "decision_reason": "CLASSIFIED", "model_version": "test"}
+        with patch.object(database, "Jsonb", side_effect=RuntimeError("Receipt write failed")):
+            with self.assertRaises(RuntimeError):
+                database.record_inference_once("request-test", "F-test", "phone_cam01", b"jpeg", lambda: data)
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM fruit_results").fetchone()["n"], 0)
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM inference_requests").fetchone()["n"], 0)
+        database.record_inference_once("request-test", "F-test", "phone_cam01", b"jpeg", lambda: data)
+
+    def test_bridge_lost_http_response_retries_once_without_duplicate_data_or_servo(self):
+        import tempfile
+        import requests
+        from unittest.mock import Mock
+        sys.path.insert(0, str(ROOT / "camera-bridge"))
+        import bridge
+
+        class LostResponseTransport:
+            def __init__(transport):
+                transport.calls = 0
+
+            def post(transport, url, **kwargs):
+                reply = self.client.post("/infer", headers=kwargs["headers"], data=kwargs["data"], files=kwargs["files"])
+                transport.calls += 1
+                if transport.calls == 1:
+                    raise requests.Timeout("Simulate response lost after PostgreSQL committed")
+                result = requests.Response()
+                result.status_code, result._content, result._content_consumed = reply.status_code, reply.content, True
+                return result
+
+        settings = bridge.Settings(phone_url="http://phone/shot.jpg", api_key=self.key)
+        transport = LostResponseTransport()
+        camera, port = Mock(), Mock()
+        camera.capture.return_value = (ROOT / "cloud-ai/quatsample.jpg").read_bytes()
+        port.write.side_effect = len
+        def classify(fruit_id, camera_id, content):
+            return {"fruit_id": fruit_id, "camera_id": camera_id, "label": "GREEN", "raw_label": "GREEN", "confidence": .95,
+                    "decision_reason": "CLASSIFIED", "model_version": "integration-test", "inference_ms": 1., "image_bytes": len(content)}
+        with tempfile.TemporaryDirectory() as folder, patch.object(main, "classify_image", side_effect=classify), patch.object(bridge.time, "sleep"):
+            journal = bridge.EventJournal(Path(folder) / "state.sqlite3")
+            try:
+                label = bridge.process_trigger("boot1:1", settings, camera, bridge.CloudAI(settings, transport), journal, port)
+                self.assertEqual(label, "GREEN")
+                self.assertIsNone(bridge.process_trigger("boot1:1", settings, camera, bridge.CloudAI(settings, transport), journal, port))
+            finally:
+                journal.close()
+        self.assertEqual(transport.calls, 2)
+        port.write.assert_called_once_with(b"SORT:GREEN\n")
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM fruit_results").fetchone()["n"], 1)
+
+    def test_v1_migration_requires_opt_in_and_preserves_data_and_accounts(self):
+        with database.connect() as db:
+            admin = db.execute("SELECT id,password_hash FROM app_users WHERE role='admin'").fetchone()
+            db.execute("DROP TABLE inference_requests")
+            db.execute("DELETE FROM schema_version WHERE version=2")
+        try:
+            with patch.dict(os.environ, {"MIGRATE_DATABASE": "false"}):
+                with self.assertRaisesRegex(config.ConfigurationError, "MIGRATE_DATABASE"):
+                    render_start.prepare_database()
+            with patch.dict(os.environ, {"MIGRATE_DATABASE": "true"}):
+                render_start.prepare_database()
+                render_start.prepare_database()
+            with database.connect() as db:
+                self.assertEqual(db.execute("SELECT id,password_hash FROM app_users WHERE role='admin'").fetchone(), admin)
+                self.assertEqual(db.execute("SELECT count(*) AS n FROM app_users").fetchone()["n"], 2)
+            database.check_database()
+        finally:
+            with database.connect() as db:
+                db.execute((ROOT / "cloud-ai/schema.sql").read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

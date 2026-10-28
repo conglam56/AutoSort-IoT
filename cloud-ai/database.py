@@ -1,10 +1,12 @@
 """PostgreSQL persistence; transactions protect session rollover and fruit inserts."""
 import base64
+import hashlib
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 if __package__:
     from . import config
@@ -19,8 +21,8 @@ def connect():
 
 def check_database():
     with connect() as db:
-        if not db.execute("SELECT version FROM schema_version WHERE version = 1").fetchone():
-            raise RuntimeError("Run python manage.py init-db before starting the API")
+        if not db.execute("SELECT version FROM schema_version WHERE version = 2").fetchone():
+            raise RuntimeError("Run python manage.py init-db to initialize or migrate the API database")
 
 
 def audit(db, action, user_id=None, ip="local"):
@@ -97,16 +99,43 @@ def start_session(db, user_id, ip):
 
 
 def record_fruit_to_session(result, image_bytes=None):
+    with connect() as db:
+        return insert_fruit(db, result, image_bytes)
+
+
+def insert_fruit(db, result, image_bytes=None):
     image = ""
     if image_bytes and len(image_bytes) < 300_000:
         image = "data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("ascii")
     action = {"GREEN": "Gạt Cổng 1 (Green)", "RIPE": "Gạt Cổng 2 (Ripe)",
               "REJECT": "Trôi Cuối (Reject)", "MOCK": "Không điều khiển · MOCK"}[result["label"]]
-    with connect() as db:
-        lock_sorting(db)
-        session = current_row(db)
-        db.execute("""INSERT INTO fruit_results(session_id,fruit_id,camera_id,label,confidence,
+    lock_sorting(db)
+    session = current_row(db)
+    return db.execute("""INSERT INTO fruit_results(session_id,fruit_id,camera_id,label,confidence,
                       inference_ms,image,decision_reason,model_version,servo_action)
-                      VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                      VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING sequence""",
                    (session["id"], result["fruit_id"], result["camera_id"], result["label"], result["confidence"],
-                    result["inference_ms"], image, result["decision_reason"], result["model_version"], action))
+                    result["inference_ms"], image, result["decision_reason"], result["model_version"], action)).fetchone()["sequence"]
+
+
+class InferenceConflict(ValueError):
+    """The same request key was reused for a different fruit, camera or image."""
+
+
+def record_inference_once(request_key, fruit_id, camera_id, image_bytes, classify):
+    """Commit the response and fruit together; retries survive restarts/rollovers."""
+    fingerprint = hashlib.sha256(image_bytes).hexdigest()
+    with connect() as db:
+        db.execute("SELECT pg_advisory_xact_lock(83417004, hashtext(%s))", (request_key,))
+        previous = db.execute("SELECT image_sha256,response FROM inference_requests WHERE request_key=%s", (request_key,)).fetchone()
+        if previous:
+            response = previous["response"]
+            if (previous["image_sha256"] != fingerprint or response["fruit_id"] != fruit_id
+                    or response["camera_id"] != camera_id):
+                raise InferenceConflict("Idempotency key belongs to different input")
+            return response
+        response = {**classify(), "request_id": request_key}
+        sequence = insert_fruit(db, response, image_bytes)
+        db.execute("INSERT INTO inference_requests(request_key,image_sha256,result_id,response) VALUES (%s,%s,%s,%s)",
+                   (request_key, fingerprint, sequence, Jsonb(response)))
+        return response

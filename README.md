@@ -17,6 +17,12 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
 | `hardware/` | B — IoT | Chờ tài liệu phần cứng chính thức từ thành viên phụ trách |
 | `docs/` | Cả nhóm | Hướng dẫn train/deploy và nguồn dữ liệu |
 
+**Camera của dự án là điện thoại, không phải ESP32-CAM.** ESP32 DevKit chỉ đọc
+cảm biến và điều khiển motor/servo. Thư mục giữ chỗ `esp32-camera/` đã được bỏ.
+Bridge có cấu hình `.env`, kiểm tra model thật, retry HTTP có chống ghi trùng và
+nhật ký trigger để tránh gửi lại lệnh. Xem [hướng dẫn camera điện thoại và giao thức
+bàn giao firmware](camera-bridge/README.md).
+
 ## Bắt đầu ngay (Người A)
 
 1. Mở thư mục **`cloud-ai`** trong VS Code hoặc chuyển Terminal tới nó.
@@ -52,7 +58,7 @@ xem cách chạy trong [`cloud-ai/README.md`](cloud-ai/README.md).
 
 ## Các bước phát triển về sau
 
-- A: chạy huấn luyện, kiểm tra PyTorch–ONNX, đưa model vào API và bổ sung MQTT/định danh request.
+- A: chạy huấn luyện, kiểm tra PyTorch–ONNX và đưa model vào API. Luồng ảnh hiện dùng HTTP request/response có Idempotency-Key.
 - B: bàn giao firmware và tài liệu phần cứng chính thức, thống nhất giao thức với Camera Bridge để kiểm thử tích hợp.
 - C: lắp cơ khí, dựng Dashboard, thu thập dữ liệu thực và kiểm thử.
 

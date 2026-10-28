@@ -9,9 +9,9 @@ import json
 import logging
 from pathlib import Path
 import time
-from typing import Dict, List, Optional
+from typing import Annotated, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -55,7 +55,7 @@ app.add_middleware(
     allow_origins=config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "X-CSRF-Token", "X-API-Key"],
+    allow_headers=["Content-Type", "X-CSRF-Token", "X-API-Key", "Idempotency-Key"],
 )
 
 
@@ -167,6 +167,7 @@ def health():
         "classes": classes_list if model_ready else ["MOCK"],
         "model_version": model_version if model_ready else "mock-v0",
         "threshold": confidence_threshold if model_ready else 0.0,
+        "idempotency_supported": True,
     }
 
 
@@ -175,6 +176,7 @@ async def infer(
     fruit_id: str = Form(..., min_length=1, max_length=128),
     camera_id: str = Form(..., min_length=1, max_length=128),
     image: UploadFile = File(...),
+    idempotency_key: Annotated[str | None, Header(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.:-]+$")] = None,
 ):
     """
     Perform fruit classification inference on uploaded JPEG.
@@ -191,6 +193,20 @@ async def infer(
     if not content.startswith(b"\xff\xd8"):
         raise HTTPException(status_code=400, detail="Invalid JPEG data")
 
+    if idempotency_key is not None:
+        try:
+            return await run_in_threadpool(database.record_inference_once, idempotency_key, fruit_id, camera_id, content,
+                                           lambda: classify_image(fruit_id, camera_id, content))
+        except database.InferenceConflict as error:
+            raise HTTPException(409, "IDEMPOTENCY_KEY_REUSED") from error
+    result = await run_in_threadpool(classify_image, fruit_id, camera_id, content)
+    await run_in_threadpool(record_fruit_to_session, result, content)
+    return result
+
+
+def classify_image(fruit_id, camera_id, content):
+    """Synchronous CPU work, off the event loop; persistence is handled by infer."""
+
     # Fallback mode if ONNX model is not available
     if not model_ready or ort_session is None:
         logger.info("MOCK mode: received fruit_id=%s, camera_id=%s, bytes=%s", fruit_id, camera_id, len(content))
@@ -206,7 +222,6 @@ async def infer(
             "inference_ms": 0.0,
             "note": "AI model not ready on server; running in mock fallback mode",
         }
-        await run_in_threadpool(record_fruit_to_session, mock_result, content)
         return mock_result
 
     # Real ONNX inference
@@ -261,7 +276,6 @@ async def infer(
     except Exception as e:
         logger.error("Inference failure for fruit_id=%s: %s", fruit_id, e, exc_info=True)
         raise HTTPException(status_code=500, detail="Inference failed") from e
-    await run_in_threadpool(record_fruit_to_session, real_result, content)
     return real_result
 
 
