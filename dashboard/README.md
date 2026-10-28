@@ -22,7 +22,7 @@ tại `/dashboard/` dùng API cùng origin; bản static chạy riêng dùng
 
 - **Tổng quan:** số quả ghi nhận, tỉ lệ đạt, năng suất trung bình, độ trễ AI,
   ảnh và confidence của quả được chọn, phân bố chất lượng.
-- **Dòng quả gần đây:** nhấn một trong 10 ảnh để xem lại kết quả trong buồng soi.
+- **Dòng quả gần đây:** nhấn một trong 10 ảnh để xem lại kết quả trong khu vực chụp ảnh.
 - **Mô phỏng một quả:** thêm một bản ghi mẫu vào phiên demo, không gọi phần cứng.
 - **Phiên mới:** xác nhận kết thúc phiên hiện tại và tạo phiên rỗng;
   phiên cũ vẫn có trong lịch sử.
