@@ -25,10 +25,10 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
    ```powershell
    py -m venv .venv
    .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-   .\.venv\Scripts\python.exe -m uvicorn main:app --reload
    ```
-3. Mở `http://127.0.0.1:8000/health` để kiểm tra.
-4. Xem hướng dẫn đầy đủ trong [`cloud-ai/README.md`](cloud-ai/README.md).
+3. Cấu hình PostgreSQL và `.env`, chạy `manage.py init-db`, tạo tài khoản rồi
+   khởi động API theo [`cloud-ai/README.md`](cloud-ai/README.md).
+4. Mở `http://127.0.0.1:8000/dashboard/` và đăng nhập. Camera Bridge cần `DEVICE_API_KEY`.
 5. Để train, mở [`training/AutoSort_Train.ipynb`](training/AutoSort_Train.ipynb) trên Colab và tải `autosort-training.zip` lên khi được hỏi.
 
 Chỉ dùng dataset `datasets/kumquat/` đã lọc: 1.761 ảnh thuộc `GREEN`, `RIPE`,
@@ -42,6 +42,10 @@ Chạy kiểm thử từ thư mục gốc sau khi cài các phụ thuộc của 
 ```powershell
 .\cloud-ai\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
+
+Cài `cloud-ai/requirements-dev.txt` để có thư viện kiểm thử HTTP. Đặt
+`AUTOSORT_TEST_DATABASE_URL` để chạy thêm kiểm thử xác thực với PostgreSQL thật;
+xem cách chạy trong [`cloud-ai/README.md`](cloud-ai/README.md).
 
 ## Các bước phát triển về sau
 

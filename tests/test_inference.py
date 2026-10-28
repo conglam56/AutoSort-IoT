@@ -18,6 +18,12 @@ from inference import classification_probabilities, preprocess_image_bytes
 
 
 class InferenceTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        # Inference unit checks isolate persistence; PostgreSQL has separate integration tests.
+        persistence = patch.object(api, "record_fruit_to_session")
+        persistence.start()
+        self.addCleanup(persistence.stop)
+
     async def predict(self, probabilities, image_name="quatsample.jpg"):
         session = Mock()
         session.run.return_value = [np.array([probabilities], dtype=np.float32)]

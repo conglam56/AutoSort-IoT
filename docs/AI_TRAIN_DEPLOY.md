@@ -127,7 +127,8 @@ Cài đặt phụ thuộc cho service:
 pip install -r cloud-ai/requirements.txt
 ```
 
-Khởi chạy FastAPI:
+Cấu hình PostgreSQL, `.env` và tài khoản theo [`cloud-ai/README.md`](../cloud-ai/README.md)
+trước khi khởi chạy FastAPI:
 ```powershell
 python -m uvicorn main:app --app-dir cloud-ai --host 127.0.0.1 --port 8000 --reload
 ```
@@ -147,9 +148,10 @@ Truy cập `http://127.0.0.1:8000/health`:
 ```
 
 ### Kiểm tra Inference:
-Gửi ảnh qua Swagger UI tại `http://127.0.0.1:8000/docs` hoặc bằng curl/PowerShell:
+Gửi ảnh qua Swagger UI tại `http://127.0.0.1:8000/docs` (Authorize bằng device key)
+hoặc PowerShell. Đặt `DEVICE_API_KEY` từ cấu hình riêng, không ghi key vào Git:
 ```powershell
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/infer" -Method Post -Form @{
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/infer" -Method Post -Headers @{'X-API-Key'=$env:DEVICE_API_KEY} -Form @{
     fruit_id = "F0001";
     camera_id = "cam01";
     image = Get-Item "cloud-ai\quatsample.jpg";

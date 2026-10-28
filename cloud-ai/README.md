@@ -1,90 +1,134 @@
-# AutoSort IoT — Cloud AI service
+# AutoSort Cloud API — Python/FastAPI + PostgreSQL
 
-FastAPI nhận JPEG tại `/infer` và phân loại bằng ONNX khi có model. Hiện chưa
-huấn luyện nên API trả `MOCK`. Không nối phản hồi MOCK với quyết định điều khiển servo.
+API dùng PostgreSQL để lưu tài khoản, phiên đăng nhập, phiên phân loại,
+kết quả và nhật ký xác thực. Không còn lưu lịch sử thực tế trong RAM.
+Dashboard ở `/dashboard/`; phần mô phỏng công khai vẫn chạy độc lập.
 
-Hướng dẫn huấn luyện: [AI_TRAIN_DEPLOY.md](../docs/AI_TRAIN_DEPLOY.md).
+Huấn luyện và kiểm tra PyTorch–ONNX: [AI_TRAIN_DEPLOY.md](../docs/AI_TRAIN_DEPLOY.md).
 Nguồn dataset và notebook Colab: [PUBLIC_DATASET.md](../docs/PUBLIC_DATASET.md).
 
-## A. Chạy trên Windows 10/11 bằng PowerShell
+## Mô hình phân loại
 
-Yêu cầu: Python 3.11+ và một ảnh JPEG chụp quả quất tên `quatsample.jpg`.
-
-1. Mở thư mục `cloud-ai/` chứa `main.py` trong VS Code và mở Terminal PowerShell.
-2. Chạy:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m uvicorn main:app --reload
-```
-
-3. Truy cập http://127.0.0.1:8000/health; phải thấy `"status":"ok"`.
-4. Đặt ảnh `quatsample.jpg` cạnh `main.py` rồi gửi thử:
-
-```powershell
-curl.exe -X POST -F "fruit_id=F0001" -F "camera_id=cam01" -F "image=@quatsample.jpg;type=image/jpeg" http://127.0.0.1:8000/infer
-```
-
-5. Khi chưa có model, phản hồi có `"fruit_id":"F0001"`, `"label":"MOCK"`,
-   `"decision_reason":"MOCK_MODE"` và `"image_bytes":...`.
-
-## B. Bật mô hình đã huấn luyện
-
-Đặt `best.onnx` và `classes.json` từ kết quả export vào `cloud-ai/model/` rồi
-khởi động lại API. `/health` phải trả `"mode":"onnx"`, `"model_ready":true`.
-Nếu không nạp được model, API ghi lỗi vào log và tiếp tục ở chế độ MOCK.
-
-Luồng ONNX dùng chung xử lý ảnh với công cụ parity, đọc trực tiếp xác suất và
+Đặt `best.onnx` và `classes.json` từ kết quả export vào `cloud-ai/model/`,
+khởi động lại API rồi kiểm tra `/health` có `mode=onnx`, `model_ready=true`.
+Nếu không nạp được model, API ghi lỗi và tiếp tục ở chế độ MOCK.
+Luồng ONNX dùng chung xử lý ảnh với công cụ parity, đọc trực tiếp xác suất,
 chuyển dự đoán có confidence dưới ngưỡng sang `REJECT`.
+`GREEN` đi cổng 1, `RIPE` đi cổng 2, `REJECT` ra khay loại.
 
-## C. Deploy lên Google Cloud Run (tùy chọn)
+## Khởi chạy
 
-1. Tạo project trong https://console.cloud.google.com/ và kích hoạt Billing phù hợp. Đặt cảnh báo/ngưỡng chi phí và giới hạn mở rộng. Chú ý cảnh báo ngân sách thường không tự chặn phát sinh phí.
-2. Cài Google Cloud CLI: https://cloud.google.com/sdk/docs/install
-3. Mở Terminal tại thư mục `cloud-ai/` (không phải thư mục gốc `quat-sort-iot/`) và chạy:
-
-```powershell
-gcloud init
-gcloud config set project YOUR_PROJECT_ID
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
-gcloud run deploy quat-sort-ai --source . --region asia-southeast1 --allow-unauthenticated
-```
-
-4. Nếu Cloud yêu cầu bật API, tạo artifact repo hoặc cấp quyền build, làm theo hướng dẫn từ tài khoản/project của bạn. Lưu URL service thực tế sau triển khai.
-5. Truy cập `https://YOUR_CLOUD_RUN_URL/health`.
-6. Từ một máy khác, gửi lại ảnh:
+Dùng Python 3.12 hoặc 3.13. Từ thư mục gốc repository:
 
 ```powershell
-curl.exe -X POST -F "fruit_id=F0002" -F "camera_id=cam01" -F "image=@quatsample.jpg;type=image/jpeg" https://YOUR_CLOUD_RUN_URL/infer
+py -3.12 -m venv cloud-ai/.venv
+.\cloud-ai\.venv\Scripts\python.exe -m pip install -r cloud-ai/requirements.txt
+Copy-Item cloud-ai/.env.example cloud-ai/.env
 ```
 
-7. Mở **Cloud Run → Services → quat-sort-ai → Logs** để tìm dòng `MOCK received fruit_id=F0002...`.
+Chỉnh `.env`: đặt mật khẩu PostgreSQL và một `DEVICE_API_KEY` ngẫu nhiên riêng.
+`POSTGRES_PASSWORD` phải khớp phần mật khẩu trong `DATABASE_URL`.
+Có thể tạo từng chuỗi bí mật bằng `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+Không commit `.env`, file tài khoản hoặc dữ liệu PostgreSQL.
 
-**Lưu ý bảo mật:** `--allow-unauthenticated` chỉ dùng với endpoint MOCK không chứa bí mật cho bài thử ban đầu. Trước khi sử dụng thật, thêm xác thực (ví dụ API key trong Secret Manager hoặc cơ chế định danh phù hợp), giới hạn truy cập và không đưa Wi-Fi password/MQTT secret lên GitHub. Không nhúng secret thật vào ảnh, URL hay log.
+Nếu dùng Docker Desktop đang hoạt động:
 
-## D. Kết nối camera (phát triển tiếp)
+```powershell
+docker compose --env-file cloud-ai/.env -f cloud-ai/compose.yaml up -d --wait
+```
 
-1. Người B nạp ví dụ CameraWebServer lên ESP32-CAM, kiểm tra ảnh qua IP nội bộ.
-2. Tải một ảnh JPEG từ camera về máy tính, dùng lệnh POST ở trên gửi tới URL Cloud Run để kiểm chứng định dạng.
-3. Sau khi HTTPS từ ESP32-CAM được kiểm tra (CA certificate, PSRAM, timeout), mới thay thao tác thủ công bằng firmware tự chụp và POST `/infer`.
-4. Người A đối chiếu `fruit_id` gửi đi, trả về và log Cloud Run.
+PostgreSQL chỉ mở ở `127.0.0.1:5433`. Nếu đã có PostgreSQL, tạo database riêng
+và đặt `DATABASE_URL` phù hợp thay cho lệnh Docker. Không trỏ vào database dự án khác.
 
-## Nhãn phân loại
+```powershell
+.\cloud-ai\.venv\Scripts\python.exe cloud-ai/manage.py init-db
+.\cloud-ai\.venv\Scripts\python.exe cloud-ai/manage.py create-user admin --role admin
+.\cloud-ai\.venv\Scripts\python.exe cloud-ai/manage.py create-user viewer --role viewer
+.\cloud-ai\.venv\Scripts\python.exe -m uvicorn main:app --app-dir cloud-ai --host 127.0.0.1 --port 8000
+```
 
-- `GREEN`: quả xanh → servo 1.
-- `RIPE`: quả chín → servo 2.
-- `REJECT`: quả lỗi/không chắc chắn → khay thẳng.
+CLI hỏi mật khẩu 12–256 ký tự và không hiển thị mật khẩu. Không có tài khoản mặc định.
+Mở <http://127.0.0.1:8000/dashboard/>, nhấn **Đăng nhập máy chủ**.
+Admin có thể xác nhận tạo phiên mới; viewer chỉ đọc dữ liệu và xuất CSV.
 
-`MOCK` **không thuộc ba nhãn hợp lệ**, nên ESP32 không được dùng phản hồi MOCK để gạt quả.
-API đã trả `confidence`, `model_version` và `decision_reason`; phần MQTT,
-timestamp và xử lý trùng `fruit_id` cần được phát triển tiếp.
+Trên máy đã được cấu hình trong phiên làm việc này, runtime là
+`cloud-ai/.venv312/Scripts/python.exe`. Thông tin tài khoản ngẫu nhiên nằm tại
+`cloud-ai/.local/initial-accounts.txt`, chỉ lưu cục bộ và được Git bỏ qua.
+PostgreSQL riêng được tạo tại `cloud-ai/.local/postgres-data`, cổng 5433.
+Không chạy thêm Docker vào cổng này khi cụm cục bộ vẫn chạy.
+Để dừng/chạy lại cụm này bằng bộ PostgreSQL 18 đã cài:
 
-## Tài liệu chính thức
+```powershell
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' -D 'D:\AutoSort IoT\cloud-ai\.local\postgres-data' stop -m fast
+& 'C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe' -D 'D:\AutoSort IoT\cloud-ai\.local\postgres-data' -l 'D:\AutoSort IoT\cloud-ai\.local\postgres.log' -o '-h 127.0.0.1 -p 5433' start
+```
 
-- Cloud Run FastAPI quickstart: https://docs.cloud.google.com/run/docs/quickstarts/build-and-deploy/deploy-python-fastapi-service
-- EMQX Cloud Serverless: https://docs.emqx.com/en/cloud/latest/create/serverless.html
-- EMQX + ESP32 TLS: https://docs.emqx.com/en/cloud/latest/connect_to_deployments/esp32.html
+## Tài khoản và quyền
 
-**Hiện trạng:** Có code suy luận ONNX và bộ công cụ huấn luyện; chưa có trọng số
-đã train, chưa kết nối MQTT và firmware. Cần kiểm tra model bằng ảnh camera thực tế.
+| Hành động | Khách | Viewer | Admin | Camera Bridge |
+|---|---|---|---|---|
+| Health, trang dashboard, mô phỏng | Có | Có | Có | Có |
+| Đọc phiên/kết quả thực tế | Không | Có | Có | Không |
+| Tạo phiên thực tế | Không | Không | Có | Không |
+| Đọc 100 nhật ký gần nhất `/api/audit-logs` | Không | Không | Có | Không |
+| Gửi ảnh `/infer` bằng `X-API-Key` | Không | Không | Không | Có |
+
+Mật khẩu băm Argon2id. Session token ngẫu nhiên lưu dưới dạng SHA-256 trong DB;
+cookie HttpOnly, SameSite=Lax, hết hạn sau 8 giờ. Token đăng nhập và CSRF chỉ
+giữ trong bộ nhớ trình duyệt/cookie, không ghi localStorage. Logout thu hồi session
+trên server; đổi mật khẩu hoặc vô hiệu tài khoản thu hồi mọi session của tài khoản.
+CLI quản lý tài khoản:
+
+```powershell
+python cloud-ai/manage.py reset-password admin
+python cloud-ai/manage.py disable-user viewer
+```
+
+POST từ dashboard cần origin được phép và `X-CSRF-Token` lấy từ login hoặc `/api/auth/me`.
+Đăng nhập giới hạn 10 lần/tên tài khoản và 30 lần/IP trong cửa sổ 15 phút,
+áp dụng chung cho nhiều API worker nhờ PostgreSQL. Thông báo sai mật khẩu không
+tiết lộ tên tài khoản có tồn tại. Nhật ký ghi login thành công/thất bại, logout,
+quản lý tài khoản và tạo phiên; không ghi mật khẩu hay API key.
+
+## Camera Bridge và triển khai
+
+Đặt cùng `DEVICE_API_KEY` vào môi trường chạy bridge, không chèn key trong code:
+
+```powershell
+$env:DEVICE_API_KEY = '<key từ cấu hình riêng>'
+$env:CLOUD_INFER_URL = 'http://127.0.0.1:8000/infer'
+python camera-bridge/bridge.py
+```
+
+Ví dụ gọi API trong PowerShell 7:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/infer -Method Post -Headers @{'X-API-Key'=$env:DEVICE_API_KEY} -Form @{
+  fruit_id='F0001'; camera_id='cam01'; image=Get-Item cloud-ai/quatsample.jpg
+}
+```
+
+Trong production dùng HTTPS, `COOKIE_SECURE=true`, origin dashboard cụ thể và
+PostgreSQL với TLS (`sslmode=require`), tài khoản DB giới hạn cho database AutoSort.
+Chạy `init-db` như bước triển khai riêng; không tự sửa schema khi khởi động API.
+Cấu hình `--forwarded-allow-ips` chỉ cho reverse proxy tin cậy để giới hạn IP chính xác.
+Chạy dashboard cùng origin với API là cấu hình ưu tiên. Nếu chạy static ở cổng 8765,
+thêm đúng origin đó vào `ALLOWED_ORIGINS` và khởi động lại API.
+
+Chưa có `model/best.onnx` thì `/infer` vẫn trả rõ `MOCK`; kết quả này được lưu
+nhưng không phải lệnh điều khiển servo. Ảnh dưới 300 KB được giữ trong DB;
+ảnh lớn hơn chỉ lưu metadata. Dữ liệu RAM của bản API cũ không được tự khôi phục.
+
+## Kiểm thử
+
+```powershell
+python -m pip install -r cloud-ai/requirements-dev.txt
+$env:AUTOSORT_TEST_DATABASE_URL = '<PostgreSQL URL kiểm thử>'
+python -m unittest discover -s tests -v
+```
+
+Kiểm thử PostgreSQL tạo schema `autosort_test_<uuid>` riêng rồi xóa schema đó,
+không sửa các bảng ứng dụng. Role kiểm thử cần quyền CREATE SCHEMA.
+Nếu không đặt biến kiểm thử, 7 bài tích hợp PostgreSQL được báo **skipped**.
+Bao gồm kiểm tra 401/403, CSRF, rate limit, hết hạn/thu hồi cookie, viewer,
+API key thiết bị, lưu lịch sử qua vòng đời ứng dụng và ghi đồng thời khi đổi phiên.

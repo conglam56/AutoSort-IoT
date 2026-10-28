@@ -3,393 +3,154 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutoSort IoT</title>
-  <meta name="description" content="Giao diện giám sát trạm phân loại quả quất bằng buồng soi quang học Cloud AI và vi điều khiển IoT.">
+  <meta name="theme-color" content="#17634f">
+  <title>AutoSort IoT — Giám sát phân loại</title>
+  <meta name="description" content="Giám sát hình ảnh, chất lượng và lịch sử phiên phân loại quất AutoSort IoT.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Đến nội dung chính</a>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="m8 5 1-2h6l1 2h3a2 2 0 0 1 2 2v12H3V7a2 2 0 0 1 2-2Z"/><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 3M4 15l2 3a7 7 0 0 0 12-1"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 4C10 2 3 6 5 14c2 8 16 5 15-10Z"/><path d="M3 21 15 9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3v18h17M8 16v-5m5 5V7m5 9V4"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 19v-3m5 3v-7m5 7V8m5 11V4"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8l9-5Zm-9 5 9 5 9-5M12 13v9m-5-17 10 5"/></symbol>
+  </svg>
 
-  <!-- Console Header -->
-  <header class="console-header">
-    <div class="header-station">
-      <div class="station-mark" aria-hidden="true">
-        <svg class="station-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 3v18M3 12h18" stroke-dasharray="2 2" />
-          <circle cx="12" cy="12" r="3.5" fill="#F59E0B" stroke="none" />
-        </svg>
-      </div>
-      <div class="station-meta">
-        <h1 class="station-title">AutoSort <span class="brand-citrus">IoT</span></h1>
-        <div class="station-id">Hệ thống phân loại quang học thông minh</div>
-      </div>
-    </div>
-
-    <!-- Navigation Modes -->
-    <nav class="console-nav" aria-label="Chế độ giám sát">
-      <button id="tab-live-btn" class="nav-btn active" data-tab="tab-live">
-        <span class="live-pip" aria-hidden="true"></span>
-        <span>Buồng soi trực tiếp</span>
-      </button>
-      <button id="tab-history-btn" class="nav-btn" data-tab="tab-history">
-        <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" />
-        </svg>
-        <span>Lịch sử các phiên</span>
-      </button>
+  <aside class="sidebar">
+    <a class="brand" href="./" aria-label="AutoSort IoT, trang giám sát">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="M20 12C20 6 25 3 31 5c-1 6-5 9-11 7Z" fill="#83b798"/><path d="M13 13c-7 2-9 14-3 20 5 5 17 4 21-3 4-8-1-18-8-17-4 1-6-1-10 0Z" fill="#efad57"/><path d="m12 24 5 5 11-12" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>AutoSort<span class="brand-sub">IoT monitoring</span></span>
+    </a>
+    <div class="workspace-label"><span class="workspace-dot"></span> Trạm phân loại quất</div>
+    <nav class="console-nav" aria-label="Điều hướng dashboard">
+      <button id="tab-live-btn" class="nav-btn active" data-tab="tab-live" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><span>Tổng quan</span><span class="nav-current-dot" aria-hidden="true"></span></button>
+      <button id="tab-history-btn" class="nav-btn" data-tab="tab-history"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><span>Lịch sử phiên</span></button>
     </nav>
-
-    <!-- Telemetry & Actions -->
-    <div class="header-telemetry">
-      <div class="telemetry-pill" id="cloud-status-pill" title="Trạng thái kết nối máy chủ AI">
-        <span class="pip online" aria-hidden="true"></span>
-        <span class="pill-label">Máy chủ AI:</span>
-        <span class="pill-val mono" id="cloud-latency">18 ms</span>
-      </div>
-      <div class="telemetry-pill" title="Phiên bản mô hình suy luận">
-        <span class="pill-label">Mô hình:</span>
-        <span class="pill-val mono" id="model-ver">YOLO11 ONNX</span>
-      </div>
-      <div class="telemetry-pill mono" id="live-clock">--:--:--</div>
-
-      <div class="header-actions">
-        <button id="btn-sim-trigger" class="btn btn-neutral" title="Mô phỏng 1 lượt quả đi qua buồng soi">
-          <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
-          </svg>
-          <span>Thử quả mới</span>
-        </button>
-        <button id="btn-new-session" class="btn btn-action" title="Khởi động một phiên làm việc mới">
-          <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-          </svg>
-          <span>Bắt đầu phiên mới</span>
-        </button>
-      </div>
+    <div class="sidebar-guide">
+      <svg class="icon" aria-hidden="true"><use href="#i-leaf"/></svg>
+      <strong>Mỗi quả, đúng khay.</strong>
+      <p>Theo dõi chất lượng từ hình ảnh đến kết quả phân loại.</p>
+      <button class="text-button" id="btn-guide">Cách sử dụng <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button>
     </div>
-  </header>
+    <div class="sidebar-bottom">
+      <div class="connection-row" id="cloud-status-pill"><span class="pip offline" aria-hidden="true"></span><span>Máy chủ AI</span><strong id="cloud-latency">Chưa kiểm tra</strong></div>
+      <div class="model-row"><span>Mô hình</span><strong id="model-ver">Chưa xác định</strong></div>
+      <div class="operator"><span class="operator-avatar">AS</span><div><strong id="account-name">Khách tham quan</strong><span id="account-role">Dữ liệu mô phỏng</span></div></div>
+      <button id="btn-account" class="btn btn-neutral account-button">Đăng nhập máy chủ</button>
+    </div>
+  </aside>
 
-  <!-- Workspace Container -->
-  <main class="console-workspace">
-    
-    <!-- ========================================== -->
-    <!-- VIEW 1: BUỒNG SOI TRỰC TIẾP (LIVE CHAMBER) -->
-    <!-- ========================================== -->
-    <section id="tab-live" class="view-panel active">
-      
-      <!-- Session Overview Banner -->
-      <div class="session-strip">
-        <div class="session-identity">
-          <span class="session-status-tag">Phiên đang chạy</span>
-          <h2 class="session-heading" id="live-session-name">Phiên 01</h2>
-          <div class="session-timestamps">
-            <span>Bắt đầu: <strong id="live-session-start" class="mono">--:--</strong></span>
-            <span class="meta-separator" aria-hidden="true">/</span>
-            <span>Thời gian vận hành: <strong id="live-session-uptime" class="mono">00:00:00</strong></span>
-          </div>
-        </div>
+  <div class="main-shell">
+    <header class="topbar">
+      <div class="breadcrumb">Trạm phân loại <span aria-hidden="true">/</span> <strong id="page-breadcrumb">Tổng quan</strong></div>
+      <div class="topbar-end"><span class="date-label" id="today-date"></span><span class="clock-chip"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><time id="live-clock">--:--:--</time></span></div>
+    </header>
 
-        <div class="session-kpi-summary">
-          <div class="kpi-mini">
-            <span class="kpi-mini-label">Sản lượng phiên này</span>
-            <span class="kpi-mini-value mono" id="live-total-count">0</span>
-          </div>
-          <div class="kpi-mini">
-            <span class="kpi-mini-label">Tốc độ băng tải</span>
-            <span class="kpi-mini-value mono" id="live-ppm-rate">0 <span class="unit">quả/phút</span></span>
-          </div>
+    <main id="main-content" class="console-workspace" tabindex="-1">
+      <div class="page-heading">
+        <div><h1 id="page-title">Tổng quan phân loại</h1><p id="page-subtitle">Một góc nhìn rõ ràng cho từng phiên vận hành.</p></div>
+        <div class="header-actions">
+          <label class="source-select"><span>Nguồn</span><select id="data-source" aria-label="Nguồn dữ liệu"><option value="demo">Mô phỏng</option><option value="live">Máy chủ AI</option></select></label>
+          <button id="btn-new-session" class="btn btn-action"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Phiên mới</button>
         </div>
       </div>
 
-      <!-- Hero Console: Optical Chamber (Left) & Session Quality (Right) -->
-      <div class="console-stage">
-        
-        <!-- Left: Optical Inspection Chamber -->
-        <section class="panel optical-chamber">
-          <header class="panel-header">
-            <div class="panel-heading">
-              <span class="heading-pip" aria-hidden="true"></span>
-              <h3>Buồng chụp quang học</h3>
-            </div>
-            <div class="panel-aux mono" id="camera-fps">Độ phân giải 1080p / Chiếu sáng chuẩn</div>
-          </header>
+      <div class="source-notice" id="source-notice" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span id="source-notice-text">Chế độ mô phỏng · Ảnh và số liệu mẫu để trải nghiệm giao diện.</span><span class="notice-tag" id="source-state">Demo</span></div>
 
-          <div class="chamber-body">
-            <!-- Inspection Window -->
+      <section id="tab-live" class="view-panel active" aria-labelledby="tab-live-btn">
+        <div class="session-strip">
+          <div class="session-identity"><div class="session-title-row"><span class="session-status-tag" id="session-status-tag"><span class="pip online" aria-hidden="true"></span>Đang chạy</span><h2 id="live-session-name">Đang tải phiên…</h2></div><div class="session-timestamps"><span>Bắt đầu <strong id="live-session-start">--:--</strong></span><span class="session-divider"></span><span>Thời gian chạy <strong id="live-session-uptime">00:00:00</strong></span></div></div>
+          <button id="btn-sim-trigger" class="btn btn-neutral"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Mô phỏng một quả</button>
+        </div>
+
+        <div class="overview-metrics" aria-label="Chỉ số phiên hiện tại">
+          <div class="overview-metric"><span class="metric-icon neutral"><svg class="icon" aria-hidden="true"><use href="#i-box"/></svg></span><div><span class="metric-lead">Tổng đã ghi nhận</span><strong class="metric-number" id="live-total-count">0</strong><span class="metric-unit">quả trong phiên</span></div></div>
+          <div class="overview-metric"><span class="metric-icon green"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><div><span class="metric-lead">Tỉ lệ đạt</span><strong class="metric-number" id="session-pass-rate">—</strong><span class="metric-unit">Quất xanh &amp; quất chín</span></div></div>
+          <div class="overview-metric"><span class="metric-icon amber"><svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg></span><div><span class="metric-lead">Năng suất trung bình</span><strong class="metric-number" id="live-ppm-rate">0 <span class="unit">quả/phút</span></strong><span class="metric-unit">Tính từ lúc bắt đầu phiên</span></div></div>
+          <div class="overview-metric"><span class="metric-icon blue"><svg class="icon" aria-hidden="true"><use href="#i-signal"/></svg></span><div><span class="metric-lead">Độ trễ suy luận</span><strong class="metric-number" id="session-avg-latency">—</strong><span class="metric-unit">Trung bình phiên hiện tại</span></div></div>
+        </div>
+
+        <div class="console-stage">
+          <section class="panel optical-chamber" aria-labelledby="camera-title">
+            <header class="panel-header"><div><h3 id="camera-title">Buồng soi quang học</h3><p>Hình ảnh ghi nhận gần nhất</p></div><span class="camera-source-tag" id="camera-fps"><span class="pip" aria-hidden="true"></span>Ảnh mô phỏng</span></header>
             <div class="optical-aperture" id="camera-viewport">
-              <div class="crosshair-h" aria-hidden="true"></div>
-              <div class="crosshair-v" aria-hidden="true"></div>
-              <div class="corner-gauge top-left" aria-hidden="true"></div>
-              <div class="corner-gauge top-right" aria-hidden="true"></div>
-              <div class="corner-gauge bottom-left" aria-hidden="true"></div>
-              <div class="corner-gauge bottom-right" aria-hidden="true"></div>
-
-              <img id="latest-fruit-img" src="samples/ripe_1.jpg" alt="Ảnh chụp quả quất trong buồng soi" class="optical-subject">
-
-              <!-- Grade Stamp Overlay -->
-              <div class="grade-stamp" id="ai-overlay-tag">
-                <span class="grade-badge badge-ripe" id="overlay-label-badge">RIPE</span>
-                <span class="grade-score mono" id="overlay-conf-badge">96.4%</span>
-              </div>
+              <div class="viewport-meta"><span><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg>Buồng soi 01</span><span id="image-source-label">Ảnh mẫu</span></div>
+              <img id="latest-fruit-img" src="samples/ripe_1.jpg" alt="Ảnh mẫu quả quất" class="optical-subject">
+              <div class="corner-gauge top-left" aria-hidden="true"></div><div class="corner-gauge top-right" aria-hidden="true"></div><div class="corner-gauge bottom-left" aria-hidden="true"></div><div class="corner-gauge bottom-right" aria-hidden="true"></div>
+              <div class="camera-empty" id="camera-empty" hidden><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><strong>Chờ ảnh đầu tiên</strong><span>Kết quả sẽ xuất hiện khi phiên có dữ liệu.</span></div>
+              <div class="grade-stamp" id="ai-overlay-tag"><span class="grade-badge badge-ripe" id="overlay-label-badge">RIPE</span><span class="grade-score" id="overlay-conf-badge">—</span></div>
+              <div class="viewport-caption"><span class="pip online" aria-hidden="true"></span><span id="inspection-caption">Ảnh gần nhất trong phiên</span></div>
             </div>
-
-            <!-- Optical Sensor Readouts -->
             <div class="readout-console">
-              
-              <!-- Confidence Spectrometer Gauge -->
-              <div class="spectro-gauge">
-                <div class="spectro-header">
-                  <span class="spectro-title">Độ tin cậy nhận diện</span>
-                  <span class="spectro-value mono" id="telemetry-conf">96.4%</span>
-                </div>
-                <div class="spectro-track">
-                  <div class="spectro-fill" id="telemetry-conf-fill" style="width: 96.4%;"></div>
-                  <div class="spectro-threshold" title="Ngưỡng phân loại an toàn: 70%"></div>
-                </div>
-                <div class="spectro-ticks mono">
-                  <span>0%</span>
-                  <span class="tick-mark">Ngưỡng đạt 70%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-
-              <!-- Technical Telemetry Matrix -->
-              <div class="telemetry-matrix">
-                <div class="matrix-cell">
-                  <span class="cell-label">Mã số quả</span>
-                  <span class="cell-value mono cell-highlight" id="telemetry-fruit-id">#F0001</span>
-                </div>
-                <div class="matrix-cell">
-                  <span class="cell-label">Thời điểm ghi nhận</span>
-                  <span class="cell-value mono" id="telemetry-timestamp">14:32:05 - 27/10/2026</span>
-                </div>
-                <div class="matrix-cell">
-                  <span class="cell-label">Thời gian suy luận AI</span>
-                  <span class="cell-value mono" id="telemetry-latency">18.2 ms</span>
-                </div>
-                <div class="matrix-cell">
-                  <span class="cell-label">Điều khiển tay gạt</span>
-                  <span class="cell-value" id="telemetry-decision">Cổng 2 (Khay Ripe)</span>
-                </div>
-              </div>
-
+              <div class="spectro-gauge"><div class="spectro-header"><span>Độ tin cậy nhận diện</span><strong id="telemetry-conf">—</strong></div><div class="spectro-track" role="meter" aria-label="Độ tin cậy nhận diện" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="confidence-meter"><div class="spectro-fill" id="telemetry-conf-fill"></div><div class="spectro-threshold" id="confidence-threshold" title="Ngưỡng phân loại 70%"></div></div><div class="spectro-ticks"><span>0%</span><span id="threshold-label">Ngưỡng đạt 70%</span><span>100%</span></div></div>
+              <dl class="telemetry-matrix"><div><dt>Mã quả</dt><dd id="telemetry-fruit-id">—</dd></div><div><dt>Ghi nhận lúc</dt><dd id="telemetry-timestamp">—</dd></div><div><dt>Suy luận AI</dt><dd id="telemetry-latency">—</dd></div><div><dt>Hướng phân loại dự kiến</dt><dd id="telemetry-decision">—</dd></div></dl>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <!-- Right: Session Quality Distribution -->
-        <section class="panel batch-balance">
-          <header class="panel-header">
-            <div class="panel-heading">
-              <span class="heading-pip amber" aria-hidden="true"></span>
-              <h3>Phân bố chất lượng phiên hiện tại</h3>
+          <section class="panel batch-balance" aria-labelledby="quality-title">
+            <header class="panel-header"><div><h3 id="quality-title">Phân bố chất lượng</h3><p id="donut-session-tag">Phiên hiện tại</p></div><svg class="icon muted" aria-hidden="true"><use href="#i-chart"/></svg></header>
+            <div class="balance-body">
+              <div class="donut-frame"><canvas id="current-session-donut" width="200" height="200" role="img" aria-label="Phân bố chất lượng, chi tiết trong danh sách bên dưới"></canvas><div class="donut-core"><strong id="donut-center-total">0</strong><span>Tổng số quả</span></div></div>
+              <div class="grade-tier-stack">
+                <div class="tier-card tier-green"><div class="tier-head"><span class="tier-symbol green"><svg class="icon" aria-hidden="true"><use href="#i-leaf"/></svg></span><div><strong>Quất xanh</strong><span>GREEN</span></div><strong class="tier-count" id="donut-green-count">0 quả</strong><span class="tier-percent" id="donut-green-pct">0%</span></div><div class="tier-bar-track"><div class="tier-bar-fill green" id="donut-green-bar"></div></div></div>
+                <div class="tier-card tier-ripe"><div class="tier-head"><span class="tier-symbol amber"><svg class="icon" aria-hidden="true"><use href="#i-leaf"/></svg></span><div><strong>Quất chín</strong><span>RIPE</span></div><strong class="tier-count" id="donut-ripe-count">0 quả</strong><span class="tier-percent" id="donut-ripe-pct">0%</span></div><div class="tier-bar-track"><div class="tier-bar-fill ripe" id="donut-ripe-bar"></div></div></div>
+                <div class="tier-card tier-reject"><div class="tier-head"><span class="tier-symbol red"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></span><div><strong>Cần loại</strong><span>REJECT</span></div><strong class="tier-count" id="donut-reject-count">0 quả</strong><span class="tier-percent" id="donut-reject-pct">0%</span></div><div class="tier-bar-track"><div class="tier-bar-fill reject" id="donut-reject-bar"></div></div></div>
+              </div>
+              <div class="quality-note"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><p>Quả dưới ngưỡng tin cậy được xếp vào khay loại để kiểm tra lại.</p></div>
+              <span id="session-avg-ppm" hidden></span>
             </div>
-            <div class="panel-aux mono" id="donut-session-tag">Phiên 01</div>
-          </header>
-
-          <div class="balance-body">
-            <!-- Donut Gauge Ring -->
-            <div class="donut-frame">
-              <canvas id="current-session-donut" width="200" height="200"></canvas>
-              <div class="donut-core">
-                <span class="core-number mono" id="donut-center-total">0</span>
-                <span class="core-label">Tổng số quả</span>
-              </div>
-            </div>
-
-            <!-- Quality Tiers -->
-            <div class="grade-tier-stack">
-              <div class="tier-card tier-green">
-                <div class="tier-head">
-                  <span class="tier-color-pip green" aria-hidden="true"></span>
-                  <span class="tier-name">Quất xanh tươi</span>
-                  <span class="tier-count mono" id="donut-green-count">0 quả</span>
-                </div>
-                <div class="tier-bar-track">
-                  <div class="tier-bar-fill green" id="donut-green-bar" style="width: 0%;"></div>
-                </div>
-                <span class="tier-percent mono" id="donut-green-pct">0%</span>
-              </div>
-
-              <div class="tier-card tier-ripe">
-                <div class="tier-head">
-                  <span class="tier-color-pip ripe" aria-hidden="true"></span>
-                  <span class="tier-name">Quất chín đều</span>
-                  <span class="tier-count mono" id="donut-ripe-count">0 quả</span>
-                </div>
-                <div class="tier-bar-track">
-                  <div class="tier-bar-fill ripe" id="donut-ripe-bar" style="width: 0%;"></div>
-                </div>
-                <span class="tier-percent mono" id="donut-ripe-pct">0%</span>
-              </div>
-
-              <div class="tier-card tier-reject">
-                <div class="tier-head">
-                  <span class="tier-color-pip reject" aria-hidden="true"></span>
-                  <span class="tier-name">Quả loại / tì vết</span>
-                  <span class="tier-count mono" id="donut-reject-count">0 quả</span>
-                </div>
-                <div class="tier-bar-track">
-                  <div class="tier-bar-fill reject" id="donut-reject-bar" style="width: 0%;"></div>
-                </div>
-                <span class="tier-percent mono" id="donut-reject-pct">0%</span>
-              </div>
-            </div>
-
-            <!-- Session Key Indicators -->
-            <div class="batch-indicators">
-              <div class="indicator-unit">
-                <span class="unit-caption">Tốc độ trung bình</span>
-                <span class="unit-data mono" id="session-avg-ppm">0 quả/phút</span>
-              </div>
-              <div class="indicator-unit">
-                <span class="unit-caption">Độ trễ trung bình</span>
-                <span class="unit-data mono" id="session-avg-latency">-- ms</span>
-              </div>
-              <div class="indicator-unit">
-                <span class="unit-caption">Tỉ lệ đạt chuẩn</span>
-                <span class="unit-data mono" id="session-pass-rate">100%</span>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-      </div>
-
-      <!-- Bottom: Inspection Filmstrip -->
-      <section class="panel filmstrip-panel">
-        <header class="panel-header">
-          <div class="panel-heading">
-            <span class="heading-pip cyan" aria-hidden="true"></span>
-            <h3>Cuộn kiểm tra 10 quả vừa qua</h3>
-          </div>
-          <div class="panel-aux">Cập nhật tức thời theo dòng quả</div>
-        </header>
-        <div class="filmstrip-viewport" id="recent-fruits-strip">
-          <div class="filmstrip-empty">Đang chờ quả quất đầu tiên lăn qua buồng soi...</div>
+          </section>
         </div>
+
+        <section class="panel filmstrip-panel" aria-labelledby="recent-title">
+          <header class="panel-header"><div><h3 id="recent-title">Dòng quả gần đây <span class="count-chip" id="recent-count">0</span></h3><p>10 kết quả mới nhất, từ trái sang phải</p></div><button class="text-button" id="btn-view-history">Xem lịch sử <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></button></header>
+          <div class="filmstrip-viewport" id="recent-fruits-strip"></div>
+        </section>
       </section>
 
-    </section>
+      <section id="tab-history" class="view-panel" aria-labelledby="tab-history-btn" hidden>
+        <div class="session-filter-panel"><div class="filter-field"><label for="session-dropdown">Phiên làm việc</label><select id="session-dropdown" class="select-element"></select></div><div class="filter-actions"><button id="btn-refresh-history" class="btn btn-neutral"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Làm mới</button><button id="btn-export-csv" class="btn btn-action"><svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>Xuất CSV</button></div></div>
+        <div class="metrics-quad"><div class="metric-card"><span class="metric-lead">Tổng đã ghi nhận</span><strong id="kpi-total-val">0</strong><span class="metric-note">quả trong phiên</span></div><div class="metric-card card-green"><span class="metric-lead">Quất xanh</span><strong id="kpi-green-val">0</strong><span class="metric-note" id="kpi-green-sub">0% phiên này</span></div><div class="metric-card card-ripe"><span class="metric-lead">Quất chín</span><strong id="kpi-ripe-val">0</strong><span class="metric-note" id="kpi-ripe-sub">0% phiên này</span></div><div class="metric-card card-reject"><span class="metric-lead">Cần loại</span><strong id="kpi-reject-val">0</strong><span class="metric-note" id="kpi-reject-sub">0% phiên này</span></div></div>
+        <section class="panel ledger-panel" aria-labelledby="history-table-title"><header class="panel-header"><div><h3 id="history-table-title">Nhật ký phân loại</h3><p id="table-result-count" aria-live="polite">Kết quả trong phiên</p></div></header>
+          <div class="ledger-tools"><label class="search-shell"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="table-search-input" placeholder="Tìm mã quả hoặc nhãn…" aria-label="Tìm mã quả hoặc nhãn"></label><div class="filter-segment" id="table-filter-pills" role="group" aria-label="Lọc theo loại quả"><button class="segment-btn active" data-filter="ALL" aria-pressed="true">Tất cả</button><button class="segment-btn" data-filter="GREEN" aria-pressed="false"><span class="label-dot green"></span>Quất xanh</button><button class="segment-btn" data-filter="RIPE" aria-pressed="false"><span class="label-dot ripe"></span>Quất chín</button><button class="segment-btn" data-filter="REJECT" aria-pressed="false"><span class="label-dot reject"></span>Cần loại</button></div></div>
+          <div class="ledger-table-wrap" tabindex="0" role="region" aria-label="Bảng kết quả phân loại, có thể cuộn ngang"><table class="ledger-table" id="fruits-log-table"><thead><tr><th scope="col">Mã quả</th><th scope="col">Ảnh ghi nhận</th><th scope="col">Phân loại</th><th scope="col">Độ tin cậy</th><th scope="col">Thời điểm</th><th scope="col">Độ trễ AI</th><th scope="col">Hướng dự kiến</th><th scope="col">Lý do</th></tr></thead><tbody id="fruits-table-body"></tbody></table><div class="table-empty-notice" id="table-empty-msg" hidden><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><strong>Không tìm thấy kết quả</strong><p>Thử mã quả khác hoặc chọn “Tất cả”.</p></div></div>
+        </section>
+      </section>
+      <footer class="workspace-footer"><span>AutoSort IoT <span class="footer-divider">/</span> Giám sát phân loại quất</span><span id="footer-source">Dữ liệu mô phỏng</span></footer>
+    </main>
+  </div>
 
-    <!-- ========================================== -->
-    <!-- VIEW 2: LỊCH SỬ PHIÊN & BÁO CÁO (SESSION LOGS) -->
-    <!-- ========================================== -->
-    <section id="tab-history" class="view-panel">
-      
-      <!-- Session Switcher Header -->
-      <div class="panel session-filter-panel">
-        <div class="filter-controls-row">
-          <div class="filter-field">
-            <label for="session-dropdown" class="filter-label">Chọn phiên làm việc:</label>
-            <div class="select-shell">
-              <select id="session-dropdown" class="select-element">
-                <!-- Populated dynamically -->
-              </select>
-            </div>
-          </div>
-
-          <div class="filter-actions">
-            <button id="btn-export-csv" class="btn btn-download" title="Tải xuống tệp CSV báo cáo cho phiên được chọn">
-              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-              </svg>
-              <span>Xuất bảng CSV</span>
-            </button>
-            <button id="btn-refresh-history" class="btn btn-neutral" title="Làm mới lại dữ liệu từ hệ thống">
-              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
-              </svg>
-              <span>Làm mới</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4 KPI Metrics for Selected Session -->
-      <div class="metrics-quad">
-        <div class="metric-card card-total">
-          <span class="metric-lead">Tổng số quả phiên này</span>
-          <span class="metric-big mono" id="kpi-total-val">0</span>
-          <span class="metric-note" id="kpi-total-sub">Đã qua buồng phân loại</span>
-        </div>
-
-        <div class="metric-card card-green">
-          <span class="metric-lead">Quất xanh tươi</span>
-          <span class="metric-big mono" id="kpi-green-val">0</span>
-          <span class="metric-note" id="kpi-green-sub">0% phiên này</span>
-        </div>
-
-        <div class="metric-card card-ripe">
-          <span class="metric-lead">Quất chín đều</span>
-          <span class="metric-big mono" id="kpi-ripe-val">0</span>
-          <span class="metric-note" id="kpi-ripe-sub">0% phiên này</span>
-        </div>
-
-        <div class="metric-card card-reject">
-          <span class="metric-lead">Quả loại / tì vết</span>
-          <span class="metric-big mono" id="kpi-reject-val">0</span>
-          <span class="metric-note" id="kpi-reject-sub">0% phiên này</span>
-        </div>
-      </div>
-
-      <!-- Detailed Inspection Ledger Table -->
-      <div class="panel ledger-panel">
-        <header class="panel-header ledger-header">
-          <div class="panel-heading">
-            <span class="heading-pip" aria-hidden="true"></span>
-            <h3 id="history-table-title">Sổ nhật ký phân loại chi tiết</h3>
-          </div>
-
-          <!-- Table Search & Filters -->
-          <div class="ledger-tools">
-            <div class="search-shell">
-              <input type="text" id="table-search-input" placeholder="Tìm theo mã quả (VD: F0001)..." class="search-input" aria-label="Tìm theo mã quả">
-            </div>
-            <div class="filter-segment" id="table-filter-pills" role="group" aria-label="Lọc theo loại quả">
-              <button class="segment-btn active" data-filter="ALL">Tất cả</button>
-              <button class="segment-btn seg-green" data-filter="GREEN">Quất xanh</button>
-              <button class="segment-btn seg-ripe" data-filter="RIPE">Quất chín</button>
-              <button class="segment-btn seg-reject" data-filter="REJECT">Quả loại</button>
-            </div>
-          </div>
-        </header>
-
-        <div class="ledger-table-wrap">
-          <table class="ledger-table" id="fruits-log-table">
-            <thead>
-              <tr>
-                <th scope="col">Mã quả</th>
-                <th scope="col">Ảnh buồng soi</th>
-                <th scope="col">Kết quả phân loại</th>
-                <th scope="col">Độ tin cậy</th>
-                <th scope="col">Thời điểm chụp</th>
-                <th scope="col">Độ trễ AI</th>
-                <th scope="col">Tay gạt</th>
-                <th scope="col">Quyết định</th>
-              </tr>
-            </thead>
-            <tbody id="fruits-table-body">
-              <!-- Dynamically populated -->
-            </tbody>
-          </table>
-          <div class="table-empty-notice" id="table-empty-msg" style="display: none;">
-            Không có dữ liệu quả nào phù hợp với bộ lọc hiện tại.
-          </div>
-        </div>
-      </div>
-
-    </section>
-
-  </main>
-
-  <!-- System Feedback Toast -->
-  <div class="toast-shelf" id="toast-container" aria-live="polite"></div>
-
+  <dialog id="session-dialog" class="app-dialog" aria-labelledby="session-dialog-title"><form method="dialog"><div class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></div><h2 id="session-dialog-title">Bắt đầu phiên mô phỏng mới?</h2><p>Phiên hiện tại sẽ được lưu trong lịch sử. Phiên mới bắt đầu với 0 quả.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Giữ phiên hiện tại</button><button class="btn btn-action" value="confirm">Tạo phiên mới</button></div></form></dialog>
+  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Theo dõi phiên phân loại</h2><ol class="guide-steps"><li>Chọn <strong>Mô phỏng</strong> để thử giao diện bằng ảnh mẫu.</li><li>Nhấn <strong>Mô phỏng một quả</strong> để thêm kết quả, hoặc <strong>Phiên mới</strong> để bắt đầu lại.</li><li>Mở <strong>Lịch sử phiên</strong> để tìm kiếm, lọc nhãn và xuất báo cáo CSV.</li><li>Chọn <strong>Máy chủ AI</strong> để đọc kết quả từ dịch vụ đã kết nối. Giao diện chỉ giám sát, không điều khiển băng chuyền.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
+  <div class="toast-shelf" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+  <dialog id="login-dialog" class="app-dialog login-dialog" aria-labelledby="login-title">
+    <form id="login-form">
+      <div class="login-emblem" aria-hidden="true"><svg class="icon"><use href="#i-leaf"/></svg> AutoSort IoT</div>
+      <h2 id="login-title">Đăng nhập trạm phân loại</h2>
+      <p>Xem dữ liệu vận hành và lịch sử bằng tài khoản được quản trị viên cấp.</p>
+      <label class="login-field" for="login-username">Tên đăng nhập<input id="login-username" name="username" autocomplete="username" required maxlength="64" autofocus></label>
+      <label class="login-field" for="login-password">Mật khẩu<input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+      <p id="login-error" class="login-error" role="alert" hidden></p>
+      <button id="btn-login-submit" class="btn btn-action account-button" type="submit">Đăng nhập</button>
+      <button id="btn-login-demo" class="text-button login-demo" type="button">Tiếp tục xem mô phỏng</button>
+    </form>
+  </dialog>
   <script src="app.js"></script>
 </body>
 </html>

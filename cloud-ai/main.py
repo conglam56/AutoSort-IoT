@@ -4,105 +4,81 @@ Supports real ONNX Runtime inference (YOLO11n Classification) with graceful mock
 Uses single-thread CPU inference for small cloud instances.
 """
 
-import base64
-from datetime import datetime
+from contextlib import asynccontextmanager
 import json
 import logging
 from pathlib import Path
 import time
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
+import psycopg
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 if __package__:
     from .inference import classification_probabilities, preprocess_image_bytes
+    from . import auth, config, database
 else:
     from inference import classification_probabilities, preprocess_image_bytes
+    import auth
+    import config
+    import database
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("autosort-ai")
+
+@asynccontextmanager
+async def lifespan(app):
+    config.validate_config()
+    await run_in_threadpool(database.check_database)
+    yield
+
 
 app = FastAPI(
     title="AutoSort IoT - Cloud AI Service",
     description="Kumquat classification service with YOLO11 ONNX Runtime & fallback mode",
     version="1.0.0",
+    lifespan=lifespan,
 )
+app.include_router(auth.router)
 
 # Enable CORS for local and cross-origin dashboard access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-CSRF-Token", "X-API-Key"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["X-Frame-Options"] = "DENY"
+    if request.url.path.startswith(("/api/", "/infer")):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.exception_handler(psycopg.Error)
+async def database_unavailable(request, exc):
+    logger.error("PostgreSQL operation failed (%s)", type(exc).__name__)
+    return JSONResponse(status_code=503, content={"detail": "Database unavailable. Please try again"})
 
 # Mount Dashboard frontend if exists
 DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "dashboard"
 if DASHBOARD_DIR.exists():
     app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
 
-# In-Memory Session Storage for Web Monitoring Dashboard
-active_sessions: List[dict] = []
-current_session_id: Optional[str] = None
-
-
-def init_session() -> dict:
-    global current_session_id
-    now = datetime.now()
-    s_id = f"SES-{now.strftime('%Y%m%d')}-01"
-    session = {
-        "id": s_id,
-        "name": f"Phiên #01 — {now.strftime('%d/%m/%Y')}",
-        "startTime": now.isoformat(),
-        "endTime": None,
-        "status": "RUNNING",
-        "fruits": [],
-    }
-    active_sessions.append(session)
-    current_session_id = s_id
-    return session
-
-
-def get_current_session() -> dict:
-    if not active_sessions:
-        return init_session()
-    return active_sessions[-1]
-
-
-def record_fruit_to_session(infer_result: dict, image_bytes: Optional[bytes] = None) -> dict:
-    session = get_current_session()
-    now_iso = datetime.now().isoformat()
-
-    img_data_url = "samples/ripe_1.jpg"
-    if image_bytes and len(image_bytes) < 300_000:
-        b64 = base64.b64encode(image_bytes).decode("ascii")
-        img_data_url = f"data:image/jpeg;base64,{b64}"
-
-    label = infer_result.get("label", "REJECT")
-    servo_action = (
-        "Gạt Cổng 1 (Green)"
-        if label == "GREEN"
-        else ("Gạt Cổng 2 (Ripe)" if label == "RIPE" else "Trôi Cuối (Reject)")
-    )
-
-    fruit_record = {
-        "id": infer_result.get("fruit_id", "F0000"),
-        "sessionId": session["id"],
-        "label": label,
-        "confidence": infer_result.get("confidence", 0.0),
-        "timestamp": now_iso,
-        "inferenceMs": infer_result.get("inference_ms", 0.0),
-        "image": img_data_url,
-        "decisionReason": infer_result.get("decision_reason", "CLASSIFIED"),
-        "servoAction": servo_action,
-    }
-    session["fruits"].append(fruit_record)
-    return fruit_record
+record_fruit_to_session = database.record_fruit_to_session
 
 
 MAX_IMAGE_BYTES = 1_000_000  # 1 MB max upload limit
@@ -180,10 +156,10 @@ def health():
     }
 
 
-@app.post("/infer")
+@app.post("/infer", dependencies=[Depends(auth.require_device)])
 async def infer(
-    fruit_id: str = Form(...),
-    camera_id: str = Form(...),
+    fruit_id: str = Form(..., min_length=1, max_length=128),
+    camera_id: str = Form(..., min_length=1, max_length=128),
     image: UploadFile = File(...),
 ):
     """
@@ -216,7 +192,7 @@ async def infer(
             "inference_ms": 0.0,
             "note": "AI model not ready on server; running in mock fallback mode",
         }
-        record_fruit_to_session(mock_result, content)
+        await run_in_threadpool(record_fruit_to_session, mock_result, content)
         return mock_result
 
     # Real ONNX inference
@@ -268,65 +244,45 @@ async def infer(
             "image_bytes": len(content),
             "inference_ms": round(inference_ms, 2),
         }
-        record_fruit_to_session(real_result, content)
-        return real_result
     except Exception as e:
         logger.error("Inference failure for fruit_id=%s: %s", fruit_id, e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Inference failed") from e
+    await run_in_threadpool(record_fruit_to_session, real_result, content)
+    return real_result
 
 
 # --- SESSION MANAGEMENT ENDPOINTS FOR MONITORING DASHBOARD ---
-@app.get("/api/session/current")
+@app.get("/api/session/current", dependencies=[Depends(auth.current_user)])
 def get_current_session_endpoint():
     """Retrieve active session state, metrics and fruit list for Live Monitor."""
-    return get_current_session()
+    return database.get_current_session()
 
 
-@app.get("/api/sessions")
+@app.get("/api/sessions", dependencies=[Depends(auth.current_user)])
 def list_sessions_endpoint():
     """Retrieve all stored session summaries for Session History selector."""
-    return [
-        {
-            "id": s["id"],
-            "name": s["name"],
-            "startTime": s["startTime"],
-            "endTime": s["endTime"],
-            "status": s["status"],
-            "fruitCount": len(s["fruits"]),
-        }
-        for s in active_sessions
-    ]
+    return database.list_sessions()
 
 
-@app.get("/api/sessions/{session_id}")
+@app.get("/api/sessions/{session_id}", dependencies=[Depends(auth.current_user)])
 def get_session_detail_endpoint(session_id: str):
     """Retrieve full details and fruit records of a specific session."""
-    for s in active_sessions:
-        if s["id"] == session_id:
-            return s
-    raise HTTPException(status_code=404, detail="Session not found")
+    session = database.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
 
 
 @app.post("/api/sessions/new")
-def new_session_endpoint():
+def new_session_endpoint(request: Request, user=Depends(auth.require_admin)):
     """Start a new sorting session."""
-    global current_session_id
-    now = datetime.now()
-    if active_sessions:
-        active_sessions[-1]["endTime"] = now.isoformat()
-        active_sessions[-1]["status"] = "COMPLETED"
+    return database.new_session(user["id"], auth.client_ip(request))
 
-    next_idx = len(active_sessions) + 1
-    s_id = f"SES-{now.strftime('%Y%m%d')}-{next_idx:02d}"
-    session = {
-        "id": s_id,
-        "name": f"Phiên #{next_idx:02d} — {now.strftime('%d/%m/%Y')}",
-        "startTime": now.isoformat(),
-        "endTime": None,
-        "status": "RUNNING",
-        "fruits": [],
-    }
-    active_sessions.append(session)
-    current_session_id = s_id
-    return session
+
+@app.get("/api/audit-logs", dependencies=[Depends(auth.require_admin_read)])
+def audit_logs_endpoint():
+    with database.connect() as db:
+        return db.execute("""SELECT a.id,a.action,a.ip_address,a.created_at,u.username
+                             FROM audit_logs a LEFT JOIN app_users u ON u.id=a.user_id
+                             ORDER BY a.id DESC LIMIT 100""").fetchall()
 

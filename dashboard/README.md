@@ -1,55 +1,70 @@
-# AutoSort IoT — Web Monitoring Dashboard
+# AutoSort IoT — Dashboard giám sát
 
-Giao diện Web giám sát băng chuyền phân loại quả quất bằng trí tuệ nhân tạo (YOLO11 ONNX) và vi điều khiển ESP32.
+Dashboard HTML/CSS/JavaScript thuần, không cần npm hoặc bước build.
 
----
+## Chạy thử
 
-## 1. Cấu trúc Thư mục
+Từ thư mục gốc repository:
 
-```text
-dashboard/
-├── index.html        # Giao diện chính (HTML5 Semantic)
-├── style.css         # Bộ phong cách công nghiệp Dark Slate & Semantic Colors
-├── app.js            # Logic ứng dụng, Canvas Donut Chart, Session Manager & CSV Export
-├── samples/          # Ảnh mẫu quất xanh, quất chín, quả loại phục vụ hiển thị & giả lập
-└── PLAN.md           # Kế hoạch kiến trúc và thiết kế chi tiết
+```powershell
+python -m http.server 8765 --bind 127.0.0.1 --directory dashboard
 ```
 
----
+Mở http://127.0.0.1:8765/. Mặc định là **Mô phỏng**, với hai phiên mẫu.
+Ảnh và số liệu mẫu luôn được ghi rõ trên giao diện.
 
-## 2. Hướng dẫn Khởi chạy
+Khi chạy FastAPI, dashboard cũng có tại http://127.0.0.1:8000/dashboard/.
+Chọn **Nguồn → Máy chủ AI** để đọc các phiên trên dịch vụ. Trang được phục vụ
+tại `/dashboard/` dùng API cùng origin; bản static chạy riêng dùng
+`http://127.0.0.1:8000`.
 
-### Cách 1: Chạy trực tiếp (Độc lập / Không cần cài đặt)
-1. Dùng extension **Live Server** trong VS Code hoặc mở trực tiếp file `dashboard/index.html` trên trình duyệt (Chrome, Edge, Firefox).
-2. Khi không có kết nối với server FastAPI, web tự động hoạt động ở chế độ **Giả lập (Simulation Mode)**:
-   - Có sẵn dữ liệu mẫu cho các phiên.
-   - Nhấn nút **⚡ Thử Quả Mới** ở góc trên bên phải để mô phỏng một lượt nhận diện quả quất với ảnh thật và số liệu thời gian thực.
-   - Nhấn nút **➕ Phiên Mới** để tạo một đợt chạy mới.
+## Sử dụng
 
-### Cách 2: Chạy tích hợp nguyên khối cùng Cloud AI (FastAPI)
-Dashboard đã được tích hợp (mount) trực tiếp vào FastAPI server:
-1. Mở PowerShell tại thư mục `cloud-ai`:
-   ```powershell
-   cd "d:\AutoSort IoT\cloud-ai"
-   .\.venv\Scripts\python.exe -m uvicorn main:app --reload
-   ```
-2. Mở trình duyệt và truy cập:
-   ```text
-   http://127.0.0.1:8000/dashboard/
-   ```
-3. Mỗi khi `camera-bridge/bridge.py` hoặc API `/infer` xử lý 1 quả quất, Dashboard sẽ tự động cập nhật kết quả vào phiên làm việc hiện tại.
+- **Tổng quan:** số quả ghi nhận, tỉ lệ đạt, năng suất trung bình, độ trễ AI,
+  ảnh và confidence của quả được chọn, phân bố chất lượng.
+- **Dòng quả gần đây:** nhấn một trong 10 ảnh để xem lại kết quả trong buồng soi.
+- **Mô phỏng một quả:** thêm một bản ghi mẫu vào phiên demo, không gọi phần cứng.
+- **Phiên mới:** xác nhận kết thúc phiên hiện tại và tạo phiên rỗng;
+  phiên cũ vẫn có trong lịch sử.
+- **Lịch sử phiên:** chọn phiên, tìm mã quả hoặc nhãn, lọc loại quả và xuất CSV UTF-8.
+- **Máy chủ AI:** tự đọc dữ liệu mỗi 5 giây khi tab đang hiển thị. Khi mất kết nối,
+  dữ liệu lần cuối được giữ và thông báo rõ chưa đồng bộ.
+- **Cách sử dụng:** hướng dẫn ngắn trong thanh điều hướng desktop.
 
----
+Dữ liệu demo được lưu riêng bằng khóa `autosort_demo_sessions_v2` trong
+localStorage. Khóa `autosort_sessions` của bản giao diện cũ được giữ nguyên.
+Dữ liệu từ máy chủ không trộn vào kho demo và không lưu lại trong trình duyệt.
+Khi trình duyệt không cho lưu, giao diện vẫn chạy và hiển thị thông báo.
 
-## 3. Các Tính Năng Nổi Bật
+## Giới hạn vận hành
 
-### Tab 1: Giám Sát Trực Tiếp (Live Monitor)
-- **Live Camera Inspection Feed:** Hiển thị ảnh chụp JPEG sắc nét, nhãn phân loại AI (`RIPE`, `GREEN`, `REJECT`), thanh đo độ tin cậy kèm vạch ngưỡng 70%, thời gian chụp chi tiết và độ trễ suy luận AI.
-- **Biểu đồ Phân Bố Tỉ Lệ (Donut Chart):** Tổng hợp riêng cho phiên làm việc hiện tại (tính từ lúc bật máy/tạo phiên).
-- **Dải 10 Quả Gần Nhất (Recent Stream):** Theo dõi nhanh các quả vừa đi qua camera.
+Chế độ máy chủ yêu cầu đăng nhập. Viewer chỉ đọc dữ liệu; admin có thể xác nhận
+tạo phiên thực tế mới. Nút mô phỏng chỉ dùng với dữ liệu demo. Trang không gửi lệnh tay gạt,
+không POST `/infer`, không điều khiển băng chuyền.
 
-### Tab 2: Lịch Sử Phiên & KPI (Session Archives)
-- **Bộ chọn Phiên (Session Selector):** Cho phép xem lại chi tiết bất kỳ đợt chạy nào trong quá khứ kèm ngày giờ và tổng quả.
-- **Thẻ KPI Counters riêng biệt:** Hiển thị tổng quả, số lượng & tỉ lệ % quất xanh, quất chín, quả loại của riêng phiên được chọn.
-- **Bảng Nhật Ký Chi Tiết:** Tìm kiếm theo mã quả (`#F0001`), lọc theo nhãn (`GREEN`, `RIPE`, `REJECT`).
-- **Xuất Báo Cáo CSV:** Tải xuống file CSV chuẩn UTF-8 (mở được trên Excel không lỗi tiếng Việt) phục vụ chèn vào báo cáo thực nghiệm đồ án.
+Kết quả `MOCK` được hiển thị là chưa phân loại, không tính vào tỉ lệ đạt
+và không hiển thị hướng tay gạt hợp lệ. Khi API chỉ gửi đường dẫn ảnh mẫu thay
+cho snapshot thật, dashboard hiển thị trạng thái chưa có ảnh.
+
+Các endpoint đọc:
+
+- `GET /health`
+- `GET /api/session/current`
+- `GET /api/sessions`
+- `GET /api/sessions/{id}`
+
+Xác thực: `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
+Cookie HttpOnly và CSRF được API kiểm tra; dữ liệu nhạy cảm không lưu localStorage.
+Chỉ admin được `POST /api/sessions/new`. PostgreSQL lưu lịch sử bền vững.
+Xem cấu hình và cách tạo tài khoản trong [hướng dẫn API](../cloud-ai/README.md).
+
+## Giao diện
+
+Định hướng theo `ui-ux-pro-max` và `frontend-design`: nền xám sáng,
+xanh thực vật làm màu thao tác, cam quất và đỏ đất cho các lớp phân loại.
+Font Be Vietnam Pro có hỗ trợ tiếng Việt, có fallback hệ thống khi không có mạng.
+Icon SVG dùng cùng nét vẽ; giao diện không có thư viện/CDN JavaScript.
+
+Bố cục chuyển từ sidebar và hai cột trên desktop sang điều hướng ngang và
+một cột trên điện thoại. Bảng có vùng cuộn riêng, các điều khiển có focus bàn phím,
+dialog hỗ trợ Escape và CSS tôn trọng `prefers-reduced-motion`.
