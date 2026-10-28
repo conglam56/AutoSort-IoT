@@ -92,6 +92,9 @@ quản lý tài khoản và tạo phiên; không ghi mật khẩu hay API key.
 
 ## Camera Bridge và triển khai
 
+Triển khai Render: xem [hướng dẫn cloud](../docs/RENDER_DEPLOY.md) và `render.yaml`
+ở root repository. Bản Free có entrypoint riêng khởi tạo database trước khi chạy API.
+
 Đặt cùng `DEVICE_API_KEY` vào môi trường chạy bridge, không chèn key trong code:
 
 ```powershell

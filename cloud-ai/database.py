@@ -13,7 +13,8 @@ else:
 
 
 def connect():
-    return psycopg.connect(config.DATABASE_URL, row_factory=dict_row, connect_timeout=5)
+    tls = {"sslmode": config.DATABASE_SSLMODE} if config.DATABASE_SSLMODE else {}
+    return psycopg.connect(config.DATABASE_URL, row_factory=dict_row, connect_timeout=5, **tls)
 
 
 def check_database():

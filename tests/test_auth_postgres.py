@@ -21,6 +21,7 @@ import auth
 import config
 import database
 import main
+import render_start
 
 TEST_URL = os.getenv("AUTOSORT_TEST_DATABASE_URL")
 ORIGIN = "http://testserver"
@@ -78,6 +79,43 @@ class AuthenticationPostgresTests(unittest.TestCase):
         self.assertEqual(self.client.post("/infer", headers={"X-API-Key": "wrong-key"}).status_code, 401)
         self.assertEqual(self.client.get("/api/sessions", headers={"X-API-Key": self.key}).status_code, 401)
         self.assertEqual(self.client.get("/health").status_code, 200)
+
+    def test_cloud_readiness_detects_database_outage_without_disclosing_credentials(self):
+        self.assertEqual(self.client.get("/ready").json()["status"], "ready")
+        self.assertEqual(self.client.get("/", follow_redirects=False).headers["location"], "/dashboard/")
+        with patch.object(database, "check_database", side_effect=psycopg.OperationalError("private-database-secret")):
+            response = self.client.get("/ready")
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn("private-database-secret", response.text)
+
+    def test_render_bootstrap_is_atomic_and_never_overwrites_or_recreates_admin(self):
+        # Every connection here uses only this class's isolated PostgreSQL schema.
+        with database.connect() as db:
+            db.execute("DROP TABLE auth_sessions,login_limits,fruit_results,audit_logs,sorting_sessions,app_users,schema_version CASCADE")
+        with patch.dict(os.environ, {"INITIALIZE_DATABASE": "false"}):
+            with self.assertRaises(RuntimeError):
+                render_start.prepare_database()
+        with patch.dict(os.environ, {"INITIALIZE_DATABASE": "true", "BOOTSTRAP_ADMIN_PASSWORD": "short"}):
+            with self.assertRaises(RuntimeError):
+                render_start.prepare_database()
+        with database.connect() as db:
+            self.assertIsNone(db.execute("SELECT to_regclass('schema_version') AS name").fetchone()["name"])
+        settings = {"INITIALIZE_DATABASE": "true", "BOOTSTRAP_ADMIN_USERNAME": "admin", "BOOTSTRAP_ADMIN_PASSWORD": self.password}
+        with patch.dict(os.environ, settings):
+            render_start.prepare_database()
+        self.login()
+        with database.connect() as db:
+            original = db.execute("SELECT id,password_hash FROM app_users").fetchone()
+        with patch.dict(os.environ, {**settings, "BOOTSTRAP_ADMIN_PASSWORD": "different-password-123"}):
+            render_start.prepare_database()
+        with database.connect() as db:
+            unchanged = db.execute("SELECT id,password_hash FROM app_users").fetchone()
+            self.assertEqual(original, unchanged)
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM audit_logs WHERE action='account.bootstrap'").fetchone()["n"], 1)
+            db.execute("UPDATE app_users SET active=false")
+        with patch.dict(os.environ, settings):
+            with self.assertRaises(RuntimeError):
+                render_start.prepare_database()
 
     def test_cookie_csrf_role_and_logout_revocation(self):
         user, headers = self.login()

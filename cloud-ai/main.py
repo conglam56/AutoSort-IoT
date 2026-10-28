@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 import psycopg
 import numpy as np
@@ -140,6 +140,18 @@ def load_model():
 
 # Initialize model at startup
 load_model()
+
+
+@app.get("/", include_in_schema=False)
+def dashboard_home():
+    return RedirectResponse("/dashboard/")
+
+
+@app.get("/ready", include_in_schema=False)
+def ready():
+    """Cloud readiness checks PostgreSQL as well as the running web process."""
+    database.check_database()
+    return {"status": "ready", "model_ready": model_ready}
 
 
 @app.get("/health")
