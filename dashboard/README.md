@@ -23,13 +23,17 @@ tại `/dashboard/` dùng API cùng origin; bản static chạy riêng dùng
 - **Tổng quan:** số quả ghi nhận, tỉ lệ đạt, năng suất trung bình, độ trễ AI,
   ảnh và confidence của quả được chọn, phân bố chất lượng.
 - **Dòng quả gần đây:** nhấn một trong 10 ảnh để xem lại kết quả trong khu vực chụp ảnh.
-- **Mô phỏng một quả:** thêm một bản ghi mẫu vào phiên demo, không gọi phần cứng.
-- **Phiên mới:** xác nhận kết thúc phiên hiện tại và tạo phiên rỗng;
+- **Mô phỏng một quả:** chỉ admin được thêm bản ghi mẫu vào phiên demo, không gọi phần cứng.
+- **Phiên mới:** chỉ admin được xác nhận kết thúc phiên hiện tại và tạo phiên rỗng;
   phiên cũ vẫn có trong lịch sử.
 - **Lịch sử phiên:** chọn phiên, tìm mã quả hoặc nhãn, lọc loại quả và xuất CSV UTF-8.
 - **Máy chủ AI:** tự đọc dữ liệu mỗi 5 giây khi tab đang hiển thị. Khi mất kết nối,
   dữ liệu lần cuối được giữ và thông báo rõ chưa đồng bộ.
 - **Cách sử dụng:** hướng dẫn ngắn trong thanh điều hướng desktop.
+- **Quản trị:** admin thêm tài khoản, tìm kiếm/phân trang, đổi quyền,
+  khóa/mở tài khoản, đặt lại mật khẩu, đăng xuất các thiết bị và xem nhật ký.
+- **Đổi mật khẩu:** mọi tài khoản đã đăng nhập đều đổi được mật khẩu của mình
+  sau khi nhập đúng mật khẩu hiện tại; phải đăng nhập lại sau đó.
 
 Dữ liệu demo được lưu riêng bằng khóa `autosort_demo_sessions_v2` trong
 localStorage. Khóa `autosort_sessions` của bản giao diện cũ được giữ nguyên.
@@ -38,8 +42,10 @@ Khi trình duyệt không cho lưu, giao diện vẫn chạy và hiển thị th
 
 ## Giới hạn vận hành
 
-Chế độ máy chủ yêu cầu đăng nhập. Viewer chỉ đọc dữ liệu; admin có thể xác nhận
-tạo phiên thực tế mới. Nút mô phỏng chỉ dùng với dữ liệu demo. Trang không gửi lệnh tay gạt,
+Chế độ máy chủ yêu cầu đăng nhập. Viewer và khách không được tạo phiên ở cả
+chế độ máy chủ lẫn mô phỏng. Tải lại trang tự khôi phục nguồn máy chủ khi có
+phiên đăng nhập hợp lệ. API đọc phiên hiện tại trả `null` nếu chưa có phiên,
+không tự tạo phiên khi người dùng chỉ xem. Trang không gửi lệnh tay gạt,
 không POST `/infer`, không điều khiển băng chuyền.
 
 Kết quả `MOCK` được hiển thị là chưa phân loại, không tính vào tỉ lệ đạt
@@ -57,6 +63,7 @@ Xác thực: `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`
 Cookie HttpOnly và CSRF được API kiểm tra; dữ liệu nhạy cảm không lưu localStorage.
 Chỉ admin được `POST /api/sessions/new`. PostgreSQL lưu lịch sử bền vững.
 Xem cấu hình và cách tạo tài khoản trong [hướng dẫn API](../cloud-ai/README.md).
+Chi tiết quản trị và phân quyền: [ADMIN_GUIDE.md](../docs/ADMIN_GUIDE.md).
 
 ## Giao diện
 

@@ -22,10 +22,11 @@ from PIL import Image, UnidentifiedImageError
 
 if __package__:
     from .inference import classification_probabilities, preprocess_image_bytes
-    from . import auth, config, database
+    from . import admin, auth, config, database
 else:
     from inference import classification_probabilities, preprocess_image_bytes
     import auth
+    import admin
     import config
     import database
 
@@ -46,6 +47,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(auth.router)
+app.include_router(admin.router)
 
 # Enable CORS for local and cross-origin dashboard access
 app.add_middleware(
@@ -288,7 +290,9 @@ def get_session_detail_endpoint(session_id: str):
 @app.post("/api/sessions/new")
 def new_session_endpoint(request: Request, user=Depends(auth.require_admin)):
     """Start a new sorting session."""
-    return database.new_session(user["id"], auth.client_ip(request))
+    with database.connect() as db:
+        auth.lock_authenticated_user(db, user, admin=True)
+        return database.start_session(db, user["id"], auth.client_ip(request))
 
 
 @app.get("/api/audit-logs", dependencies=[Depends(auth.require_admin_read)])

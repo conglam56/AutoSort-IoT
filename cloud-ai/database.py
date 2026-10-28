@@ -61,8 +61,8 @@ def detail(db, row):
 
 def get_current_session():
     with connect() as db:
-        lock_sorting(db)
-        return detail(db, current_row(db))
+        row = db.execute("SELECT * FROM sorting_sessions WHERE status='RUNNING'").fetchone()
+        return detail(db, row) if row else None
 
 
 def list_sessions():
@@ -85,11 +85,15 @@ def get_session(session_id):
 
 def new_session(user_id, ip):
     with connect() as db:
-        lock_sorting(db)
-        db.execute("UPDATE sorting_sessions SET status='COMPLETED',end_time=now() WHERE status='RUNNING'")
-        row = current_row(db)
-        audit(db, "session.created", user_id, ip)
-        return detail(db, row)
+        return start_session(db, user_id, ip)
+
+
+def start_session(db, user_id, ip):
+    lock_sorting(db)
+    db.execute("UPDATE sorting_sessions SET status='COMPLETED',end_time=now() WHERE status='RUNNING'")
+    row = current_row(db)
+    audit(db, "session.created", user_id, ip)
+    return detail(db, row)
 
 
 def record_fruit_to_session(result, image_bytes=None):

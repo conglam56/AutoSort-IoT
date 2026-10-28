@@ -71,6 +71,149 @@ class AuthenticationPostgresTests(unittest.TestCase):
         self.assertEqual(result.status_code, 200, result.text)
         return result.json(), {"Origin": ORIGIN, "X-CSRF-Token": result.json()["csrfToken"]}
 
+    def extra_client(self, username="viewer", password=None):
+        client = self.enterContext(TestClient(main.app))
+        result = client.post("/api/auth/login", headers={"Origin": ORIGIN}, json={"username": username, "password": password or self.password})
+        self.assertEqual(result.status_code, 200)
+        return client, result.json()
+
+    def account_id(self, username):
+        with database.connect() as db:
+            return str(db.execute("SELECT id FROM app_users WHERE username=%s", (username,)).fetchone()["id"])
+
+    def test_viewer_reads_do_not_create_any_session_and_admin_routes_are_forbidden(self):
+        user, headers = self.login("viewer")
+        self.assertIsNone(self.client.get("/api/session/current").json())
+        self.assertEqual(self.client.get("/api/sessions").json(), [])
+        self.assertEqual(self.client.post("/api/sessions/new", headers=headers).status_code, 403)
+        for path in ("/api/admin/users", "/api/admin/audit-logs"):
+            self.assertEqual(self.client.get(path).status_code, 403)
+        self.assertEqual(self.client.post("/api/admin/users", headers=headers, json={"username": "intruder", "password": self.password, "role": "admin"}).status_code, 403)
+        for suffix, body in (("settings", {"role": "admin", "active": True}), ("password", {"password": self.password}), ("revoke-sessions", {})):
+            self.assertEqual(self.client.post('/api/admin/users/' + user['id'] + '/' + suffix, headers=headers, json=body).status_code, 403)
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM sorting_sessions").fetchone()["n"], 0)
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM app_users").fetchone()["n"], 2)
+
+    def test_admin_create_list_search_validation_and_audit(self):
+        _, headers = self.login()
+        body = {"username": "  New.Member  ", "password": self.password}
+        self.assertEqual(self.client.post("/api/admin/users", json=body).status_code, 403)
+        response = self.client.post("/api/admin/users", headers=headers, json=body)
+        self.assertEqual(response.status_code, 201, response.text)
+        self.assertEqual(response.json()["username"], "new.member")
+        self.assertEqual(response.json()["role"], "viewer")
+        self.assertNotIn("password", response.text)
+        self.assertEqual(self.client.post("/api/admin/users", headers=headers, json=body).status_code, 409)
+        for invalid in ({**body, "role": "owner"}, {**body, "username": "<script>"}, {**body, "password": "short"}, {**body, "active": True}):
+            self.assertEqual(self.client.post("/api/admin/users", headers=headers, json=invalid).status_code, 422)
+        result = self.client.get("/api/admin/users?search=member&limit=1").json()
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["users"][0]["username"], "new.member")
+        self.assertNotIn("password_hash", str(result))
+        self.assertNotIn("csrf", str(result))
+        self.assertEqual(len(self.client.get("/api/admin/users?limit=1&offset=1").json()["users"]), 1)
+        logs = self.client.get("/api/admin/audit-logs?kind=account").json()["logs"]
+        self.assertTrue(any(row["action"] == "account.created:new.member" and row["username"] == "admin" for row in logs))
+
+    def test_admin_lock_unlock_and_role_change_revoke_existing_sessions(self):
+        _, headers = self.login()
+        victim, _ = self.extra_client()
+        target = self.account_id("viewer")
+        path = '/api/admin/users/' + target + '/settings'
+        self.assertEqual(self.client.post(path, headers=headers, json={"role": "viewer", "active": False}).status_code, 200)
+        self.assertEqual(victim.get('/api/auth/me').status_code, 401)
+        self.assertEqual(victim.post('/api/auth/login', headers={"Origin": ORIGIN}, json={"username": "viewer", "password": self.password}).status_code, 401)
+        self.assertEqual(self.client.post(path, headers=headers, json={"role": "admin", "active": True}).status_code, 200)
+        login = victim.post('/api/auth/login', headers={"Origin": ORIGIN}, json={"username": "viewer", "password": self.password})
+        self.assertEqual(login.json()['role'], 'admin')
+        self.assertEqual(victim.get('/api/admin/users').status_code, 200)
+        self.assertEqual(self.client.post(path, headers=headers, json={"role": "viewer", "active": True}).status_code, 200)
+        self.assertEqual(victim.get('/api/admin/users').status_code, 401)
+        self.assertEqual(self.client.post(path, headers=headers, json={"role": "owner", "active": True}).status_code, 422)
+        self.assertEqual(self.client.post(path, headers=headers, json={"role": "viewer", "active": "false"}).status_code, 422)
+
+    def test_last_admin_and_own_access_cannot_be_removed(self):
+        user, headers = self.login()
+        path = '/api/admin/users/' + user['id'] + '/settings'
+        response = self.client.post(path, headers=headers, json={"role": "viewer", "active": False})
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['detail'], 'LAST_ADMIN_REQUIRED')
+        self.client.post('/api/admin/users', headers=headers, json={"username": "second-admin", "password": self.password, "role": "admin"})
+        response = self.client.post(path, headers=headers, json={"role": "viewer", "active": True})
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['detail'], 'CANNOT_CHANGE_OWN_ACCESS')
+
+    def test_cli_cannot_disable_last_administrator(self):
+        import io
+        from contextlib import redirect_stderr
+        import manage
+        with patch.object(sys, 'argv', ['manage.py', 'disable-user', 'admin']), redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as stopped:
+                manage.main()
+        self.assertEqual(stopped.exception.code, 2)
+        with database.connect() as db:
+            self.assertTrue(db.execute("SELECT active FROM app_users WHERE username='admin'").fetchone()['active'])
+
+    def test_mutation_rechecks_role_after_dependency_has_become_stale(self):
+        user, _ = self.login()
+        token = auth.digest(self.client.cookies.get(config.COOKIE_NAME))
+        with database.connect() as db:
+            stale = db.execute("SELECT u.id,u.username,u.role,s.token_hash,s.csrf_token FROM app_users u JOIN auth_sessions s ON s.user_id=u.id WHERE s.token_hash=%s", (token,)).fetchone()
+            db.execute("UPDATE app_users SET role='viewer' WHERE id=%s", (stale['id'],))
+        main.app.dependency_overrides[auth.require_admin] = lambda: stale
+        self.addCleanup(main.app.dependency_overrides.pop, auth.require_admin, None)
+        self.assertEqual(self.client.post('/api/sessions/new').status_code, 403)
+        self.assertEqual(self.client.post('/api/admin/users', json={"username": "stale-admin", "password": self.password}).status_code, 403)
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM sorting_sessions").fetchone()['n'], 0)
+
+    def test_concurrent_admin_changes_leave_one_active_administrator(self):
+        first, headers = self.login()
+        created = self.client.post('/api/admin/users', headers=headers, json={"username": "second-admin", "password": self.password, "role": "admin"})
+        self.assertEqual(created.status_code, 201)
+        second_client, second = self.extra_client('second-admin')
+        second_headers = {'Origin': ORIGIN, 'X-CSRF-Token': second['csrfToken']}
+        def disable(args):
+            client, target, csrf = args
+            return client.post('/api/admin/users/' + target + '/settings', headers=csrf, json={'role': 'admin', 'active': False}).status_code
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(disable, [(self.client, second['id'], headers), (second_client, first['id'], second_headers)]))
+        self.assertEqual(results.count(200), 1, results)
+        self.assertTrue(any(code in (401, 403) for code in results), results)
+        with database.connect() as db:
+            self.assertEqual(db.execute("SELECT count(*) AS n FROM app_users WHERE active AND role='admin'").fetchone()['n'], 1)
+
+    def test_admin_password_reset_and_session_revocation(self):
+        admin_user, headers = self.login()
+        victim, _ = self.extra_client()
+        target = self.account_id('viewer')
+        new_password = 'changed-' + uuid4().hex
+        self.assertEqual(self.client.post('/api/admin/users/' + target + '/password', headers=headers, json={'password': new_password}).status_code, 200)
+        self.assertEqual(victim.get('/api/auth/me').status_code, 401)
+        old = victim.post('/api/auth/login', headers={'Origin': ORIGIN}, json={'username': 'viewer', 'password': self.password})
+        self.assertEqual(old.status_code, 401)
+        logged = victim.post('/api/auth/login', headers={'Origin': ORIGIN}, json={'username': 'viewer', 'password': new_password})
+        self.assertEqual(logged.status_code, 200)
+        self.assertEqual(self.client.post('/api/admin/users/' + target + '/revoke-sessions', headers=headers).status_code, 200)
+        self.assertEqual(victim.get('/api/auth/me').status_code, 401)
+        self.assertEqual(self.client.post('/api/admin/users/' + admin_user['id'] + '/password', headers=headers, json={'password': new_password}).status_code, 409)
+
+    def test_user_changes_own_password_and_all_sessions_are_revoked(self):
+        _, headers = self.login('viewer')
+        other, _ = self.extra_client()
+        new_password = 'own-new-' + uuid4().hex
+        self.assertEqual(self.client.post('/api/auth/password', json={'current_password': self.password, 'new_password': new_password}).status_code, 403)
+        wrong = self.client.post('/api/auth/password', headers=headers, json={'current_password': 'wrong', 'new_password': new_password})
+        self.assertEqual(wrong.status_code, 400)
+        self.assertEqual(self.client.post('/api/auth/password', headers=headers, json={'current_password': self.password, 'new_password': new_password}).status_code, 200)
+        self.assertEqual(self.client.get('/api/auth/me').status_code, 401)
+        self.assertEqual(other.get('/api/auth/me').status_code, 401)
+        self.assertEqual(self.client.post('/api/auth/login', headers={'Origin': ORIGIN}, json={'username': 'viewer', 'password': self.password}).status_code, 401)
+        fresh = self.client.post('/api/auth/login', headers={'Origin': ORIGIN}, json={'username': 'viewer', 'password': new_password})
+        self.assertEqual(fresh.status_code, 200)
+        self.assertEqual(fresh.json()['role'], 'viewer')
+
     def test_anonymous_cannot_read_history_or_write_and_device_needs_key(self):
         for path in ("/api/auth/me", "/api/session/current", "/api/sessions", "/api/sessions/bad", "/api/audit-logs"):
             self.assertEqual(self.client.get(path).status_code, 401)

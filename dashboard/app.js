@@ -1,3 +1,5 @@
+import { createAdminConsole } from './admin.js';
+
 /**
  * AutoSort monitoring. Demo records stay in this browser.
  * People use HttpOnly cookie sessions; device keys never enter this client.
@@ -22,6 +24,14 @@
   };
   let demoSessions = [];
   let storageWarningShown = false;
+  let adminConsole;
+  const isAdmin = () => state.user?.role === 'admin';
+
+  function updateIdentity(user) {
+    state.user = user;
+    adminConsole?.identityChanged(user);
+    if (state.activeTab === 'tab-admin' && !isAdmin()) switchTab('tab-live');
+  }
 
   function time(value) {
     return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -119,12 +129,14 @@
     setText('footer-source', demo ? 'Dữ liệu mô phỏng' : state.lastSync ? 'Đồng bộ lúc ' + time(state.lastSync) : 'Chưa đồng bộ');
     setText('camera-fps', demo ? 'Ảnh mô phỏng' : 'Ảnh từ máy chủ');
     setText('image-source-label', demo ? 'Ảnh mẫu' : 'Ảnh ghi nhận');
-    $('btn-sim-trigger').disabled = !demo && (state.cloudOnline || state.busy);
-    $('btn-sim-trigger').innerHTML = demo ? '<svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Mô phỏng một quả' : '<svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>' + (state.busy && !state.lastSync ? 'Đang kết nối…' : state.cloudOnline ? 'Đang tự cập nhật' : 'Thử kết nối lại');
-    $('btn-new-session').disabled = state.creating || (!demo && (state.user?.role !== 'admin' || !state.cloudOnline || state.busy));
+    $('btn-sim-trigger').disabled = demo ? !isAdmin() : state.cloudOnline || state.busy;
+    $('btn-sim-trigger').innerHTML = demo ? '<svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>' + (isAdmin() ? 'Mô phỏng một quả' : 'Dữ liệu mẫu · Chỉ xem') : '<svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>' + (state.busy && !state.lastSync ? 'Đang kết nối…' : state.cloudOnline ? 'Đang tự cập nhật' : 'Thử kết nối lại');
+    $('btn-new-session').hidden = !isAdmin();
+    $('btn-new-session').disabled = !isAdmin() || state.creating || (!demo && (!state.cloudOnline || state.busy));
     $('btn-new-session').title = demo ? 'Tạo phiên mô phỏng mới' : state.user?.role === 'admin' ? 'Bắt đầu phiên mới trên máy chủ' : 'Chỉ quản trị viên có quyền tạo phiên thực tế';
     setText('account-name', state.user?.username || 'Khách tham quan');
-    setText('account-role', state.user ? state.user.role === 'admin' ? 'Quản trị viên' : 'Người xem' : 'Dữ liệu mô phỏng');
+    setText('account-role', state.user ? state.user.role === 'admin' ? 'Quản trị viên' : 'Người dùng · Chỉ xem' : 'Dữ liệu mô phỏng');
+    $('session-permission-note').hidden = isAdmin() || state.activeTab === 'tab-admin';
     setText('btn-account', state.user ? 'Đăng xuất' : 'Đăng nhập máy chủ');
     const percent = Math.round(state.threshold * 100);
     $('confidence-threshold').style.left = percent + '%';
@@ -293,17 +305,20 @@
     });
   }
   function switchTab(tab) {
+    if (tab === 'tab-admin' && !isAdmin()) return;
     state.activeTab = tab;
     document.querySelectorAll('.nav-btn').forEach(button => {
       const active = button.dataset.tab === tab; button.classList.toggle('active', active);
       if (active) button.setAttribute('aria-current', 'page'); else button.removeAttribute('aria-current');
     });
     document.querySelectorAll('.view-panel').forEach(panel => { panel.hidden = panel.id !== tab; panel.classList.toggle('active', panel.id === tab); });
-    const history = tab === 'tab-history';
-    setText('page-title', history ? 'Lịch sử phiên' : 'Tổng quan phân loại');
-    setText('page-breadcrumb', history ? 'Lịch sử phiên' : 'Tổng quan');
-    setText('page-subtitle', history ? 'Tra cứu từng kết quả và xuất báo cáo theo phiên.' : 'Một góc nhìn rõ ràng cho từng phiên vận hành.');
-    if (history) renderHistory(); else renderLive();
+    const history = tab === 'tab-history'; const admin = tab === 'tab-admin';
+    setText('page-title', admin ? 'Quản trị hệ thống' : history ? 'Lịch sử phiên' : 'Tổng quan phân loại');
+    setText('page-breadcrumb', admin ? 'Quản trị' : history ? 'Lịch sử phiên' : 'Tổng quan');
+    setText('page-subtitle', admin ? 'Quản lý quyền truy cập và theo dõi hoạt động của trạm.' : history ? 'Tra cứu từng kết quả và xuất báo cáo theo phiên.' : 'Một góc nhìn rõ ràng cho từng phiên vận hành.');
+    $('header-controls').hidden = admin; $('source-notice').hidden = admin;
+    $('session-permission-note').hidden = admin || isAdmin();
+    if (admin) adminConsole.show(); else if (history) renderHistory(); else renderLive();
   }
   function updateClock() {
     setText('live-clock', time(Date.now()));
@@ -316,6 +331,7 @@
     }
   }
   async function createSession() {
+    if (!isAdmin()) { showToast('Chỉ quản trị viên được tạo phiên mới.', 'error'); return; }
     if (state.mode !== 'demo') {
       if (state.creating) return;
       state.creating = true; renderSource();
@@ -335,6 +351,7 @@
   }
   function simulate() {
     if (state.mode !== 'demo') { syncServer(); return; }
+    if (!isAdmin()) { showToast('Tài khoản của bạn chỉ được xem dữ liệu.', 'error'); return; }
     state.currentSession.fruits.push(makeDemoFruit(state.currentSession, state.currentSession.fruits.length + 1));
     state.selectedFruitId = null; saveDemo(); renderLive(); renderHistory();
     const fruit = state.currentSession.fruits.at(-1); showToast('Đã mô phỏng #' + fruit.id + ' · ' + LABEL_NAMES[fruit.label]);
@@ -354,9 +371,14 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000); showToast('Đã xuất CSV của ' + session.name);
   }
   async function request(path, options = {}) {
-    const response = await fetch(state.apiBase + path, { cache: 'no-store', credentials: 'include', signal: AbortSignal.timeout(10000), ...options,
-      headers: { ...(options.method === 'POST' ? { 'Content-Type': 'application/json', 'X-CSRF-Token': state.user?.csrfToken || '' } : {}), ...options.headers } });
-    if (!response.ok) { const error = new Error('HTTP ' + response.status); error.status = response.status; throw error; }
+    const { timeoutMs = 10000, ...fetchOptions } = options;
+    const response = await fetch(state.apiBase + path, { cache: 'no-store', credentials: 'include', signal: AbortSignal.timeout(timeoutMs), ...fetchOptions,
+      headers: { ...(fetchOptions.method === 'POST' ? { 'Content-Type': 'application/json', 'X-CSRF-Token': state.user?.csrfToken || '' } : {}), ...fetchOptions.headers } });
+    if (!response.ok) {
+      const error = new Error('HTTP ' + response.status); error.status = response.status;
+      try { const body = await response.json(); error.detail = typeof body.detail === 'string' ? body.detail : ''; } catch { /* A proxy error may not return JSON. */ }
+      throw error;
+    }
     return response.json();
   }
   function openLogin() {
@@ -368,13 +390,13 @@
     state.selectedFruitId = null; state.lastSync = null; state.health = null; state.cloudOnline = false;
   }
   function loginExpired() {
-    state.user = null; state.revision++; state.busy = false; clearLiveData();
+    updateIdentity(null); state.revision++; state.busy = false; clearLiveData();
     renderSource(); renderLive(); renderHistory(); openLogin();
   }
   async function submitLogin(event) {
     event.preventDefault(); $('btn-login-submit').disabled = true; $('btn-login-demo').disabled = true; $('login-error').hidden = true;
     try {
-      state.user = await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username: $('login-username').value.trim(), password: $('login-password').value }) });
+      updateIdentity(await request('/api/auth/login', { method: 'POST', timeoutMs: 60000, body: JSON.stringify({ username: $('login-username').value.trim(), password: $('login-password').value }) }));
       $('login-dialog').close(); $('data-source').value = 'live'; changeMode();
       showToast('Đã đăng nhập. Đang tải dữ liệu máy chủ.');
     } catch (error) {
@@ -387,7 +409,7 @@
     $('btn-account').disabled = true;
     try {
       await request('/api/auth/logout', { method: 'POST' });
-      state.user = null; $('data-source').value = 'demo'; changeMode(); showToast('Đã đăng xuất khỏi máy chủ.');
+      updateIdentity(null); $('data-source').value = 'demo'; changeMode(); showToast('Đã đăng xuất khỏi máy chủ.');
     } catch (error) {
       if (error.status === 401) loginExpired();
       else showToast('Chưa đăng xuất được. Hãy kiểm tra kết nối và thử lại.', 'error');
@@ -412,17 +434,17 @@
     try {
       const user = await request('/api/auth/me');
       if (revision !== state.revision) return;
-      state.user = user;
+      updateIdentity(user);
       const [health, current, summaries] = await Promise.all([request('/health'), request('/api/session/current'), request('/api/sessions')]);
       if (!Array.isArray(summaries)) throw new Error('Invalid history');
-      const currentSession = normalizeSession(current);
-      const previous = await Promise.all(summaries.filter(s => s.id !== currentSession.id).map(s => request('/api/sessions/' + encodeURIComponent(s.id)).then(normalizeSession)));
+      const currentSession = current ? normalizeSession(current) : null;
+      const previous = await Promise.all(summaries.filter(s => s.id !== currentSession?.id).map(s => request('/api/sessions/' + encodeURIComponent(s.id)).then(normalizeSession)));
       if (revision !== state.revision) return;
-      state.currentSession = currentSession; state.sessions = [...previous, currentSession]; state.cloudOnline = true;
+      state.currentSession = currentSession; state.sessions = currentSession ? [...previous, currentSession] : previous; state.cloudOnline = true;
       state.health = { ...health, latency: Math.round(performance.now() - start) };
       state.threshold = Number.isFinite(health.threshold) && health.model_ready ? Math.min(1, Math.max(0, health.threshold)) : 0.70;
       state.lastSync = Date.now();
-      if (!state.sessions.some(s => s.id === state.selectedHistorySessionId)) state.selectedHistorySessionId = currentSession.id;
+      if (!state.sessions.some(s => s.id === state.selectedHistorySessionId)) state.selectedHistorySessionId = currentSession?.id || previous.at(-1)?.id || null;
       renderLive(); if (state.activeTab === 'tab-history') renderHistory();
     } catch (error) {
       if (revision !== state.revision) return;
@@ -445,13 +467,16 @@
     $('toast-container').append(toast); setTimeout(() => toast.remove(), 4500);
   }
   function init() {
+    adminConsole = createAdminConsole({ request, getUser: () => state.user, onSessionLost: loginExpired, toast: showToast });
+    adminConsole.identityChanged(null);
     document.querySelectorAll('.nav-btn').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
     $('data-source').addEventListener('change', changeMode);
     $('btn-sim-trigger').addEventListener('click', simulate);
-    $('btn-new-session').addEventListener('click', () => { setText('session-dialog-title', state.mode === 'demo' ? 'Bắt đầu phiên mô phỏng mới?' : 'Bắt đầu phiên mới trên máy chủ?'); $('session-dialog').returnValue = ''; $('session-dialog').showModal(); });
+    $('btn-new-session').addEventListener('click', () => { if (!isAdmin()) return; setText('session-dialog-title', state.mode === 'demo' ? 'Bắt đầu phiên mô phỏng mới?' : 'Bắt đầu phiên mới trên máy chủ?'); $('session-dialog').returnValue = ''; $('session-dialog').showModal(); });
     $('session-dialog').addEventListener('close', () => { if ($('session-dialog').returnValue === 'confirm') createSession(); });
     $('btn-guide').addEventListener('click', () => $('guide-dialog').showModal());
     $('btn-account').addEventListener('click', accountAction);
+    $('btn-password').addEventListener('click', () => adminConsole.openPassword());
     $('login-form').addEventListener('submit', submitLogin);
     const returnToDemo = () => { $('login-password').value = ''; $('data-source').value = 'demo'; changeMode(); };
     $('btn-login-demo').addEventListener('click', () => { $('login-dialog').close(); returnToDemo(); });
@@ -477,7 +502,7 @@
     }));
     $('latest-fruit-img').addEventListener('error', () => { $('latest-fruit-img').hidden = true; $('camera-empty').hidden = false; $('camera-empty').querySelector('strong').textContent = 'Không tải được ảnh'; $('camera-empty').querySelector('span').textContent = 'Chọn một quả khác hoặc kiểm tra lại nguồn ảnh.'; });
     loadDemo(); renderSource(); renderLive(); renderHistory();
-    request('/api/auth/me').then(user => { state.user = user; renderSource(); }).catch(() => {});
+    request('/api/auth/me').then(user => { updateIdentity(user); $('data-source').value = 'live'; changeMode(); }).catch(() => {});
     setInterval(updateClock, 1000);
     setInterval(() => { if (!document.hidden) syncServer(); }, 5000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) syncServer(); });

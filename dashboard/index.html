@@ -41,6 +41,7 @@
     <nav class="console-nav" aria-label="Điều hướng dashboard">
       <button id="tab-live-btn" class="nav-btn active" data-tab="tab-live" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><span>Tổng quan</span><span class="nav-current-dot" aria-hidden="true"></span></button>
       <button id="tab-history-btn" class="nav-btn" data-tab="tab-history"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><span>Lịch sử phiên</span></button>
+      <button id="tab-admin-btn" class="nav-btn" data-tab="tab-admin" hidden><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><span>Quản trị</span></button>
     </nav>
     <div class="sidebar-guide">
       <svg class="icon" aria-hidden="true"><use href="#i-leaf"/></svg>
@@ -52,7 +53,7 @@
       <div class="connection-row" id="cloud-status-pill"><span class="pip offline" aria-hidden="true"></span><span>Máy chủ AI</span><strong id="cloud-latency">Chưa kiểm tra</strong></div>
       <div class="model-row"><span>Mô hình</span><strong id="model-ver">Chưa xác định</strong></div>
       <div class="operator"><span class="operator-avatar">AS</span><div><strong id="account-name">Khách tham quan</strong><span id="account-role">Dữ liệu mô phỏng</span></div></div>
-      <button id="btn-account" class="btn btn-neutral account-button">Đăng nhập máy chủ</button>
+      <div class="account-actions"><button id="btn-password" class="btn btn-neutral account-button" hidden>Đổi mật khẩu</button><button id="btn-account" class="btn btn-neutral account-button">Đăng nhập máy chủ</button></div>
     </div>
   </aside>
 
@@ -65,11 +66,12 @@
     <main id="main-content" class="console-workspace" tabindex="-1">
       <div class="page-heading">
         <div><h1 id="page-title">Tổng quan phân loại</h1><p id="page-subtitle">Một góc nhìn rõ ràng cho từng phiên vận hành.</p></div>
-        <div class="header-actions">
+        <div class="header-actions" id="header-controls">
           <label class="source-select"><span>Nguồn</span><select id="data-source" aria-label="Nguồn dữ liệu"><option value="demo">Mô phỏng</option><option value="live">Máy chủ AI</option></select></label>
-          <button id="btn-new-session" class="btn btn-action"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Phiên mới</button>
+          <button id="btn-new-session" class="btn btn-action" hidden disabled><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Phiên mới</button>
         </div>
       </div>
+      <p id="session-permission-note" class="permission-note">Chỉ quản trị viên được tạo phiên mới.</p>
 
       <div class="source-notice" id="source-notice" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span id="source-notice-text">Chế độ mô phỏng · Ảnh và số liệu mẫu để trải nghiệm giao diện.</span><span class="notice-tag" id="source-state">Demo</span></div>
 
@@ -132,15 +134,32 @@
           <div class="ledger-table-wrap" tabindex="0" role="region" aria-label="Bảng kết quả phân loại, có thể cuộn ngang"><table class="ledger-table" id="fruits-log-table"><thead><tr><th scope="col">Mã quả</th><th scope="col">Ảnh ghi nhận</th><th scope="col">Phân loại</th><th scope="col">Độ tin cậy</th><th scope="col">Thời điểm</th><th scope="col">Độ trễ AI</th><th scope="col">Hướng dự kiến</th><th scope="col">Lý do</th></tr></thead><tbody id="fruits-table-body"></tbody></table><div class="table-empty-notice" id="table-empty-msg" hidden><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><strong>Không tìm thấy kết quả</strong><p>Thử mã quả khác hoặc chọn “Tất cả”.</p></div></div>
         </section>
       </section>
+      <section id="tab-admin" class="view-panel" aria-labelledby="tab-admin-btn" hidden>
+        <div class="admin-intro"><strong>Quyền đúng, vận hành rõ ràng.</strong><p>Người dùng xem và xuất dữ liệu. Quản trị viên quản lý tài khoản và tạo phiên phân loại.</p></div>
+        <div class="admin-tabs" role="group" aria-label="Mục quản trị"><button id="admin-users-tab" class="btn btn-action" aria-pressed="true">Tài khoản</button><button id="admin-audit-tab" class="btn btn-neutral" aria-pressed="false">Nhật ký hoạt động</button></div>
+        <p id="admin-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+        <section id="admin-users-panel" class="panel admin-panel" aria-labelledby="admin-users-title">
+          <header class="panel-header"><div><h3 id="admin-users-title">Quản lý tài khoản</h3><p id="admin-users-summary" role="status">Đang tải tài khoản…</p></div><button id="admin-create-user" class="btn btn-action">Thêm tài khoản</button></header>
+          <div class="admin-toolbar"><label class="search-shell"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="admin-user-search" type="search" maxlength="64" placeholder="Tìm tên đăng nhập…" aria-label="Tìm tài khoản"></label><button id="admin-refresh-users" class="btn btn-neutral">Làm mới</button></div>
+          <div class="ledger-table-wrap" role="region" aria-label="Danh sách tài khoản, có thể cuộn ngang" tabindex="0"><table class="ledger-table admin-table"><thead><tr><th scope="col">Tài khoản</th><th scope="col">Vai trò</th><th scope="col">Trạng thái</th><th scope="col">Đang đăng nhập</th><th scope="col">Ngày tạo</th><th scope="col">Thao tác</th></tr></thead><tbody id="admin-users-body"></tbody></table></div>
+          <div class="admin-pagination"><button id="admin-users-prev" class="btn btn-neutral">Trước</button><span id="admin-users-page" role="status"></span><button id="admin-users-next" class="btn btn-neutral">Sau</button></div>
+        </section>
+        <section id="admin-audit-panel" class="panel admin-panel" aria-labelledby="admin-audit-title" hidden>
+          <header class="panel-header"><div><h3 id="admin-audit-title">Nhật ký hoạt động</h3><p>Đăng nhập, thay đổi tài khoản và phiên phân loại.</p></div><button id="admin-refresh-audit" class="btn btn-neutral">Làm mới</button></header>
+          <div class="admin-toolbar"><label for="admin-audit-filter">Loại hoạt động <select id="admin-audit-filter" class="select-element"><option value="all">Tất cả</option><option value="login">Đăng nhập</option><option value="account">Tài khoản</option><option value="session">Phiên phân loại</option></select></label></div>
+          <div class="ledger-table-wrap" role="region" aria-label="Nhật ký hoạt động, có thể cuộn ngang" tabindex="0"><table class="ledger-table admin-table"><thead><tr><th scope="col">Thời điểm</th><th scope="col">Hoạt động</th><th scope="col">Người thực hiện</th><th scope="col">Tài khoản liên quan</th><th scope="col">Địa chỉ IP</th></tr></thead><tbody id="admin-audit-body"></tbody></table></div>
+          <div class="admin-pagination"><button id="admin-audit-prev" class="btn btn-neutral">Trước</button><span id="admin-audit-page" role="status"></span><button id="admin-audit-next" class="btn btn-neutral">Sau</button></div>
+        </section>
+      </section>
       <footer class="workspace-footer"><span>AutoSort IoT <span class="footer-divider">/</span> Giám sát phân loại quất</span><span id="footer-source">Dữ liệu mô phỏng</span></footer>
     </main>
   </div>
 
   <dialog id="session-dialog" class="app-dialog" aria-labelledby="session-dialog-title"><form method="dialog"><div class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></div><h2 id="session-dialog-title">Bắt đầu phiên mô phỏng mới?</h2><p>Phiên hiện tại sẽ được lưu trong lịch sử. Phiên mới bắt đầu với 0 quả.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Giữ phiên hiện tại</button><button class="btn btn-action" value="confirm">Tạo phiên mới</button></div></form></dialog>
-  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Theo dõi phiên phân loại</h2><ol class="guide-steps"><li>Chọn <strong>Mô phỏng</strong> để thử giao diện bằng ảnh mẫu.</li><li>Nhấn <strong>Mô phỏng một quả</strong> để thêm kết quả, hoặc <strong>Phiên mới</strong> để bắt đầu lại.</li><li>Mở <strong>Lịch sử phiên</strong> để tìm kiếm, lọc nhãn và xuất báo cáo CSV.</li><li>Chọn <strong>Máy chủ AI</strong> để đọc kết quả từ dịch vụ đã kết nối. Giao diện chỉ giám sát, không điều khiển băng chuyền.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
+  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Theo dõi phiên phân loại</h2><ol class="guide-steps"><li>Chọn <strong>Mô phỏng</strong> để xem ảnh và số liệu mẫu.</li><li>Chỉ <strong>quản trị viên</strong> được tạo phiên mới và thêm kết quả mô phỏng.</li><li>Mở <strong>Lịch sử phiên</strong> để tìm kiếm, lọc nhãn và xuất báo cáo CSV.</li><li>Đăng nhập để xem dữ liệu <strong>Máy chủ AI</strong>. Quản trị viên có thêm mục <strong>Quản trị</strong> để quản lý tài khoản và xem nhật ký.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
   <div class="toast-shelf" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
   <dialog id="login-dialog" class="app-dialog login-dialog" aria-labelledby="login-title">
-    <form id="login-form">
+    <form id="login-form" method="post">
       <div class="login-emblem" aria-hidden="true"><svg class="icon"><use href="#i-leaf"/></svg> AutoSort IoT</div>
       <h2 id="login-title">Đăng nhập trạm phân loại</h2>
       <p>Xem dữ liệu vận hành và lịch sử bằng tài khoản được quản trị viên cấp.</p>
@@ -151,6 +170,37 @@
       <button id="btn-login-demo" class="text-button login-demo" type="button">Tiếp tục xem mô phỏng</button>
     </form>
   </dialog>
-  <script src="app.js"></script>
+  <dialog id="admin-create-dialog" class="app-dialog account-dialog" aria-labelledby="admin-create-title"><form id="admin-create-form" method="post">
+    <h2 id="admin-create-title">Thêm tài khoản</h2><p>Cấp quyền phù hợp với công việc của từng thành viên.</p>
+    <p id="admin-create-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+    <label class="login-field">Tên đăng nhập<input id="admin-new-username" autocomplete="off" required minlength="3" maxlength="64" pattern="[a-zA-Z0-9_.\-]+" aria-describedby="username-help"></label><small id="username-help">3–64 ký tự: chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.</small>
+    <label class="login-field">Vai trò<select id="admin-new-role"><option value="viewer">Người dùng — chỉ xem</option><option value="admin">Quản trị viên</option></select></label>
+    <label class="login-field">Mật khẩu ban đầu<input id="admin-new-password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+    <label class="login-field">Nhập lại mật khẩu<input id="admin-new-password-confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+    <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-create-dialog">Hủy</button><button type="submit" class="btn btn-action">Tạo tài khoản</button></div>
+  </form></dialog>
+  <dialog id="admin-edit-dialog" class="app-dialog account-dialog" aria-labelledby="admin-edit-title"><form id="admin-edit-form" method="post">
+    <h2 id="admin-edit-title">Quyền và trạng thái</h2><p id="admin-edit-target"></p><p id="admin-edit-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+    <label class="login-field">Vai trò<select id="admin-edit-role"><option value="viewer">Người dùng — chỉ xem</option><option value="admin">Quản trị viên</option></select></label>
+    <label class="account-checkbox"><input id="admin-edit-active" type="checkbox"> Cho phép đăng nhập</label>
+    <p class="form-help">Thay đổi quyền hoặc trạng thái sẽ đăng xuất tài khoản này trên các thiết bị.</p>
+    <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-edit-dialog">Hủy</button><button type="submit" class="btn btn-action">Lưu thay đổi</button></div>
+  </form></dialog>
+  <dialog id="admin-reset-dialog" class="app-dialog account-dialog" aria-labelledby="admin-reset-title"><form id="admin-reset-form" method="post">
+    <h2 id="admin-reset-title">Đặt lại mật khẩu</h2><p id="admin-reset-target"></p><p id="admin-reset-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+    <label class="login-field">Mật khẩu mới<input id="admin-reset-password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+    <label class="login-field">Nhập lại mật khẩu<input id="admin-reset-confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+    <p class="form-help">Tài khoản sẽ đăng xuất trên tất cả thiết bị và dùng mật khẩu mới để đăng nhập lại.</p>
+    <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-reset-dialog">Hủy</button><button type="submit" class="btn btn-action">Đặt lại mật khẩu</button></div>
+  </form></dialog>
+  <dialog id="own-password-dialog" class="app-dialog account-dialog" aria-labelledby="own-password-title"><form id="own-password-form" method="post">
+    <h2 id="own-password-title">Đổi mật khẩu của bạn</h2><p>Bạn sẽ cần đăng nhập lại sau khi đổi mật khẩu.</p><p id="own-password-error" class="form-error" role="alert" tabindex="-1" hidden></p>
+    <label class="login-field">Mật khẩu hiện tại<input id="own-current-password" type="password" autocomplete="current-password" required maxlength="256"></label>
+    <label class="login-field">Mật khẩu mới<input id="own-new-password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+    <label class="login-field">Nhập lại mật khẩu mới<input id="own-new-confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
+    <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="own-password-dialog">Hủy</button><button type="submit" class="btn btn-action">Đổi mật khẩu</button></div>
+  </form></dialog>
+  <dialog id="admin-revoke-dialog" class="app-dialog" aria-labelledby="admin-revoke-title"><form id="admin-revoke-form" method="post"><h2 id="admin-revoke-title">Đăng xuất các thiết bị?</h2><p id="admin-revoke-target"></p><p id="admin-revoke-error" class="form-error" role="alert" tabindex="-1" hidden></p><div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-revoke-dialog">Giữ đăng nhập</button><button type="submit" class="btn btn-action">Đăng xuất thiết bị</button></div></form></dialog>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

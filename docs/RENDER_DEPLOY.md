@@ -76,7 +76,8 @@ model; không diễn giải MOCK là nhãn phân loại thật.
 7. Khi có model, đưa `best.onnx` và `classes.json` vào `cloud-ai/model/`, triển khai
    lại và kiểm tra `/health` có `model_ready=true` rồi thử camera thực tế.
 
-Thiết lập viewer/đổi mật khẩu bằng `cloud-ai/manage.py` từ môi trường có kết nối
+Thiết lập viewer, đổi quyền và đặt lại mật khẩu trong mục **Quản trị** của dashboard.
+CLI `cloud-ai/manage.py` vẫn dùng cho việc phục hồi/bảo trì từ môi trường có kết nối
 database. Free không có shell, nên nếu dùng CLI trên máy cá nhân phải tạm cho
 phép IP cần thiết trong database và dùng External Database URL với TLS. Không
 đưa kết nối đó vào Git hoặc chat. Giới hạn proxy tin cậy phải được đối chiếu với

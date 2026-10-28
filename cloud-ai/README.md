@@ -50,6 +50,9 @@ và đặt `DATABASE_URL` phù hợp thay cho lệnh Docker. Không trỏ vào d
 CLI hỏi mật khẩu 12–256 ký tự và không hiển thị mật khẩu. Không có tài khoản mặc định.
 Mở <http://127.0.0.1:8000/dashboard/>, nhấn **Đăng nhập máy chủ**.
 Admin có thể xác nhận tạo phiên mới; viewer chỉ đọc dữ liệu và xuất CSV.
+Admin quản lý tài khoản và nhật ký trực tiếp trong mục **Quản trị** của dashboard;
+xem [hướng dẫn quản trị](../docs/ADMIN_GUIDE.md). Viewer không tạo được phiên ở
+cả chế độ thực tế lẫn mô phỏng. Xem dữ liệu không còn tự tạo phiên rỗng.
 
 Trên máy đã được cấu hình trong phiên làm việc này, runtime là
 `cloud-ai/.venv312/Scripts/python.exe`. Thông tin tài khoản ngẫu nhiên nằm tại
@@ -132,6 +135,6 @@ python -m unittest discover -s tests -v
 
 Kiểm thử PostgreSQL tạo schema `autosort_test_<uuid>` riêng rồi xóa schema đó,
 không sửa các bảng ứng dụng. Role kiểm thử cần quyền CREATE SCHEMA.
-Nếu không đặt biến kiểm thử, 7 bài tích hợp PostgreSQL được báo **skipped**.
+Nếu không đặt biến kiểm thử, các bài tích hợp PostgreSQL được báo **skipped**.
 Bao gồm kiểm tra 401/403, CSRF, rate limit, hết hạn/thu hồi cookie, viewer,
 API key thiết bị, lưu lịch sử qua vòng đời ứng dụng và ghi đồng thời khi đổi phiên.

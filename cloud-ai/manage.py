@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import config
 import database
-from auth import password_hasher
+from auth import lock_account_changes, password_hasher
 
 
 def main():
@@ -37,18 +37,23 @@ def main():
         if not 12 <= len(password) <= 256 or password != getpass("Confirm password: "):
             parser.error("Passwords must match and contain 12–256 characters")
     with database.connect() as db:
+        lock_account_changes(db)
         if args.command == "create-user":
             if db.execute("SELECT id FROM app_users WHERE username=%s", (username,)).fetchone():
                 parser.error("Username already exists")
             row = db.execute("INSERT INTO app_users(id,username,password_hash,role) VALUES (%s,%s,%s,%s) RETURNING id",
                              (uuid4(), username, password_hasher.hash(password), args.role)).fetchone()
         else:
-            row = db.execute("SELECT id FROM app_users WHERE username=%s FOR UPDATE", (username,)).fetchone()
+            row = db.execute("SELECT id,role,active FROM app_users WHERE username=%s FOR UPDATE", (username,)).fetchone()
             if not row:
                 parser.error("Username does not exist")
             if args.command == "reset-password":
                 db.execute("UPDATE app_users SET password_hash=%s WHERE id=%s", (password_hasher.hash(password), row["id"]))
             else:
+                if row["active"] and row["role"] == "admin" and not db.execute(
+                    "SELECT id FROM app_users WHERE active AND role='admin' AND id<>%s LIMIT 1", (row["id"],)
+                ).fetchone():
+                    parser.error("Cannot disable the last active administrator")
                 db.execute("UPDATE app_users SET active=false WHERE id=%s", (row["id"],))
             db.execute("DELETE FROM auth_sessions WHERE user_id=%s", (row["id"],))
         database.audit(db, "account." + args.command, row["id"])

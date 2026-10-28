@@ -18,6 +18,7 @@ router = APIRouter(prefix="/api/auth", tags=["authentication"])
 password_hasher = PasswordHash.recommended()
 dummy_hash = password_hasher.hash(secrets.token_urlsafe(32))
 device_header = APIKeyHeader(name="X-API-Key", auto_error=False, scheme_name="CameraBridgeKey")
+ACCOUNT_LOCK = 83417003
 
 
 def digest(value):
@@ -67,6 +68,23 @@ def require_admin_read(user=Depends(current_user)):
     return user
 
 
+def lock_account_changes(db):
+    db.execute("SELECT pg_advisory_xact_lock(%s)", (ACCOUNT_LOCK,))
+
+
+def lock_authenticated_user(db, user, admin=False):
+    """Recheck a session inside the write transaction, including concurrent revocation."""
+    lock_account_changes(db)
+    current = db.execute("""SELECT u.* FROM app_users u JOIN auth_sessions s ON s.user_id=u.id
+                            WHERE u.id=%s AND s.token_hash=%s AND s.expires_at>now() AND u.active
+                            FOR UPDATE OF u,s""", (user["id"], user["token_hash"])).fetchone()
+    if not current:
+        raise HTTPException(401, "Login required")
+    if admin and current["role"] != "admin":
+        raise HTTPException(403, "Administrator permission required")
+    return current
+
+
 def require_device(api_key: str | None = Security(device_header)):
     supplied = api_key or ""
     if not config.DEVICE_API_KEY or not secrets.compare_digest(digest(supplied), digest(config.DEVICE_API_KEY)):
@@ -74,7 +92,7 @@ def require_device(api_key: str | None = Security(device_header)):
 
 
 def public_user(user):
-    return {"username": user["username"], "role": user["role"], "csrfToken": user["csrf_token"],
+    return {"id": str(user["id"]), "username": user["username"], "role": user["role"], "csrfToken": user["csrf_token"],
             "expiresAt": user["expires_at"].isoformat()}
 
 
@@ -117,6 +135,11 @@ def login(body: LoginBody, request: Request, response: Response):
     csrf = secrets.token_urlsafe(32)
     expires = datetime.now(timezone.utc) + timedelta(hours=config.SESSION_HOURS)
     with database.connect() as db:
+        lock_account_changes(db)
+        fresh = db.execute("SELECT * FROM app_users WHERE id=%s FOR UPDATE", (user["id"],)).fetchone()
+        if not fresh or not fresh["active"] or fresh["password_hash"] != user["password_hash"]:
+            raise HTTPException(401, "Invalid username or password")
+        user = fresh
         # Rotate an existing browser session when switching users or logging in again.
         db.execute("DELETE FROM auth_sessions WHERE expires_at<=now() OR token_hash=%s",
                    (digest(request.cookies.get(config.COOKIE_NAME, "")),))
@@ -141,3 +164,24 @@ def logout(request: Request, response: Response, user=Depends(require_csrf)):
     response.delete_cookie(config.COOKIE_NAME, path="/", httponly=True,
                            secure=config.COOKIE_SECURE, samesite="lax")
     return {"ok": True}
+
+
+class ChangePasswordBody(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=12, max_length=256)
+
+
+@router.post("/password")
+def change_password(body: ChangePasswordBody, request: Request, response: Response, user=Depends(require_csrf)):
+    consume_login_attempt(client_ip(request), user["username"])
+    with database.connect() as db:
+        current = lock_authenticated_user(db, user)
+        if not password_hasher.verify(body.current_password, current["password_hash"]):
+            raise HTTPException(400, "CURRENT_PASSWORD_INCORRECT")
+        if password_hasher.verify(body.new_password, current["password_hash"]):
+            raise HTTPException(400, "PASSWORD_UNCHANGED")
+        db.execute("UPDATE app_users SET password_hash=%s WHERE id=%s", (password_hasher.hash(body.new_password), user["id"]))
+        db.execute("DELETE FROM auth_sessions WHERE user_id=%s", (user["id"],))
+        database.audit(db, "account.password_changed:" + user["username"], user["id"], client_ip(request))
+    response.delete_cookie(config.COOKIE_NAME, path="/", httponly=True, secure=config.COOKIE_SECURE, samesite="lax")
+    return {"ok": True, "loginRequired": True}
