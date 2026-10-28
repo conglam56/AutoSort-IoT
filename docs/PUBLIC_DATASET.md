@@ -1,56 +1,10 @@
-# Bộ ảnh tham khảo và gói huấn luyện AutoSort
+# Dataset AutoSort sau khi dọn
 
-## Hiện tại chỉ cần dùng
+Chỉ dùng **`datasets/kumquat/`**, gồm **1.347 ảnh** đã rà soát.
+**`kumquat-dataset-only.zip`** là bản nén để gửi người phụ trách huấn luyện,
+không chứa code train. Không cần giữ thêm bản giải nén ở thư mục gốc.
 
-- `datasets/kumquat/`: bộ dữ liệu đã lọc, 1.761 ảnh; đây là dataset chính.
-- `autosort-training.zip`: gói dataset và code để tải lên Colab.
-- `training/AutoSort_Train.ipynb`: notebook huấn luyện.
-
-Dataset đã nằm trong Git để các thành viên lấy về huấn luyện. ZIP huấn luyện
-được tạo cục bộ và không đưa vào Git. Giữ ZIP COCO nguồn riêng để có thể tạo lại
-dữ liệu theo hướng dẫn bên dưới. Ba ảnh mẫu gốc nằm trong `cloud-ai/` và được
-đưa vào Git để chạy kiểm thử và parity.
-
-Để train ngay, mở notebook và tải gói ZIP lên Colab; không cần giải nén lại,
-chuyển nhãn hoặc tạo thêm thư mục dataset.
-
-Người mới clone repository chưa có ZIP: cài Pillow bằng `python -m pip install pillow`,
-rồi chạy `python training/package_colab.py` từ thư mục gốc để tạo
-`autosort-training.zip`. Sau đó mở notebook Colab và tải ZIP lên khi được hỏi.
-
-## Nguồn đã xác định
-
-- Dataset: [calamansi-ripeness, phiên bản 1](https://universe.roboflow.com/jobbie/calamansi-ripeness-cvxus/dataset/1).
-- Tác giả: Jobbie; công bố năm 2025.
-- Trang nguồn ghi 989 ảnh: 830 train, 113 valid, 46 test; chưa áp dụng augmentation.
-- Nhãn gốc: `unripe`, `ripe`, `rotten`.
-- Giấy phép do nguồn công bố: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-- Đây là ảnh calamansi tham khảo. Cần kiểm tra lại trên đúng giống quất/tắc và camera của hệ thống.
-
-Đây là dataset **object detection**, không đưa nguyên thư mục ảnh vào classification
-rồi tự gán một nhãn cho toàn cảnh. Công cụ bên dưới cắt từng quả theo COCO bbox,
-thêm 10% vùng đệm mặc định, bỏ crop có cạnh ngắn dưới 32 pixel và ánh xạ `unripe → GREEN`, `ripe → RIPE`,
-`rotten → REJECT`.
-
-## Tạo lại dữ liệu khi cần (không cần trước khi train)
-
-Phần này chỉ dùng khi muốn xây dựng lại dataset từ ZIP nguồn. Dữ liệu hiện tại
-đã chuẩn bị xong; công cụ sẽ từ chối ghi đè `datasets/kumquat/` đang có.
-
-Trên trang phiên bản nguồn, chọn **COCO JSON → Download dataset → Download zip
-to computer**. Roboflow có thể yêu cầu đăng nhập và chấp nhận điều khoản tài khoản.
-Không đưa API key hoặc mã tải có khóa riêng vào repository.
-
-Giải nén ZIP vào `dataset_raw/calamansi-coco/`, sao cho các thư mục `train`,
-`valid`, `test` nằm trực tiếp bên trong thư mục đó. Mỗi tập có
-`_annotations.coco.json` và các ảnh nguồn.
-
-```powershell
-.\cloud-ai\.venv\Scripts\python.exe training/import_roboflow.py --src dataset_raw/calamansi-coco --dest datasets/kumquat
-```
-
-Công cụ kiểm tra nhãn, đường dẫn, kích thước ảnh và bbox trước khi tạo đầu ra;
-giữ nguyên các tập của nguồn, loại bản sao ảnh gốc trùng pixel, rồi xuất:
+## Cấu trúc
 
 ```text
 datasets/kumquat/
@@ -61,47 +15,52 @@ datasets/kumquat/
 └── ATTRIBUTION.txt
 ```
 
-Tất cả crop từ cùng một ảnh gốc ở cùng tập. Dữ liệu không có mã định danh từng
-quả vật lý nên chưa bảo đảm phát hiện các ảnh gần trùng hoặc các góc chụp khác nhau
-của cùng một quả. Công cụ từ chối ghi đè thư mục đầu ra đã tồn tại.
-
-Ba ảnh `quatsample.jpg`, `ripe.jpg`, `reject.jpg` của bạn vẫn được giữ riêng để
-đối chiếu PyTorch–ONNX, không được nhân bản để tạo tập validation/test.
-
-## Đóng gói và huấn luyện
-
-Bộ dữ liệu đã chuyển trong workspace ngày 20/10/2026:
-
 | Nhãn | Train | Validation | Test | Tổng |
 | --- | ---: | ---: | ---: | ---: |
-| GREEN | 1.059 | 88 | 18 | 1.165 |
-| RIPE | 268 | 57 | 11 | 336 |
-| REJECT | 178 | 48 | 34 | 260 |
-| Tổng | 1.505 | 193 | 63 | 1.761 |
+| GREEN | 772 | 78 | 14 | 864 |
+| REJECT | 294 | 50 | 34 | 378 |
+| RIPE | 77 | 22 | 6 | 105 |
+| Tổng | 1.143 | 150 | 54 | 1.347 |
 
-Đã loại 19 crop có cạnh ngắn dưới 32 pixel (17 train, 2 validation); không phát
-hiện ảnh gốc trùng pixel. Dữ liệu có sự chênh lệch số
-lượng giữa các lớp; cần xem kết quả theo lớp và các nhầm lẫn khi đánh giá,
-không chỉ dựa vào Top-1 tổng thể.
+`REJECT` bao gồm quả có sẹo, đốm hoặc tổn thương vỏ rõ dù chưa thối, theo tiêu
+chí người dùng đã chốt. 126 ảnh đã đổi nhãn sang REJECT; 414 ảnh mờ, crop lỗi
+hoặc nhãn chưa chắc đã cách ly. Đây là lượt rà soát trực quan bước đầu, chưa
+được chuyên gia kiểm định hoặc train/đánh giá lại. RIPE chỉ còn 77 ảnh train;
+cần bổ sung ảnh thực tế. Xem [báo cáo rà soát](DATASET_REVIEW.md).
 
-Gói `autosort-training.zip` đã có sẵn. Lệnh dưới chỉ dùng khi cần đóng gói lại;
-chọn tên đầu ra mới nếu muốn giữ gói hiện có:
+## Nguồn và giấy phép
 
-```powershell
-.\cloud-ai\.venv\Scripts\python.exe training/package_colab.py --dataset datasets/kumquat --output autosort-training.zip
-```
+- [calamansi-ripeness, phiên bản 1](https://universe.roboflow.com/jobbie/calamansi-ripeness-cvxus/dataset/1), Jobbie, 2025.
+- Nguồn công bố 989 ảnh detection với nhãn unripe, ripe, rotten.
+- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); giữ ATTRIBUTION.txt khi chia sẻ.
+- Dữ liệu calamansi tham khảo, cần kiểm chứng trên đúng giống quất/tắc và camera hệ thống.
 
-Gói giữ đúng đường dẫn `datasets/kumquat/`, gồm mã huấn luyện, notebook,
-helper inference và ba ảnh parity. Công cụ chỉ đóng gói danh sách file cần thiết,
-kiểm tra ZIP sau khi tạo và từ chối ghi đè gói đã có.
+Bản trước rà soát có 1.761 crop ảnh, cắt theo COCO bbox với 10% padding, bỏ
+crop cạnh ngắn dưới 32 pixel, ban đầu ánh xạ unripe → GREEN, ripe → RIPE,
+rotten → REJECT. Bản hiện tại đã bổ sung quyết định sửa nhãn ngoại hình;
+chạy lại importer đơn thuần sẽ không tái tạo các sửa nhãn này.
 
-Mở `training/AutoSort_Train.ipynb` trong Google Colab, chọn T4 GPU, chạy từng ô
-và tải `autosort-training.zip` lên khi được hỏi. Notebook lần lượt kiểm tra ảnh,
-huấn luyện 30 epochs, xuất ONNX, đối chiếu ba ảnh mẫu và tải về
-`autosort-model-artifacts.zip`.
+## Những bản đã dọn
 
-`training/train.py` kiểm tra các lớp không rỗng và ảnh đọc được trước khi tải mô
-hình/thư viện huấn luyện. Mỗi lần chạy dùng một thư mục run mới; đường dẫn
-`best.pt` và kết quả test được ghi tại `runs/autosort/latest_run.json`.
+Đã bỏ bản dữ liệu cũ tại đường dẫn chính, thư mục `datasets/kumquat-curated/`,
+bản giải nén `kumquat-dataset-only/` và thư mục rà soát trung gian `dataset-review/`.
+Bản đã sửa nhãn được chuyển về đường dẫn chính `datasets/kumquat/`, nên code
+đang dùng đường dẫn mặc định tiếp tục lấy đúng dữ liệu mới.
 
-Chỉ có file model và kết quả kiểm thử thật sau khi các ô huấn luyện đã chạy thành công.
+Nhật ký, 414 ảnh loại, metadata gốc và hướng dẫn khôi phục được nén vào
+**`docs/dataset-review-2026-10-27.zip`**. Đây là hồ sơ đối chiếu, không phải bộ
+huấn luyện thứ hai. Có thể tái tạo đủ 1.761 ảnh gốc bằng hồ sơ này và ảnh trong
+dataset hiện tại; đã đối chiếu SHA-256 trước và sau khi dọn.
+
+## Bàn giao và huấn luyện
+
+Gửi `kumquat-dataset-only.zip` cho người phụ trách train. Giải nén gói sẽ có
+trực tiếp train/, val/, test/, README.txt và ATTRIBUTION.txt. Mỗi tập có ba
+thư mục nhãn; đây là dữ liệu classification, không yêu cầu file bbox riêng.
+
+Nếu dùng code sẵn của dự án để train cục bộ, dùng `--dataset datasets/kumquat`.
+Nếu dùng notebook có sẵn của dự án, cần tạo gói đầy đủ theo
+[AI_TRAIN_DEPLOY.md](AI_TRAIN_DEPLOY.md); ZIP chỉ chứa dataset không thay trực
+tiếp cho gói notebook. Các file huấn luyện vẫn giữ để người phụ trách xử lý.
+
+Ba ảnh mẫu trong cloud-ai/ phục vụ đối chiếu suy luận, không phải dataset dư.

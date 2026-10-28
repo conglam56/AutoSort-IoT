@@ -37,13 +37,13 @@ Tài liệu này cung cấp quy trình từng bước từ việc tổ chức da
 
 ## 2. Dataset Hiện Có
 
-Chỉ dùng `datasets/kumquat/`, gồm 1.761 ảnh đã lọc và chia tập:
+Chỉ dùng `datasets/kumquat/`, gồm 1.347 ảnh đã rà soát nhãn và chia tập:
 
 ```text
 datasets/kumquat/
-├── train/  (1.505 ảnh)
-├── val/    (193 ảnh)
-└── test/   (63 ảnh)
+├── train/  (1.143 ảnh)
+├── val/    (150 ảnh)
+└── test/   (54 ảnh)
 ```
 
 Mỗi tập có ba nhãn `GREEN`, `RIPE`, `REJECT`. Không cần tạo `dataset-goc/`,
@@ -51,15 +51,16 @@ Mỗi tập có ba nhãn `GREEN`, `RIPE`, `REJECT`. Không cần tạo `dataset-
 Chi tiết nguồn, số lượng theo nhãn và cách tái tạo nằm trong
 [PUBLIC_DATASET.md](PUBLIC_DATASET.md).
 
-Đã có sẵn `autosort-training.zip` và `training/AutoSort_Train.ipynb`. Mở notebook
-trên Colab, chọn T4 GPU và chạy từng ô để bắt đầu huấn luyện.
+`kumquat-dataset-only.zip` chỉ chứa dữ liệu để giao cho người phụ trách huấn luyện
+dùng code riêng. Nếu dùng `training/AutoSort_Train.ipynb` của dự án, tạo gói đầy
+đủ như mục 3; không tải ZIP chỉ chứa dataset trực tiếp vào notebook này.
 
 ---
 
 ## 3. Huấn Luyện Trên Google Colab
 
-Gói `autosort-training.zip` đã được tạo. Chỉ chạy lệnh sau khi cần đóng gói lại,
-với tên đầu ra mới nếu gói cũ vẫn còn:
+Phần này là tùy chọn cho người dùng notebook có sẵn của dự án. Tạo gói có code
+và dataset bằng lệnh sau, chọn tên đầu ra mới nếu ZIP đã tồn tại:
 ```powershell
 python training/package_colab.py --dataset datasets/kumquat --output autosort-training.zip
 ```

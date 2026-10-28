@@ -3,3 +3,5 @@ Source: https://universe.roboflow.com/jobbie/calamansi-ripeness-cvxus
 License: CC BY 4.0 - https://creativecommons.org/licenses/by/4.0/
 Changes: bounding-box crops, padding, and class-name mapping.
 This is reference data, not a guarantee of field accuracy.
+
+Additional changes on 2026-10-27: provisional visual curation, 126 images relabelled REJECT for clear cosmetic defects under user-confirmed policy, 414 crops excluded. Original split assignments preserved. Audit: docs/dataset-review-2026-10-27.zip (audit.csv).
