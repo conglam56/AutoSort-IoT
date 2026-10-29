@@ -30,7 +30,7 @@ Sửa `.env` của **camera-bridge**:
 - `SERIAL_PORT`: cổng ESP32 thực tế trong Device Manager, ví dụ `COM3`.
 - `SERIAL_BAUD_RATE`: mặc định `115200`; phải khớp firmware.
 - `CAMERA_ID`: định danh ổn định của camera, mặc định `phone_cam01`.
-- `CLOUD_INFER_URL`: mặc định `https://autosort-iot.onrender.com/infer`.
+- `CLOUD_INFER_URL`: mặc định `https://autosort-iot-java.onrender.com/infer`.
 - `DEVICE_API_KEY`: key thiết bị từ cấu hình riêng của cloud, không phải mật khẩu admin.
   Không đưa `.env`, key hoặc mật khẩu vào Git. URL không chứa tài khoản/mật khẩu.
 

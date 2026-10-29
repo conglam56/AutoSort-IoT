@@ -35,7 +35,7 @@ class Settings:
     phone_url: str
     api_key: str
     serial_port: str = ""
-    cloud_url: str = "https://autosort-iot.onrender.com/infer"
+    cloud_url: str = "https://autosort-iot-java.onrender.com/infer"
     camera_id: str = "phone_cam01"
     baud_rate: int = 115200
     capture_timeout: float = 5.0

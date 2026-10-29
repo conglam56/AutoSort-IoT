@@ -5,6 +5,18 @@ API do Spring Boot phục vụ. PostgreSQL vẫn là database hiện có, không
 tài khoản hay xóa dữ liệu. `render.yaml` mô tả một Web Service Docker Free mới,
 **không khai báo/tạo database mới**.
 
+## Địa chỉ cloud đang sử dụng
+
+Đã triển khai dịch vụ `AutoSort-IoT-Java` trên gói Free ngày 29/10/2026:
+
+- Dashboard: https://autosort-iot-java.onrender.com/dashboard/
+- Camera Bridge: `CLOUD_INFER_URL=https://autosort-iot-java.onrender.com/infer`.
+- Dùng lại `autosort-postgres`, schema v3; Admin và Operator đã kiểm tra đăng nhập.
+- Model chưa được bàn giao nên AI vẫn ở chế độ MOCK.
+
+Nếu bridge đã có `.env` riêng, cần sửa `CLOUD_INFER_URL` trong file đó; thay đổi
+giá trị mặc định không ghi đè biến môi trường đã đặt.
+
 ## Dịch vụ Python hiện có
 
 Dịch vụ `AutoSort-IoT` tại `https://autosort-iot.onrender.com` trước đây dùng
