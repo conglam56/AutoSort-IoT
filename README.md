@@ -1,8 +1,15 @@
 # AutoSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
 
 Backend HTTP dùng **Java 21 / Spring Boot**, PostgreSQL và Spring Security.
-AI ONNX chạy bằng Python worker nội bộ, giữ nguyên pipeline train. Phần cứng và
-model thật vẫn cần được bàn giao để kiểm thử toàn bộ hệ thống.
+AI ONNX chạy bằng Python worker nội bộ. Phần cứng và model cần được kiểm thử
+bằng camera tại trạm trước khi kết luận toàn bộ hệ thống hoạt động thực tế.
+
+Luồng chuẩn hóa và huấn luyện **một detector ba lớp** từ bộ bàn giao mới nằm ở
+[AI_DETECTION_TRAINING.md](docs/AI_DETECTION_TRAINING.md). Pipeline classification
+cũ vẫn được giữ để tái tạo; ba detector một lớp không thể thay trực tiếp vào nó.
+Model thử nghiệm unified-v1 đã được train và đánh giá; xem
+[kết quả cùng giới hạn](docs/AI_DETECTION_RESULTS.md). Model được bàn giao riêng,
+không tự động cài vào dịch vụ cloud.
 
 Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đúng vị trí → Điện thoại (IP Webcam) chụp JPEG → Máy tính gửi Internet tới Cloud → AI phân loại GREEN / RIPE / REJECT → ESP32 điều khiển băng chuyền & 2 servo gạt → Dashboard hiển thị kết quả.
 
@@ -11,7 +18,7 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
 | Thư mục | Người phụ trách | Hiện trạng |
 |---|---|---|
 | `backend/` | Cloud & Web | Spring Boot: API, dashboard, auth/admin, PostgreSQL và idempotency |
-| `cloud-ai/` | AI | Python ONNX worker nội bộ; hiện trả `MOCK` vì chưa có model đã train |
+| `cloud-ai/` | AI | Python ONNX worker nội bộ; trả `MOCK` khi chưa cài model hợp lệ vào `cloud-ai/model/` |
 | `training/` | A — AI & Cloud | Notebook Colab, kiểm tra dataset, train YOLO11, export ONNX và kiểm tra parity |
 | `tests/` | Cả nhóm | Kiểm thử confidence, xử lý ảnh, chuyển dữ liệu và đóng gói |
 | `esp32-controller/` | B — IoT | Chờ tích hợp firmware chính thức do thành viên phần cứng quản lý |

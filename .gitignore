@@ -24,6 +24,7 @@ runs/
 *.pth
 autosort-training*.zip
 autosort-model-artifacts.zip
+autosort-detection*.zip
 kumquat-dataset-only.zip
 
 # Plans and planning documentation

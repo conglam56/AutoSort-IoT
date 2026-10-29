@@ -30,6 +30,8 @@ class Engine:
         self.model_version = "yolo11n-cls-kumquat-v1"
         self.classes_list = ["GREEN", "REJECT", "RIPE"]
         self.idx_to_class = dict(enumerate(self.classes_list))
+        self.task = 'classify'
+        self.detection_policy = {}
         directory = Path(model_dir or os.getenv("AI_MODEL_DIR", Path(__file__).with_name("model")))
         if not (directory / "best.onnx").is_file():
             return
@@ -46,16 +48,25 @@ class Engine:
             self.confidence_threshold = float(meta.get("threshold", .70))
             self.img_size = int(meta.get("imgsz", 224))
             self.model_version = meta.get("model_version", self.model_version)
+            self.task = meta.get('task', 'classify')
+            if self.task not in {'classify', 'detect'}:
+                raise ValueError('Unsupported model task')
             if not math.isfinite(self.confidence_threshold) or not 0 <= self.confidence_threshold <= 1 or not 16 <= self.img_size <= 2048:
                 raise ValueError("Invalid model metadata")
             if not isinstance(self.model_version, str) or not self.model_version or self.model_version.lower().startswith("mock"):
                 raise ValueError("Invalid model version")
+            if self.task == 'detect':
+                from detection import validate_detection_metadata
+                self.detection_policy = validate_detection_metadata(meta, self.confidence_threshold)
             options = ort.SessionOptions()
             options.intra_op_num_threads = options.inter_op_num_threads = 1
             self.ort_session = ort.InferenceSession(str(directory / "best.onnx"), options, providers=["CPUExecutionProvider"])
             inputs = self.ort_session.get_inputs()
             if len(inputs) != 1 or inputs[0].type != "tensor(float)" or list(inputs[0].shape)[1:] != [3, self.img_size, self.img_size]:
-                raise ValueError("Expected NCHW float32 classification input")
+                raise ValueError("Expected NCHW float32 image input")
+            outputs = self.ort_session.get_outputs()
+            if self.task == 'detect' and (len(outputs) != 1 or outputs[0].type != 'tensor(float)' or len(outputs[0].shape) != 3 or outputs[0].shape[:2] != [1, 7]):
+                raise ValueError('Expected a three-class YOLO11 detection output')
             self.input_name = inputs[0].name
             self.model_ready = True
         except Exception as error:
@@ -66,7 +77,8 @@ class Engine:
         return {"mode": "onnx" if self.model_ready else "mock", "model_ready": self.model_ready,
                 "classes": self.classes_list if self.model_ready else ["MOCK"],
                 "model_version": self.model_version if self.model_ready else "mock-v0",
-                "threshold": self.confidence_threshold if self.model_ready else 0.0}
+                "threshold": self.confidence_threshold if self.model_ready else 0.0,
+                "task": self.task if self.model_ready else None}
 
     def classify(self, fruit_id, camera_id, content):
         try:
@@ -85,6 +97,17 @@ class Engine:
                     "note": "AI model not ready on server; running in mock fallback mode"}
         started = time.perf_counter()
         try:
+            if self.task == 'detect':
+                from detection import preprocess_detection_bytes, detection_candidates, decide_detection
+                tensor, geometry = preprocess_detection_bytes(content, self.img_size)
+                output = self.ort_session.run(None, {self.input_name: tensor})[0]
+                policy = self.detection_policy
+                candidates = detection_candidates(output, self.classes_list, geometry,
+                                                  policy['candidate_threshold'], policy['nms_iou'])
+                decision = decide_detection(candidates, self.confidence_threshold, policy['roi'],
+                                            policy['target_iou'], policy['class_margin'])
+                return {**result, **decision, 'model_version': self.model_version,
+                        'inference_ms': round((time.perf_counter() - started) * 1000, 2)}
             tensor = preprocess_image_bytes(content, self.img_size)
             probabilities = classification_probabilities(self.ort_session.run(None, {self.input_name: tensor})[0], len(self.classes_list))
             index = int(np.argmax(probabilities))

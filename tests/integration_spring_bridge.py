@@ -2,6 +2,7 @@
 
 The camera and Serial are test fixtures. Production accounts/data are never used.
 """
+import argparse
 import json
 import os
 from pathlib import Path
@@ -31,6 +32,9 @@ import bridge
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--task', choices=['classify', 'detect'], default='classify')
+    args = parser.parse_args()
     url = os.environ["AUTOSORT_TEST_DATABASE_URL"]
     assert urlsplit(url).hostname in {"localhost", "127.0.0.1"}, "Integration test requires localhost PostgreSQL"
     schema = "autosort_e2e_" + uuid4().hex
@@ -41,12 +45,17 @@ def main():
         with tempfile.TemporaryDirectory() as folder:
             folder = Path(folder)
             # Small fixed-output ONNX fixture: exercises ORT, not trained model accuracy.
-            graph = helper.make_graph([helper.make_node("Constant", [], ["probabilities"], value=numpy_helper.from_array(np.array([[.95, .03, .02]], dtype=np.float32)))],
-                "integration-only", [helper.make_tensor_value_info("images", TensorProto.FLOAT, [1, 3, 224, 224])],
-                [helper.make_tensor_value_info("probabilities", TensorProto.FLOAT, [1, 3])])
+            size = 320 if args.task == 'detect' else 224
+            values = np.array([[[160], [160], [200], [200], [.95], [.03], [.02]]], dtype=np.float32) if args.task == 'detect' else np.array([[.95, .03, .02]], dtype=np.float32)
+            graph = helper.make_graph([helper.make_node("Constant", [], ["probabilities"], value=numpy_helper.from_array(values))],
+                "integration-only", [helper.make_tensor_value_info("images", TensorProto.FLOAT, [1, 3, size, size])],
+                [helper.make_tensor_value_info("probabilities", TensorProto.FLOAT, list(values.shape))])
             model = helper.make_model(graph, opset_imports=[helper.make_opsetid("", 13)], ir_version=8)
             onnx.save(model, folder / "best.onnx")
-            (folder / "classes.json").write_text(json.dumps({"classes": ["GREEN", "REJECT", "RIPE"], "imgsz": 224, "threshold": .7, "model_version": "integration-fixture"}))
+            metadata = {"classes": ["GREEN", "RIPE", "REJECT"] if args.task == 'detect' else ["GREEN", "REJECT", "RIPE"], "imgsz": size, "threshold": .7, "model_version": "integration-fixture", 'task': args.task}
+            if args.task == 'detect':
+                metadata['output_format'] = 'yolo11_raw'
+            (folder / "classes.json").write_text(json.dumps(metadata))
             with socket.socket() as sock:
                 sock.bind(("127.0.0.1", 0))
                 port = sock.getsockname()[1]
@@ -132,7 +141,7 @@ def main():
                         assert viewer.post("/api/sessions/new").status_code == 200
                         assert viewer.get("/api/admin/users").status_code == 403
                     client.post("/api/auth/logout").raise_for_status()
-                    print("E2E OK: phone JPEG -> bridge -> Spring Boot -> real ORT worker -> PostgreSQL -> one Serial command; operator operates; admin access blocked.")
+                    print(f"E2E OK ({args.task}): phone JPEG -> bridge -> Spring Boot -> real ORT worker -> PostgreSQL -> one Serial command; operator operates; admin access blocked.")
             # Stop before closing temp model files (Windows locks native/model handles).
             stop(process)
             process = None
