@@ -104,27 +104,77 @@ public class SortingService {
 
   private Map<String, Object> active() {
     var row = db.one("SELECT * FROM sorting_sessions WHERE status='RUNNING'");
-    if (row != null) return row;
+    if (row != null) throw new ApiError(409, "SESSION_ALREADY_RUNNING");
     String name =
         "Phiên "
             + ZonedDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"))
                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
     return db.one(
-        "INSERT INTO sorting_sessions(id,name,status) VALUES (?,?,'RUNNING') RETURNING *",
+        "INSERT INTO sorting_sessions(id,name,status,start_time) VALUES"
+            + " (?,?,'RUNNING',clock_timestamp()) RETURNING *",
         UUID.randomUUID(),
         name);
   }
 
   public Object start(HttpServletRequest request) {
+    return start(request, null);
+  }
+
+  private Map<String, Object> replay(String key, String operation, Object actor, UUID target) {
+    if (key == null) return null;
+    var receipt = db.one("SELECT * FROM session_requests WHERE request_key=?", key);
+    if (receipt == null) return null;
+    if (!receipt.get("operation").equals(operation)
+        || !receipt.get("actor_id").equals(actor)
+        || (target != null && !receipt.get("session_id").equals(target)))
+      throw new ApiError(409, "IDEMPOTENCY_KEY_REUSED");
+    return detail(db.one("SELECT * FROM sorting_sessions WHERE id=?", receipt.get("session_id")));
+  }
+
+  private void receipt(String key, String operation, Object actor, Object session) {
+    if (key != null)
+      db.jdbc.update(
+          "INSERT INTO session_requests(request_key,operation,actor_id,session_id) VALUES"
+              + " (?,?,?,?)",
+          key,
+          operation,
+          actor,
+          session);
+  }
+
+  public Object start(HttpServletRequest request, String key) {
     return db.transaction(
         () -> {
-          var actor = auth.lockActor(request, true);
+          var actor = auth.lockActor(request, false);
           db.sortingLock();
-          db.jdbc.update(
-              "UPDATE sorting_sessions SET status='COMPLETED',end_time=now() WHERE"
-                  + " status='RUNNING'");
+          var previous = replay(key, "start", actor.get("id"), null);
+          if (previous != null) return previous;
           var row = active();
-          db.audit("session.created", actor.get("id"), auth.ip(request));
+          db.audit("session.created:" + row.get("id"), actor.get("id"), auth.ip(request));
+          receipt(key, "start", actor.get("id"), row.get("id"));
+          return detail(row);
+        });
+  }
+
+  public Object end(UUID id, HttpServletRequest request, String key) {
+    return db.transaction(
+        () -> {
+          var actor = auth.lockActor(request, false);
+          db.sortingLock();
+          var previous = replay(key, "end", actor.get("id"), id);
+          if (previous != null) return previous;
+          var row = db.one("SELECT * FROM sorting_sessions WHERE id=? FOR UPDATE", id);
+          if (row == null) throw new ApiError(404, "Session not found");
+          if (row.get("status").equals("RUNNING")) {
+            row =
+                db.one(
+                    "UPDATE sorting_sessions SET status='COMPLETED',end_time=clock_timestamp()"
+                        + " WHERE id=? RETURNING *",
+                    id);
+            db.audit("session.completed:" + id, actor.get("id"), auth.ip(request));
+          } else if (!row.get("status").equals("COMPLETED"))
+            throw new ApiError(409, "INVALID_SESSION_STATE");
+          receipt(key, "end", actor.get("id"), id);
           return detail(row);
         });
   }
@@ -143,7 +193,8 @@ public class SortingService {
           default -> throw new ApiError(500, "Invalid inference label");
         };
     db.sortingLock();
-    var session = active();
+    var session = db.one("SELECT * FROM sorting_sessions WHERE status='RUNNING'");
+    if (session == null) throw new ApiError(409, "SESSION_NOT_RUNNING");
     var row =
         db.one(
             "INSERT INTO"
@@ -201,6 +252,9 @@ public class SortingService {
               return receipt;
             }
           }
+          db.sortingLock();
+          if (db.one("SELECT id FROM sorting_sessions WHERE status='RUNNING'") == null)
+            throw new ApiError(409, "SESSION_NOT_RUNNING");
           var result = new LinkedHashMap<>(classify.get());
           if (key != null) result.put("request_id", key);
           long sequence = insert(result, bytes);

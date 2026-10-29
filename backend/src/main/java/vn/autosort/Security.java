@@ -36,7 +36,7 @@ public class Security {
                     .requestMatchers("/api/auth/login")
                     .permitAll()
                     .requestMatchers("/api/**")
-                    .authenticated()
+                    .hasAnyRole("ADMIN", "OPERATOR")
                     .anyRequest()
                     .permitAll())
         .exceptionHandling(

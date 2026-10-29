@@ -1,4 +1,4 @@
--- Additive schema v2. Apply with INITIALIZE_DATABASE or MIGRATE_DATABASE opt-in.
+-- Current baseline; startup also applies the explicit v3 role/lifecycle migration.
 CREATE TABLE IF NOT EXISTS schema_version (
     version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now()
 );
@@ -6,9 +6,10 @@ CREATE TABLE IF NOT EXISTS app_users (
     id uuid PRIMARY KEY,
     username varchar(64) UNIQUE NOT NULL,
     password_hash text NOT NULL,
-    role text NOT NULL CHECK (role IN ('admin', 'viewer')),
+    role text NOT NULL,
     active boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now()
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT app_users_role_check CHECK (role IN ('admin','operator') OR (role='viewer' AND NOT active))
 );
 CREATE TABLE IF NOT EXISTS auth_sessions (
     token_hash text PRIMARY KEY,

@@ -75,8 +75,22 @@ public class ApiController {
   }
 
   @PostMapping("/api/sessions/new")
-  public Object start(HttpServletRequest request) {
-    return sorting.start(request);
+  public Object start(
+      HttpServletRequest request,
+      @RequestHeader(value = "Idempotency-Key", required = false)
+          @Pattern(regexp = "[A-Za-z0-9_.:-]{1,128}")
+          String key) {
+    return sorting.start(request, key);
+  }
+
+  @PostMapping("/api/sessions/{id}/end")
+  public Object end(
+      @PathVariable UUID id,
+      HttpServletRequest request,
+      @RequestHeader(value = "Idempotency-Key", required = false)
+          @Pattern(regexp = "[A-Za-z0-9_.:-]{1,128}")
+          String key) {
+    return sorting.end(id, request, key);
   }
 
   @GetMapping("/api/audit-logs")

@@ -26,15 +26,15 @@ public class AdminController {
   public record Create(
       @NotNull @Pattern(regexp = "[a-z0-9_.-]{3,64}") String username,
       @NotNull @Size(min = 12, max = 256) String password,
-      @NotNull @Pattern(regexp = "admin|viewer") String role) {
+      @NotNull @Pattern(regexp = "admin|operator") String role) {
     public Create {
       username = username == null ? null : username.strip().toLowerCase(Locale.ROOT);
-      role = role == null ? "viewer" : role;
+      role = role == null ? "operator" : role;
     }
   }
 
   public record Edit(
-      @NotNull @Pattern(regexp = "admin|viewer") String role, @NotNull Boolean active) {}
+      @NotNull @Pattern(regexp = "admin|operator") String role, @NotNull Boolean active) {}
 
   public record Password(@NotNull @Size(min = 12, max = 256) String password) {}
 

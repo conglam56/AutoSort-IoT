@@ -77,6 +77,7 @@ def main():
                     login = client.post("/api/auth/login", json={"username": "admin", "password": password})
                     login.raise_for_status()
                     client.headers["X-CSRF-Token"] = login.json()["csrfToken"]
+                    client.post("/api/sessions/new", headers={"Idempotency-Key": "e2e-start"}).raise_for_status()
                     image = (ROOT / "cloud-ai/quatsample.jpg").read_bytes()
                     class Snapshot(BaseHTTPRequestHandler):
                         def do_GET(self):
@@ -120,15 +121,18 @@ def main():
                     current = client.get("/api/session/current").json()
                     assert len(current["fruits"]) == 1 and current["fruits"][0]["label"] == "GREEN"
                     viewer_password = secrets.token_urlsafe(24)
-                    client.post("/api/admin/users", json={"username": "viewer", "password": viewer_password}).raise_for_status()
+                    client.post("/api/admin/users", json={"username": "operator", "password": viewer_password}).raise_for_status()
                     with httpx.Client(base_url=origin, headers={"Origin": origin}, timeout=10) as viewer:
-                        r = viewer.post("/api/auth/login", json={"username": "viewer", "password": viewer_password})
+                        r = viewer.post("/api/auth/login", json={"username": "operator", "password": viewer_password})
                         r.raise_for_status()
                         viewer.headers["X-CSRF-Token"] = r.json()["csrfToken"]
-                        assert viewer.post("/api/sessions/new").status_code == 403
+                        assert viewer.post("/api/sessions/new").status_code == 409
+                        ended = viewer.post("/api/sessions/" + current["id"] + "/end"); ended.raise_for_status()
+                        assert viewer.post("/api/sessions/" + current["id"] + "/end").json()["endTime"] == ended.json()["endTime"]
+                        assert viewer.post("/api/sessions/new").status_code == 200
                         assert viewer.get("/api/admin/users").status_code == 403
                     client.post("/api/auth/logout").raise_for_status()
-                    print("E2E OK: phone JPEG -> bridge -> Spring Boot -> real ORT worker -> PostgreSQL -> one Serial command; viewer blocked.")
+                    print("E2E OK: phone JPEG -> bridge -> Spring Boot -> real ORT worker -> PostgreSQL -> one Serial command; operator operates; admin access blocked.")
             # Stop before closing temp model files (Windows locks native/model handles).
             stop(process)
             process = None

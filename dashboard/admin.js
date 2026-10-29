@@ -1,3 +1,4 @@
+import { isAdminRole, roleLabel } from './permissions.js';
 /** Account administration uses server permissions; secrets stay only in open forms. */
 export function createAdminConsole({ request, getUser, onSessionLost, toast }) {
   const $ = id => document.getElementById(id);
@@ -10,17 +11,17 @@ export function createAdminConsole({ request, getUser, onSessionLost, toast }) {
     USE_OWN_PASSWORD_FORM: 'Dùng nút “Đổi mật khẩu” cho tài khoản của bạn.', USE_LOGOUT: 'Dùng nút “Đăng xuất” cho tài khoản của bạn.',
     CURRENT_PASSWORD_INCORRECT: 'Mật khẩu hiện tại không đúng.', PASSWORD_UNCHANGED: 'Mật khẩu mới phải khác mật khẩu hiện tại.'
   };
-  const actions = { 'login.succeeded': 'Đăng nhập thành công', 'login.failed': 'Đăng nhập thất bại', logout: 'Đăng xuất', 'session.created': 'Tạo phiên phân loại',
+  const actions = { 'login.succeeded': 'Đăng nhập thành công', 'login.failed': 'Đăng nhập thất bại', logout: 'Đăng xuất', 'session.created': 'Tạo phiên dữ liệu', 'session.completed': 'Kết thúc phiên dữ liệu',
     'account.created': 'Thêm tài khoản', 'account.role_changed': 'Đổi quyền', 'account.enabled': 'Mở tài khoản', 'account.disabled': 'Khóa tài khoản',
     'account.password_reset': 'Đặt lại mật khẩu', 'account.password_changed': 'Đổi mật khẩu', 'account.sessions_revoked': 'Đăng xuất thiết bị',
     'account.bootstrap': 'Khởi tạo quản trị viên', 'account.create-user': 'Thêm tài khoản bằng công cụ quản trị', 'account.reset-password': 'Đặt lại mật khẩu bằng công cụ quản trị', 'account.disable-user': 'Khóa tài khoản bằng công cụ quản trị' };
-  const isAdmin = () => getUser()?.role === 'admin';
+  const isAdmin = () => isAdminRole(getUser());
   function clearError(id) { $(id).hidden = true; $(id).textContent = ''; }
   function errorText(error) {
-    return messages[error.detail] || (error.status === 422 ? 'Kiểm tra tên đăng nhập và mật khẩu (tối thiểu 12 ký tự).' : error.status === 429 ? 'Bạn đã thử quá nhiều lần. Vui lòng đợi 15 phút.' : error.status === 403 ? 'Bạn không có quyền thực hiện thao tác này. Hãy đăng nhập lại.' : 'Chưa nhận được xác nhận từ máy chủ. Làm mới dữ liệu trước khi thử lại.');
+    return messages[error.detail] || (error.status === 422 ? 'Kiểm tra tên đăng nhập và mật khẩu (tối thiểu 12 ký tự).' : error.status === 429 ? 'Bạn đã thử quá nhiều lần. Vui lòng đợi 15 phút.' : error.status === 403 ? 'Bạn không có quyền thực hiện thao tác này hoặc CSRF đã thay đổi. Hãy tải lại trang.' : 'Chưa nhận được xác nhận từ máy chủ. Làm mới dữ liệu trước khi thử lại.');
   }
   function showError(id, message) { $(id).textContent = message; $(id).hidden = false; $(id).focus(); }
-  function handleError(id, error) { if (error.status === 401 || error.status === 403) onSessionLost(); else showError(id, errorText(error)); }
+  function handleError(id, error) { if (error.status === 401) onSessionLost(); else showError(id, errorText(error)); }
   function stamp(value) { const d = new Date(value); return Number.isFinite(d.getTime()) ? d.toLocaleString('vi-VN') : '—'; }
   function cell(row, text) { const td = document.createElement('td'); td.textContent = text; row.append(td); return td; }
   function empty(body, columns, message) { body.replaceChildren(); const row = document.createElement('tr'); const td = cell(row, message); td.colSpan = columns; td.className = 'admin-empty'; body.append(row); }
@@ -37,17 +38,17 @@ export function createAdminConsole({ request, getUser, onSessionLost, toast }) {
     for (const account of data.users) {
       const row = document.createElement('tr'); const self = account.id === getUser()?.id;
       cell(row, account.username + (self ? ' · Bạn' : ''));
-      cell(row, account.role === 'admin' ? 'Quản trị viên' : 'Người dùng');
+      cell(row, account.role === 'viewer' ? 'Chờ cấp quyền · tài khoản cũ' : roleLabel(account));
       const status = document.createElement('span'); status.className = 'account-status ' + (account.active ? 'is-active' : 'is-disabled'); status.textContent = account.active ? 'Đang hoạt động' : 'Đã khóa';
       const statusCell = document.createElement('td'); statusCell.append(status); row.append(statusCell);
       cell(row, account.activeSessions + ' phiên'); cell(row, stamp(account.createdAt));
       const controls = document.createElement('td'); const group = document.createElement('div'); group.className = 'admin-row-actions';
-      group.append(button('Quyền / trạng thái', () => { state.edit = account; openDialog('admin-edit-dialog'); $('admin-edit-target').textContent = account.username; $('admin-edit-role').value = account.role; $('admin-edit-active').checked = account.active; }, account, self));
+      group.append(button('Quyền / trạng thái', () => { state.edit = account; openDialog('admin-edit-dialog'); $('admin-edit-target').textContent = account.username + (account.role === 'viewer' ? ' · Đã khóa, chọn quyền mới trước khi mở.' : ''); $('admin-edit-role').value = account.role === 'admin' ? 'admin' : 'operator'; $('admin-edit-active').checked = account.active; }, account, self));
       group.append(button('Đặt lại mật khẩu', () => { state.reset = account; openDialog('admin-reset-dialog'); $('admin-reset-target').textContent = account.username; }, account, self));
       group.append(button('Đăng xuất thiết bị', () => { state.revoke = account; openDialog('admin-revoke-dialog'); $('admin-revoke-target').textContent = 'Đăng xuất mọi thiết bị của ' + account.username + '. Tài khoản vẫn được giữ.'; }, account, self || !account.activeSessions));
       controls.append(group); row.append(controls); body.append(row);
     }
-    $('admin-users-summary').textContent = data.total + ' tài khoản · Người dùng chỉ có quyền xem';
+    $('admin-users-summary').textContent = data.total + ' tài khoản · Operator vận hành, Admin quản trị';
     pagination('users', data.total, data.users.length);
   }
   function pagination(kind, total, count) {
@@ -128,10 +129,11 @@ export function createAdminConsole({ request, getUser, onSessionLost, toast }) {
     openPassword() { openDialog('own-password-dialog'); },
     identityChanged(user) {
       const key = user ? user.id + ':' + user.role : '';
-      $('tab-admin-btn').hidden = user?.role !== 'admin'; $('btn-password').hidden = !user;
+      $('tab-admin-btn').hidden = !isAdminRole(user); $('btn-password').hidden = !user;
       if (state.identity === key) return;
       state.identity = key; state.epoch++; state.usersRequest++; state.auditRequest++; state.usersOffset = 0; state.auditOffset = 0;
-      state.edit = state.reset = state.revoke = null; $('admin-users-body').replaceChildren(); $('admin-audit-body').replaceChildren(); clearError('admin-error');
+      state.edit = state.reset = state.revoke = null;
+      for (const id of ['admin-edit-target', 'admin-reset-target', 'admin-revoke-target']) $(id).textContent = ''; $('admin-users-body').replaceChildren(); $('admin-audit-body').replaceChildren(); clearError('admin-error');
       $('admin-user-search').value = ''; $('admin-audit-filter').value = 'all';
       $('admin-users-summary').textContent = 'Đang tải tài khoản…'; $('admin-users-page').textContent = ''; $('admin-audit-page').textContent = '';
       for (const id of dialogs) { if ($(id).open) $(id).close(); $(id).querySelector('form').reset(); }

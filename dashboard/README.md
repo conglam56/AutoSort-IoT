@@ -23,9 +23,8 @@ tại `/dashboard/` dùng API cùng origin; bản static chạy riêng dùng
 - **Tổng quan:** số quả ghi nhận, tỉ lệ đạt, năng suất trung bình, độ trễ AI,
   ảnh và confidence của quả được chọn, phân bố chất lượng.
 - **Dòng quả gần đây:** nhấn một trong 10 ảnh để xem lại kết quả trong khu vực chụp ảnh.
-- **Mô phỏng một quả:** chỉ admin được thêm bản ghi mẫu vào phiên demo, không gọi phần cứng.
-- **Phiên mới:** chỉ admin được xác nhận kết thúc phiên hiện tại và tạo phiên rỗng;
-  phiên cũ vẫn có trong lịch sử.
+- **Mô phỏng một quả:** thêm dữ liệu mẫu trong Demo công khai, không gọi backend/phần cứng.
+- **Phiên mới / Kết thúc phiên:** Operator/Admin quản lý cửa sổ ghi dữ liệu thật, không bật/tắt máy. Chưa kết thúc phiên cũ thì không tạo phiên mới.
 - **Lịch sử phiên:** chọn phiên, tìm mã quả hoặc nhãn, lọc loại quả và xuất CSV UTF-8.
 - **Máy chủ AI:** tự đọc dữ liệu mỗi 5 giây khi tab đang hiển thị. Khi mất kết nối,
   dữ liệu lần cuối được giữ và thông báo rõ chưa đồng bộ.
@@ -42,10 +41,9 @@ Khi trình duyệt không cho lưu, giao diện vẫn chạy và hiển thị th
 
 ## Giới hạn vận hành
 
-Chế độ máy chủ yêu cầu đăng nhập. Viewer và khách không được tạo phiên ở cả
-chế độ máy chủ lẫn mô phỏng. Tải lại trang tự khôi phục nguồn máy chủ khi có
+Chế độ máy chủ yêu cầu Operator/Admin đăng nhập. Guest chỉ dùng Demo; Viewer cũ bị khóa chờ Admin gán quyền mới. Tải lại trang tự khôi phục nguồn máy chủ khi có
 phiên đăng nhập hợp lệ. API đọc phiên hiện tại trả `null` nếu chưa có phiên,
-không tự tạo phiên khi người dùng chỉ xem. Trang không gửi lệnh tay gạt,
+không tự tạo phiên khi người dùng chỉ xem hoặc khi ảnh đến mà chưa có phiên RUNNING. Logout/401 xóa dữ liệu thật khỏi UI và về Demo/Login. Trang không gửi lệnh tay gạt,
 không POST `/infer`, không điều khiển băng chuyền.
 
 Kết quả `MOCK` được hiển thị là chưa phân loại, không tính vào tỉ lệ đạt

@@ -73,15 +73,20 @@ public class Db {
             throw new IllegalStateException(
                 "Initialize the database explicitly with INITIALIZE_DATABASE=true");
           boolean migrate =
-              exists && one("SELECT version FROM schema_version WHERE version=2") == null;
+              exists && one("SELECT version FROM schema_version WHERE version=3") == null;
           if (migrate && !settings.enabled("MIGRATE_DATABASE"))
             throw new IllegalStateException(
-                "Set MIGRATE_DATABASE=true for the additive v1 to v2 migration");
+                "Set MIGRATE_DATABASE=true to migrate roles and session lifecycle to schema v3");
           if (!exists || migrate) {
             var ds = Objects.requireNonNull(jdbc.getDataSource());
             var connection = DataSourceUtils.getConnection(ds);
             try {
               ScriptUtils.executeSqlScript(connection, new ClassPathResource("schema.sql"));
+              if (one("SELECT version FROM schema_version WHERE version=3") == null)
+                ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                        "db/migration/V3__operator_roles_and_session_lifecycle.sql"));
             } finally {
               DataSourceUtils.releaseConnection(connection, ds);
             }
@@ -115,7 +120,7 @@ public class Db {
   }
 
   public void ready() {
-    if (one("SELECT version FROM schema_version WHERE version=2") == null)
+    if (one("SELECT version FROM schema_version WHERE version=3") == null)
       throw new ApiError(503, "Database schema not ready");
   }
 }

@@ -1,4 +1,5 @@
 import { createAdminConsole } from './admin.js';
+import { canOperate, isAdminRole, roleLabel } from './permissions.js';
 
 /**
  * AutoSort monitoring. Demo records stay in this browser.
@@ -19,13 +20,14 @@ import { createAdminConsole } from './admin.js';
     mode: 'demo', activeTab: 'tab-live', sessions: [], currentSession: null,
     selectedHistorySessionId: null, selectedFruitId: null, filter: 'ALL', search: '',
     cloudOnline: false, health: null, busy: false, revision: 0,
-    threshold: 0.70, lastSync: null, user: null, creating: false,
+    threshold: 0.70, lastSync: null, user: null, creating: false, operationToken: null, sessionAction: null, endTarget: null,
     apiBase: location.pathname.startsWith('/dashboard') || location.port === '8000' ? '' : 'http://127.0.0.1:8000'
   };
   let demoSessions = [];
   let storageWarningShown = false;
   let adminConsole;
-  const isAdmin = () => state.user?.role === 'admin';
+  const isAdmin = () => isAdminRole(state.user);
+  const mayOperate = () => canOperate(state.user);
 
   function updateIdentity(user) {
     state.user = user;
@@ -129,14 +131,19 @@ import { createAdminConsole } from './admin.js';
     setText('footer-source', demo ? 'Dữ liệu mô phỏng' : state.lastSync ? 'Đồng bộ lúc ' + time(state.lastSync) : 'Chưa đồng bộ');
     setText('camera-fps', demo ? 'Ảnh mô phỏng' : 'Ảnh từ máy chủ');
     setText('image-source-label', demo ? 'Ảnh mẫu' : 'Ảnh ghi nhận');
-    $('btn-sim-trigger').disabled = demo ? !isAdmin() : state.cloudOnline || state.busy;
-    $('btn-sim-trigger').innerHTML = demo ? '<svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>' + (isAdmin() ? 'Mô phỏng một quả' : 'Dữ liệu mẫu · Chỉ xem') : '<svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>' + (state.busy && !state.lastSync ? 'Đang kết nối…' : state.cloudOnline ? 'Đang tự cập nhật' : 'Thử kết nối lại');
-    $('btn-new-session').hidden = !isAdmin();
-    $('btn-new-session').disabled = !isAdmin() || state.creating || (!demo && (!state.cloudOnline || state.busy));
-    $('btn-new-session').title = demo ? 'Tạo phiên mô phỏng mới' : state.user?.role === 'admin' ? 'Bắt đầu phiên mới trên máy chủ' : 'Chỉ quản trị viên có quyền tạo phiên thực tế';
+    $('btn-sim-trigger').disabled = !demo && (state.cloudOnline || state.busy);
+    $('btn-sim-trigger').innerHTML = demo ? '<svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>' + 'Mô phỏng một quả' : '<svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>' + (state.busy && !state.lastSync ? 'Đang kết nối…' : state.cloudOnline ? 'Đang tự cập nhật' : 'Thử kết nối lại');
+    const operating = !demo && mayOperate(), running = state.currentSession?.status === 'RUNNING';
+    $('btn-new-session').hidden = !operating;
+    $('btn-new-session').disabled = !operating || state.creating || !state.cloudOnline || state.busy || running;
+    $('btn-new-session').title = running ? 'Kết thúc phiên hiện tại trước khi tạo phiên mới' : 'Tạo phiên dữ liệu; không bật thiết bị';
+    $('btn-end-session').hidden = !operating;
+    $('btn-end-session').disabled = !operating || !running || state.creating || !state.cloudOnline || state.busy;
+    $('data-source').querySelector('[value="live"]').disabled = !mayOperate();
     setText('account-name', state.user?.username || 'Khách tham quan');
-    setText('account-role', state.user ? state.user.role === 'admin' ? 'Quản trị viên' : 'Người dùng · Chỉ xem' : 'Dữ liệu mô phỏng');
-    $('session-permission-note').hidden = isAdmin() || state.activeTab === 'tab-admin';
+    setText('account-role', roleLabel(state.user));
+    $('session-permission-note').hidden = state.activeTab === 'tab-admin';
+    setText('session-permission-note', demo ? 'Demo công khai · Dữ liệu mẫu chỉ lưu trong trình duyệt. Đăng nhập để vận hành phiên thật.' : 'Thao tác phiên chỉ quản lý ghi dữ liệu. Không phải lệnh bật/tắt ESP32 hoặc xác nhận trạng thái máy.');
     setText('btn-account', state.user ? 'Đăng xuất' : 'Đăng nhập máy chủ');
     const percent = Math.round(state.threshold * 100);
     $('confidence-threshold').style.left = percent + '%';
@@ -317,7 +324,7 @@ import { createAdminConsole } from './admin.js';
     setText('page-breadcrumb', admin ? 'Quản trị' : history ? 'Lịch sử phiên' : 'Tổng quan');
     setText('page-subtitle', admin ? 'Quản lý quyền truy cập và theo dõi hoạt động của trạm.' : history ? 'Tra cứu từng kết quả và xuất báo cáo theo phiên.' : 'Một góc nhìn rõ ràng cho từng phiên vận hành.');
     $('header-controls').hidden = admin; $('source-notice').hidden = admin;
-    $('session-permission-note').hidden = admin || isAdmin();
+    $('session-permission-note').hidden = admin;
     if (admin) adminConsole.show(); else if (history) renderHistory(); else renderLive();
   }
   function updateClock() {
@@ -330,28 +337,31 @@ import { createAdminConsole } from './admin.js';
       $('live-ppm-rate').firstChild.textContent = (session.fruits.length / minutes).toFixed(1) + ' ';
     }
   }
-  async function createSession() {
-    if (!isAdmin()) { showToast('Chỉ quản trị viên được tạo phiên mới.', 'error'); return; }
-    if (state.mode !== 'demo') {
-      if (state.creating) return;
-      state.creating = true; renderSource();
-      try {
-        const session = await request('/api/sessions/new', { method: 'POST' });
-        state.selectedHistorySessionId = session.id; state.selectedFruitId = null; await syncServer();
-        showToast('Đã tạo phiên mới trên máy chủ.');
-      } catch (error) { showToast(error.status === 403 ? 'Tài khoản không có quyền tạo phiên hoặc phiên đăng nhập đã thay đổi.' : 'Không tạo được phiên. Hãy kiểm tra kết nối rồi tải lại dữ liệu.', 'error'); }
-      finally { state.creating = false; renderSource(); }
-      return;
-    }
-    const now = new Date();
-    if (state.currentSession) { state.currentSession.endTime = now.toISOString(); state.currentSession.status = 'COMPLETED'; }
-    const session = { id: 'DEMO-' + now.getTime(), name: 'Phiên quất ' + String(demoSessions.length + 1).padStart(2, '0'), startTime: now.toISOString(), endTime: null, status: 'RUNNING', fruits: [] };
-    demoSessions.push(session); state.sessions = demoSessions; state.currentSession = session; state.selectedHistorySessionId = session.id; state.selectedFruitId = null;
-    saveDemo(); renderLive(); renderHistory(); showToast('Đã tạo ' + session.name + '. Dữ liệu cũ được giữ trong lịch sử.');
+  async function createSession() { return mutateSession('start'); }
+  async function mutateSession(kind, target = null) {
+    if (state.mode !== 'live' || !mayOperate() || state.creating) return;
+    state.creating = true; const revision = state.revision;
+    const operationToken = Symbol(); state.operationToken = operationToken;
+    if (!state.sessionAction || state.sessionAction.kind !== kind || state.sessionAction.target !== target) state.sessionAction = { kind, target, key: crypto.randomUUID() };
+    renderSource();
+    try {
+      const session = await request(kind === 'start' ? '/api/sessions/new' : '/api/sessions/' + encodeURIComponent(target) + '/end', {
+        method: 'POST', timeoutMs: 70000, headers: { 'Idempotency-Key': state.sessionAction.key }
+      });
+      if (revision !== state.revision) return;
+      state.sessionAction = null; state.selectedHistorySessionId = session.id; state.selectedFruitId = null;
+      state.revision++; state.busy = false; const refreshedRevision = state.revision;
+      await syncServer();
+      if (refreshedRevision === state.revision) showToast(kind === 'start' && session.status === 'RUNNING' ? 'Đã tạo phiên dữ liệu. Thao tác này không bật thiết bị.' : 'Phiên dữ liệu đã kết thúc. Đây không phải xác nhận máy đã dừng.');
+    } catch (error) {
+      if (revision !== state.revision || error.status === 401) return;
+      if (error.status === 409) state.sessionAction = null;
+      showToast(error.detail === 'SESSION_ALREADY_RUNNING' ? 'Đã có phiên đang chạy. Hãy kết thúc phiên đó trước.' : error.status === 403 ? 'Tài khoản không được phép vận hành phiên.' : 'Chưa xác nhận được thao tác. Làm mới dữ liệu trước khi thử lại.', 'error');
+      await syncServer();
+    } finally { if (state.operationToken === operationToken) { state.creating = false; state.operationToken = null; renderSource(); } }
   }
   function simulate() {
     if (state.mode !== 'demo') { syncServer(); return; }
-    if (!isAdmin()) { showToast('Tài khoản của bạn chỉ được xem dữ liệu.', 'error'); return; }
     state.currentSession.fruits.push(makeDemoFruit(state.currentSession, state.currentSession.fruits.length + 1));
     state.selectedFruitId = null; saveDemo(); renderLive(); renderHistory();
     const fruit = state.currentSession.fruits.at(-1); showToast('Đã mô phỏng #' + fruit.id + ' · ' + LABEL_NAMES[fruit.label]);
@@ -371,12 +381,14 @@ import { createAdminConsole } from './admin.js';
     setTimeout(() => URL.revokeObjectURL(url), 1000); showToast('Đã xuất CSV của ' + session.name);
   }
   async function request(path, options = {}) {
+    const revision = state.revision, userId = state.user?.id;
     const { timeoutMs = 10000, ...fetchOptions } = options;
     const response = await fetch(state.apiBase + path, { cache: 'no-store', credentials: 'include', signal: AbortSignal.timeout(timeoutMs), ...fetchOptions,
       headers: { ...(fetchOptions.method === 'POST' ? { 'Content-Type': 'application/json', 'X-CSRF-Token': state.user?.csrfToken || '' } : {}), ...fetchOptions.headers } });
     if (!response.ok) {
       const error = new Error('HTTP ' + response.status); error.status = response.status;
       try { const body = await response.json(); error.detail = typeof body.detail === 'string' ? body.detail : ''; } catch { /* A proxy error may not return JSON. */ }
+      if (error.status === 401 && path !== '/api/auth/login' && userId && revision === state.revision && userId === state.user?.id) loginExpired();
       throw error;
     }
     return response.json();
@@ -390,8 +402,10 @@ import { createAdminConsole } from './admin.js';
     state.selectedFruitId = null; state.lastSync = null; state.health = null; state.cloudOnline = false;
   }
   function loginExpired() {
-    updateIdentity(null); state.revision++; state.busy = false; clearLiveData();
-    renderSource(); renderLive(); renderHistory(); openLogin();
+    updateIdentity(null); state.endTarget = null; setText('end-session-target', ''); state.operationToken = null; state.sessionAction = null; state.creating = false; clearLiveData();
+    $('data-source').value = 'demo'; changeMode();
+    for (const id of ['session-dialog','end-session-dialog']) { $(id).returnValue = ''; if ($(id).open) $(id).close(); }
+    showToast('Phiên đăng nhập không còn hợp lệ. Dữ liệu thật đã được xóa khỏi giao diện.', 'error'); openLogin();
   }
   async function submitLogin(event) {
     event.preventDefault(); $('btn-login-submit').disabled = true; $('btn-login-demo').disabled = true; $('login-error').hidden = true;
@@ -409,7 +423,10 @@ import { createAdminConsole } from './admin.js';
     $('btn-account').disabled = true;
     try {
       await request('/api/auth/logout', { method: 'POST' });
-      updateIdentity(null); $('data-source').value = 'demo'; changeMode(); showToast('Đã đăng xuất khỏi máy chủ.');
+      updateIdentity(null); state.endTarget = null; setText('end-session-target', ''); state.operationToken = null; state.sessionAction = null; state.creating = false; clearLiveData();
+      $('data-source').value = 'demo'; changeMode();
+      for (const id of ['session-dialog','end-session-dialog']) { $(id).returnValue = ''; if ($(id).open) $(id).close(); }
+      showToast('Đã đăng xuất. Bạn đang xem Demo công khai.');
     } catch (error) {
       if (error.status === 401) loginExpired();
       else showToast('Chưa đăng xuất được. Hãy kiểm tra kết nối và thử lại.', 'error');
@@ -428,7 +445,11 @@ import { createAdminConsole } from './admin.js';
     };
   }
   async function syncServer() {
-    if (state.mode !== 'live' || state.busy || ($('login-dialog').open && !state.user)) return;
+    if (state.mode === 'demo') {
+      if (state.user) { const revision = state.revision; try { const user = await request('/api/auth/me'); if (revision === state.revision) { updateIdentity(user); renderSource(); } } catch { /* 401 handled centrally. */ } }
+      return;
+    }
+    if (!mayOperate() || state.busy || ($('login-dialog').open && !state.user)) return;
     state.busy = true; const revision = state.revision; const start = performance.now();
     renderSource();
     try {
@@ -455,6 +476,7 @@ import { createAdminConsole } from './admin.js';
     }
   }
   function changeMode() {
+    if ($('data-source').value === 'live' && !mayOperate()) { $('data-source').value = 'demo'; openLogin(); }
     state.revision++; state.busy = false; state.mode = $('data-source').value;
     state.selectedFruitId = null; state.cloudOnline = false; state.lastSync = null; state.health = null; state.threshold = 0.70;
     state.filter = 'ALL'; state.search = ''; $('table-search-input').value = '';
@@ -472,8 +494,10 @@ import { createAdminConsole } from './admin.js';
     document.querySelectorAll('.nav-btn').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));
     $('data-source').addEventListener('change', changeMode);
     $('btn-sim-trigger').addEventListener('click', simulate);
-    $('btn-new-session').addEventListener('click', () => { if (!isAdmin()) return; setText('session-dialog-title', state.mode === 'demo' ? 'Bắt đầu phiên mô phỏng mới?' : 'Bắt đầu phiên mới trên máy chủ?'); $('session-dialog').returnValue = ''; $('session-dialog').showModal(); });
+    $('btn-new-session').addEventListener('click', () => { if (!mayOperate() || state.mode !== 'live') return; $('session-dialog').returnValue = ''; $('session-dialog').showModal(); });
     $('session-dialog').addEventListener('close', () => { if ($('session-dialog').returnValue === 'confirm') createSession(); });
+    $('btn-end-session').addEventListener('click', () => { if (!mayOperate() || state.mode !== 'live' || state.currentSession?.status !== 'RUNNING') return; state.endTarget = state.currentSession.id; setText('end-session-target', state.currentSession.name); $('end-session-dialog').returnValue = ''; $('end-session-dialog').showModal(); });
+    $('end-session-dialog').addEventListener('close', () => { if ($('end-session-dialog').returnValue === 'confirm') mutateSession('end', state.endTarget); });
     $('btn-guide').addEventListener('click', () => $('guide-dialog').showModal());
     $('btn-account').addEventListener('click', accountAction);
     $('btn-password').addEventListener('click', () => adminConsole.openPassword());
@@ -502,7 +526,8 @@ import { createAdminConsole } from './admin.js';
     }));
     $('latest-fruit-img').addEventListener('error', () => { $('latest-fruit-img').hidden = true; $('camera-empty').hidden = false; $('camera-empty').querySelector('strong').textContent = 'Không tải được ảnh'; $('camera-empty').querySelector('span').textContent = 'Chọn một quả khác hoặc kiểm tra lại nguồn ảnh.'; });
     loadDemo(); renderSource(); renderLive(); renderHistory();
-    request('/api/auth/me').then(user => { updateIdentity(user); $('data-source').value = 'live'; changeMode(); }).catch(() => {});
+    const bootRevision = state.revision;
+    request('/api/auth/me').then(user => { if (bootRevision !== state.revision || state.user) return; updateIdentity(user); $('data-source').value = 'live'; changeMode(); }).catch(() => {});
     setInterval(updateClock, 1000);
     setInterval(() => { if (!document.hidden) syncServer(); }, 5000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) syncServer(); });

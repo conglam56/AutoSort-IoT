@@ -38,10 +38,12 @@ Sửa `.env` của **camera-bridge**:
 Giảm độ phân giải/chất lượng JPEG trong ứng dụng điện thoại nếu ảnh quá lớn.
 Ảnh dùng để phân loại được gửi lên cloud; bridge không chạy model AI tại chỗ.
 
-**Bản bridge này cần API cùng nhánh và schema v2.** Xem bước nâng schema trong
+**Bản bridge này cần API hiện tại và schema v3.** Xem bước nâng schema trong
 [`docs/RENDER_DEPLOY.md`](../docs/RENDER_DEPLOY.md). API cũ không công bố
 `idempotency_supported=true` nên bridge sẽ từ chối khởi động; không thử gửi lại
 POST vào một API chưa hỗ trợ chống trùng.
+
+Operator/Admin phải tạo phiên dữ liệu RUNNING trước khi nhận quả. Sau khi kết thúc phiên, ảnh mới nhận 409 và bridge dùng nhánh lỗi REJECT hiện có; đây không phải lệnh START/STOP thiết bị.
 
 Trước khi mở Serial, bridge kiểm tra `/ready` và `/health`: database sẵn sàng,
 `mode=onnx`, `model_ready=true`, `idempotency_supported=true`.

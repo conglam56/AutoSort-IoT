@@ -42,8 +42,8 @@ nhóm bàn giao trước khi kết luận gói Free đủ cho chạy thực tế
   workspace/region. Không gửi URL chứa mật khẩu vào chat hoặc commit vào Git.
 - `DATABASE_SSLMODE=require`, `COOKIE_SECURE=true`.
 - `DEVICE_API_KEY`: giữ cùng key thiết bị nếu tiếp tục dùng bridge hiện có.
-- `MIGRATE_DATABASE=true`: cho phép nâng schema v1 lên v2 theo giao dịch có khóa.
-  Chỉ thêm bảng biên nhận; không đổi mật khẩu, phiên hay dữ liệu phân loại.
+- `MIGRATE_DATABASE=true`: cho phép nâng schema v1/v2 lên v3 theo giao dịch có khóa.
+  Giữ mật khẩu/lịch sử; khóa Viewer cũ và thu hồi token của họ, không tự nâng Operator. Xem AUTH_RBAC_REFACTOR.md trước khi chạy migration.
 - Với database đang có admin, không cần bootstrap. Với database trống mới, cần
   `INITIALIZE_DATABASE=true`, `BOOTSTRAP_ADMIN_USERNAME` và mật khẩu riêng.
 - Không đặt `ALLOWED_ORIGINS` thì backend dùng `RENDER_EXTERNAL_URL` của chính
@@ -54,7 +54,7 @@ nhóm bàn giao trước khi kết luận gói Free đủ cho chạy thực tế
 ## Kiểm tra và chuyển sang Java
 
 1. Xác nhận deploy Java `live`; `/health` có `backend=spring-boot` và `/ready` trả 200.
-2. Đăng nhập bằng tài khoản hiện có; xem lịch sử cũ, thử quyền admin/viewer.
+2. Đăng nhập bằng tài khoản hiện có; xem lịch sử cũ, thử quyền admin/operator.
 3. Kiểm tra model. Khi chưa có `best.onnx` + `classes.json`, vẫn là MOCK và bridge
    sẽ từ chối chạy trạm. Khi có model, health phải có `mode=onnx`, `model_ready=true`.
 4. Đổi `CLOUD_INFER_URL` của bridge sang URL **dịch vụ Java** + `/infer`, mở dashboard
@@ -62,7 +62,7 @@ nhóm bàn giao trước khi kết luận gói Free đủ cho chạy thực tế
 5. Chỉ sau khi xác nhận chạy tốt mới dừng dịch vụ Python cũ hoặc chuyển domain.
    Gỡ/tắt cờ migration và mật khẩu bootstrap sau khi thành công.
 
-Quay lại artifact Python cũ không được xóa schema v2 hoặc bảng dữ liệu mới;
+Khi rollback quyền v3, dừng writer và dùng script rollback được mô tả trong AUTH_RBAC_REFACTOR.md; không xóa dữ liệu hoặc bảng metadata.
 migration mang tính thêm mới và schema cũ vẫn giữ nguyên. Xem kỹ dữ liệu ghi từ
 hai phiên bản nếu vận hành song song; dùng một backend cho trạm tại thời điểm cắt chuyển.
 
