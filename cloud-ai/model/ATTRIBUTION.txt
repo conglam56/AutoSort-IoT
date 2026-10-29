@@ -1,0 +1,6 @@
+Unified three-class detection dataset
+Derived from the three user-supplied Roboflow exports.
+Source declarations (verify upstream rights before redistribution):
+{"file": "green_fruit.zip", "sha256": "542b195ed548b176e4d8e2e840db0a86c5a53e19f50c51a41452eba7cea9d340", "class": "GREEN", "attribution": {"workspace": "ronaldo-quang", "project": "iot-gbubp", "version": 1, "license": "CC BY 4.0", "url": "https://universe.roboflow.com/ronaldo-quang/iot-gbubp/dataset/1"}}
+{"file": "ripe_fruit.zip", "sha256": "0c7aa0d6274094b2c8d9c31e15d7570f683f6572edafabeb4b6e10427cc73950", "class": "RIPE", "attribution": {"workspace": "ronaldo-quang", "project": "iot2-9dwlk", "version": 1, "license": "CC BY 4.0", "url": "https://universe.roboflow.com/ronaldo-quang/iot2-9dwlk/dataset/1"}}
+{"file": "reject_fruit.zip", "sha256": "85db3041e4e2c881c911ff8460099215bc95736e4087acf234a51fc5f8c52eee", "class": "REJECT", "attribution": {"workspace": "ronaldo-quang", "project": "iot3-gupfi", "version": 1, "license": "CC BY 4.0", "url": "https://universe.roboflow.com/ronaldo-quang/iot3-gupfi/dataset/1"}}
