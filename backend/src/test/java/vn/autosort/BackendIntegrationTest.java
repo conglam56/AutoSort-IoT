@@ -29,6 +29,205 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @EnabledIfEnvironmentVariable(named = "AUTOSORT_TEST_DATABASE_URL", matches = ".+")
 class BackendIntegrationTest {
+  @Test
+  void inferenceAndEndSerializeWithoutWritingAfterCompletion() throws Exception {
+    var operator = login("operator");
+    String id = value(write("/api/sessions/new", Map.of(), operator, 200)).path("id").asText();
+    var entered = new CountDownLatch(1);
+    var release = new CountDownLatch(1);
+    try (var pool = Executors.newFixedThreadPool(2)) {
+      var image =
+          pool.submit(
+              () ->
+                  sorting.infer(
+                      "inflight",
+                      "F-inflight",
+                      "phone",
+                      new byte[] {1},
+                      () -> {
+                        entered.countDown();
+                        try {
+                          if (!release.await(10, TimeUnit.SECONDS))
+                            throw new IllegalStateException("Test release timeout");
+                        } catch (InterruptedException error) {
+                          throw new IllegalStateException(error);
+                        }
+                        return Db.map(
+                            "fruit_id",
+                            "F-inflight",
+                            "camera_id",
+                            "phone",
+                            "label",
+                            "MOCK",
+                            "confidence",
+                            0.,
+                            "inference_ms",
+                            0.,
+                            "decision_reason",
+                            "MOCK_MODE",
+                            "model_version",
+                            "mock-v0");
+                      }));
+      try {
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+        var end = pool.submit(() -> write("/api/sessions/" + id + "/end", Map.of(), operator, 200));
+        release.countDown();
+        image.get(10, TimeUnit.SECONDS);
+        end.get(10, TimeUnit.SECONDS);
+      } finally {
+        release.countDown();
+      }
+    }
+    assertEquals(
+        0,
+        ((Number)
+                db.one(
+                        "SELECT count(*) AS n FROM fruit_results f JOIN sorting_sessions s ON"
+                            + " s.id=f.session_id WHERE f.recorded_at>s.end_time")
+                    .get("n"))
+            .intValue());
+    assertEquals(
+        409,
+        assertThrows(
+                ApiError.class,
+                () ->
+                    sorting.infer(
+                        "late-after-end",
+                        "F-late",
+                        "phone",
+                        new byte[] {1},
+                        () -> {
+                          throw new AssertionError("AI must not run without session");
+                        }))
+            .status);
+  }
+
+  @Test
+  void guestAndForgedOperatorCannotBypassPolicies() throws Exception {
+    mvc.perform(post("/api/sessions/new")).andExpect(status().isUnauthorized());
+    var operator = login("operator");
+    mvc.perform(get("/api/admin/users").cookie(operator.cookie).header("X-Role", "admin"))
+        .andExpect(status().isForbidden());
+    write(
+        "/api/admin/users",
+        Map.of("username", "intruder", "password", PASSWORD, "role", "admin"),
+        operator,
+        403);
+    var admin = login("admin");
+    for (String role : List.of("guest", "viewer"))
+      write(
+          "/api/admin/users",
+          Map.of("username", "invalidrole", "password", PASSWORD, "role", role),
+          admin,
+          422);
+    mvc.perform(
+            post("/api/auth/login")
+                .header("Origin", ORIGIN)
+                .contentType("application/json")
+                .content(
+                    json.writeValueAsString(
+                        Map.of("username", "operator", "password", PASSWORD, "role", "admin"))))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
+  @Test
+  void sessionStartAndEndRetriesAreIdempotentAndAudited() throws Exception {
+    var operator = login("operator");
+    var first =
+        mvc.perform(
+                post("/api/sessions/new")
+                    .cookie(operator.cookie)
+                    .header("Origin", ORIGIN)
+                    .header("X-CSRF-Token", operator.csrf)
+                    .header("Idempotency-Key", "start-once"))
+            .andExpect(status().isOk())
+            .andReturn();
+    String id = value(first).path("id").asText();
+    mvc.perform(
+            post("/api/sessions/new")
+                .cookie(operator.cookie)
+                .header("Origin", ORIGIN)
+                .header("X-CSRF-Token", operator.csrf)
+                .header("Idempotency-Key", "start-once"))
+        .andExpect(jsonPath("$.id").value(id));
+    mvc.perform(
+            post("/api/sessions/" + id + "/end").cookie(operator.cookie).header("Origin", ORIGIN))
+        .andExpect(status().isForbidden());
+    var ended = value(write("/api/sessions/" + id + "/end", Map.of(), operator, 200));
+    assertEquals(ended, value(write("/api/sessions/" + id + "/end", Map.of(), operator, 200)));
+    String next = value(write("/api/sessions/new", Map.of(), operator, 200)).path("id").asText();
+    write("/api/sessions/" + id + "/end", Map.of(), operator, 200);
+    assertEquals(
+        next,
+        db.one("SELECT id FROM sorting_sessions WHERE status='RUNNING'").get("id").toString());
+    assertEquals(
+        1,
+        ((Number)
+                db.one(
+                        "SELECT count(*) AS n FROM audit_logs WHERE"
+                            + " starts_with(action,'session.completed:') AND user_id=?",
+                        UUID.fromString(operator.id))
+                    .get("n"))
+            .intValue());
+  }
+
+  @Test
+  void endedSessionsRejectNewImagesWithoutAutoStartingAndReplayOldReceipts() throws Exception {
+    var operator = login("operator");
+    infer("no-session", "F-0", "phone", sample(), 409);
+    assertEquals(
+        0, ((Number) db.one("SELECT count(*) AS n FROM sorting_sessions").get("n")).intValue());
+    String id = value(write("/api/sessions/new", Map.of(), operator, 200)).path("id").asText();
+    var result = value(infer("original", "F-1", "phone", sample(), 200));
+    write("/api/sessions/" + id + "/end", Map.of(), operator, 200);
+    infer("late", "F-2", "phone", sample(), 409);
+    assertEquals(result, value(infer("original", "F-1", "phone", sample(), 200)));
+    assertEquals(
+        1, ((Number) db.one("SELECT count(*) AS n FROM fruit_results").get("n")).intValue());
+    mvc.perform(get("/api/session/current").cookie(operator.cookie))
+        .andExpect(content().string("null"));
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie))
+        .andExpect(jsonPath("$.role").value("operator"));
+  }
+
+  @Test
+  void rollbackDisablesOperatorsAndPreservesRowsThenCanMigrateAgain() throws Exception {
+    var operator = login("operator");
+    write("/api/sessions/new", Map.of(), operator, 200);
+    infer("rollback-data", "F-1", "phone", sample(), 200);
+    var overrides = new HashMap<String, Object>();
+    overrides.put("MIGRATE_DATABASE", "true");
+    environment
+        .getPropertySources()
+        .addFirst(new org.springframework.core.env.MapPropertySource("rollback-test", overrides));
+    try {
+      var ds = db.jdbc.getDataSource();
+      try (var connection = ds.getConnection()) {
+        org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(
+            connection,
+            new org.springframework.core.io.ClassPathResource(
+                "db/rollback/V3__operator_roles_and_session_lifecycle.sql"));
+      }
+      assertEquals(
+          false, db.one("SELECT active FROM app_users WHERE username='operator'").get("active"));
+      assertEquals(
+          "viewer", db.one("SELECT role FROM app_users WHERE username='operator'").get("role"));
+      assertEquals(
+          1, ((Number) db.one("SELECT count(*) AS n FROM fruit_results").get("n")).intValue());
+      assertEquals(
+          0,
+          ((Number)
+                  db.one(
+                          "SELECT count(*) AS n FROM auth_sessions WHERE user_id=?",
+                          UUID.fromString(operator.id))
+                      .get("n"))
+              .intValue());
+    } finally {
+      db.initialize();
+      environment.getPropertySources().remove("rollback-test");
+    }
+  }
+
   @Autowired org.springframework.core.env.ConfigurableEnvironment environment;
   static final String SCHEMA =
       "autosort_java_test_" + UUID.randomUUID().toString().replace("-", "");
@@ -99,7 +298,7 @@ class BackendIntegrationTest {
     db.jdbc.execute(
         "TRUNCATE app_users,auth_sessions,sorting_sessions,fruit_results,audit_logs,login_limits"
             + " RESTART IDENTITY CASCADE");
-    for (String role : List.of("admin", "viewer"))
+    for (String role : List.of("admin", "operator"))
       db.jdbc.update(
           "INSERT INTO app_users(id,username,password_hash,role) VALUES (?,?,?,?)",
           UUID.randomUUID(),
@@ -188,26 +387,30 @@ class BackendIntegrationTest {
   void anonymousAndDeviceAuthenticationAreSeparate() throws Exception {
     mvc.perform(get("/api/sessions")).andExpect(status().isUnauthorized());
     mvc.perform(get("/api/admin/users")).andExpect(status().isUnauthorized());
-    var viewer = login("viewer");
+    var operator = login("operator");
     mvc.perform(
             multipart("/infer")
                 .file(new MockMultipartFile("image", sample()))
-                .cookie(viewer.cookie))
+                .cookie(operator.cookie))
         .andExpect(status().isUnauthorized());
     mvc.perform(get("/api/sessions").header("X-API-Key", KEY)).andExpect(status().isUnauthorized());
   }
 
   @Test
-  void viewerReadsDoNotCreateSessionAndCannotWriteOrAdmin() throws Exception {
-    var viewer = login("viewer");
-    mvc.perform(get("/api/session/current").cookie(viewer.cookie))
+  void operatorReadsDoNotCreateSessionAndCanOperateButNotAdmin() throws Exception {
+    var operator = login("operator");
+    mvc.perform(get("/api/session/current").cookie(operator.cookie))
         .andExpect(content().string("null"));
-    mvc.perform(get("/api/sessions").cookie(viewer.cookie)).andExpect(content().json("[]"));
-    write("/api/sessions/new", Map.of(), viewer, 403);
-    write("/api/admin/users", Map.of("username", "intruder", "password", PASSWORD), viewer, 403);
-    mvc.perform(get("/api/admin/users").cookie(viewer.cookie)).andExpect(status().isForbidden());
+    write("/api/sessions/new", Map.of(), operator, 200);
+    write("/api/sessions/new", Map.of(), operator, 409);
+    write("/api/admin/users", Map.of("username", "intruder", "password", PASSWORD), operator, 403);
+    mvc.perform(get("/api/admin/users").cookie(operator.cookie)).andExpect(status().isForbidden());
     assertEquals(
-        0, ((Number) db.one("SELECT count(*) AS n FROM sorting_sessions").get("n")).intValue());
+        1,
+        ((Number)
+                db.one("SELECT count(*) AS n FROM sorting_sessions WHERE status='RUNNING'")
+                    .get("n"))
+            .intValue());
   }
 
   @Test
@@ -235,12 +438,12 @@ class BackendIntegrationTest {
 
   @Test
   void expiredOrDisabledAccountCannotUseCookie() throws Exception {
-    var viewer = login("viewer");
+    var operator = login("operator");
     db.jdbc.update("UPDATE auth_sessions SET expires_at=now()-interval '1 second'");
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
-    viewer = login("viewer");
-    db.jdbc.update("UPDATE app_users SET active=false WHERE username='viewer'");
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
+    operator = login("operator");
+    db.jdbc.update("UPDATE app_users SET active=false WHERE username='operator'");
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
   }
 
   @Test
@@ -275,7 +478,7 @@ class BackendIntegrationTest {
                 admin,
                 201));
     assertEquals("new.member", created.path("username").asText());
-    assertEquals("viewer", created.path("role").asText());
+    assertEquals("operator", created.path("role").asText());
     write("/api/admin/users", Map.of("username", "new.member", "password", PASSWORD), admin, 409);
     var list =
         mvc.perform(get("/api/admin/users").param("search", "new.member").cookie(admin.cookie))
@@ -303,7 +506,7 @@ class BackendIntegrationTest {
         value(
             write(
                 "/api/admin/users/" + admin.id + "/settings",
-                Map.of("role", "viewer", "active", false),
+                Map.of("role", "operator", "active", false),
                 admin,
                 409));
     assertEquals("LAST_ADMIN_REQUIRED", response.path("detail").asText());
@@ -316,7 +519,7 @@ class BackendIntegrationTest {
         value(
             write(
                 "/api/admin/users/" + admin.id + "/settings",
-                Map.of("role", "viewer", "active", true),
+                Map.of("role", "operator", "active", true),
                 admin,
                 409));
     assertEquals("CANNOT_CHANGE_OWN_ACCESS", response.path("detail").asText());
@@ -327,42 +530,42 @@ class BackendIntegrationTest {
   @Test
   void roleAndStatusChangesRevokeExistingSessions() throws Exception {
     var admin = login("admin");
-    var viewer = login("viewer");
-    String path = "/api/admin/users/" + viewer.id + "/settings";
+    var operator = login("operator");
+    String path = "/api/admin/users/" + operator.id + "/settings";
     write(path, Map.of("role", "admin", "active", true), admin, 200);
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
-    viewer = login("viewer");
-    mvc.perform(get("/api/admin/users").cookie(viewer.cookie)).andExpect(status().isOk());
-    write(path, Map.of("role", "viewer", "active", false), admin, 200);
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
-    write(path, Map.of("role", "viewer", "active", true), admin, 200);
-    login("viewer");
-    write(path, Map.of("role", "viewer", "active", "true"), admin, 422);
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
+    operator = login("operator");
+    mvc.perform(get("/api/admin/users").cookie(operator.cookie)).andExpect(status().isOk());
+    write(path, Map.of("role", "operator", "active", false), admin, 200);
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
+    write(path, Map.of("role", "operator", "active", true), admin, 200);
+    login("operator");
+    write(path, Map.of("role", "operator", "active", "true"), admin, 422);
   }
 
   @Test
   void resetRevokeAndOwnPasswordChangeInvalidateSessions() throws Exception {
     var admin = login("admin");
-    var viewer = login("viewer");
-    String prefix = "/api/admin/users/" + viewer.id;
+    var operator = login("operator");
+    String prefix = "/api/admin/users/" + operator.id;
     write(prefix + "/revoke-sessions", Map.of(), admin, 200);
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
-    viewer = login("viewer");
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
+    operator = login("operator");
     write(prefix + "/password", Map.of("password", "Replacement-only-password!"), admin, 200);
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
-    viewer = login("viewer", "Replacement-only-password!");
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
+    operator = login("operator", "Replacement-only-password!");
     write(
         "/api/auth/password",
         Map.of("current_password", "wrong", "new_password", PASSWORD),
-        viewer,
+        operator,
         400);
     write(
         "/api/auth/password",
         Map.of("current_password", "Replacement-only-password!", "new_password", PASSWORD),
-        viewer,
+        operator,
         200);
-    mvc.perform(get("/api/auth/me").cookie(viewer.cookie)).andExpect(status().isUnauthorized());
-    login("viewer");
+    mvc.perform(get("/api/auth/me").cookie(operator.cookie)).andExpect(status().isUnauthorized());
+    login("operator");
   }
 
   @Test
@@ -371,14 +574,19 @@ class BackendIntegrationTest {
     var request = new MockHttpServletRequest();
     request.setCookies(admin.cookie);
     request.setAttribute("autosort.user", auth.current(request));
-    db.jdbc.update("UPDATE app_users SET role='viewer' WHERE id=?", UUID.fromString(admin.id));
-    assertEquals(403, assertThrows(ApiError.class, () -> sorting.start(request)).status);
+    db.jdbc.update("UPDATE app_users SET role='operator' WHERE id=?", UUID.fromString(admin.id));
+    assertEquals(
+        403,
+        assertThrows(ApiError.class, () -> db.transaction(() -> auth.lockActor(request, true)))
+            .status);
+    sorting.start(request);
     db.jdbc.update("DELETE FROM auth_sessions");
     assertEquals(401, assertThrows(ApiError.class, () -> sorting.start(request)).status);
   }
 
   @Test
   void inferenceUsesWorkerAndReceiptIsStableAcrossRolloverAndConcurrentRetries() throws Exception {
+    write("/api/sessions/new", Map.of(), login("operator"), 200);
     byte[] jpeg = sample();
     String first = value(infer("same-key", "F-1", "phone", jpeg, 200)).toString();
     var admin = login("admin");
@@ -386,6 +594,7 @@ class BackendIntegrationTest {
         value(mvc.perform(get("/api/session/current").cookie(admin.cookie)).andReturn())
             .path("id")
             .asText();
+    write("/api/sessions/" + original + "/end", Map.of(), admin, 200);
     write("/api/sessions/new", Map.of(), admin, 200);
     try (var executor = Executors.newFixedThreadPool(4)) {
       var tasks = new ArrayList<Callable<String>>();
@@ -406,34 +615,34 @@ class BackendIntegrationTest {
   }
 
   @Test
-  void concurrentFirstRequestsAndRolloversDoNotLoseRecords() throws Exception {
-    byte[] jpeg = sample();
-    var admin = login("admin");
-    try (var executor = Executors.newFixedThreadPool(4)) {
-      var tasks = new ArrayList<Callable<Void>>();
-      for (int i = 0; i < 12; i++) {
-        int index = i;
-        tasks.add(
-            () -> {
-              if (index % 4 == 0) write("/api/sessions/new", Map.of(), admin, 200);
-              else infer("key-" + index, "F-" + index, "phone", jpeg, 200);
-              return null;
-            });
-      }
-      for (var future : executor.invokeAll(tasks)) future.get();
+  void concurrentStartsCreateOnlyOneRunningSession() throws Exception {
+    var operator = login("operator");
+    try (var pool = Executors.newFixedThreadPool(2)) {
+      var tasks =
+          List.<Callable<Integer>>of(() -> startStatus(operator), () -> startStatus(operator));
+      var statuses = new ArrayList<Integer>();
+      for (var future : pool.invokeAll(tasks)) statuses.add(future.get());
+      Collections.sort(statuses);
+      assertEquals(List.of(200, 409), statuses);
     }
     assertEquals(
-        9, ((Number) db.one("SELECT count(*) AS n FROM fruit_results").get("n")).intValue());
-    assertEquals(
-        1,
-        ((Number)
-                db.one("SELECT count(*) AS n FROM sorting_sessions WHERE status='RUNNING'")
-                    .get("n"))
-            .intValue());
+        1, ((Number) db.one("SELECT count(*) AS n FROM sorting_sessions").get("n")).intValue());
+  }
+
+  int startStatus(Session operator) throws Exception {
+    return mvc.perform(
+            post("/api/sessions/new")
+                .cookie(operator.cookie)
+                .header("Origin", ORIGIN)
+                .header("X-CSRF-Token", operator.csrf))
+        .andReturn()
+        .getResponse()
+        .getStatus();
   }
 
   @Test
   void invalidImagesAndBadKeysDoNotCreateRows() throws Exception {
+    write("/api/sessions/new", Map.of(), login("operator"), 200);
     infer("bad-key", "F-1", "phone", new byte[] {(byte) 0xff, (byte) 0xd8, 1, 2}, 400);
     infer("bad key", "F-1", "phone", sample(), 422);
     infer("oversize", "F-1", "phone", new byte[1_000_001], 413);
@@ -450,6 +659,7 @@ class BackendIntegrationTest {
 
   @Test
   void inferenceAndReceiptRollbackTogether() throws Exception {
+    write("/api/sessions/new", Map.of(), login("operator"), 200);
     byte[] jpeg = sample();
     assertThrows(
         IllegalStateException.class,
@@ -475,11 +685,19 @@ class BackendIntegrationTest {
   }
 
   @Test
-  void additiveV1MigrationRequiresOptInAndKeepsData() throws Exception {
+  void migrationQuarantinesLegacyViewersWithoutGrantingOperatorAndKeepsData() throws Exception {
+    write("/api/sessions/new", Map.of(), login("admin"), 200);
     infer("old-data", "F-old", "phone", sample(), 200);
-    var before = db.one("SELECT * FROM app_users WHERE username='admin'");
-    db.jdbc.execute("DROP TABLE inference_requests");
-    db.jdbc.update("DELETE FROM schema_version WHERE version=2");
+    var old = login("operator");
+    db.jdbc.execute("DROP TABLE session_requests");
+    db.jdbc.execute("DROP TABLE legacy_viewer_quarantine");
+    db.jdbc.update("DELETE FROM schema_version WHERE version=3");
+    db.jdbc.execute("ALTER TABLE app_users DROP CONSTRAINT app_users_role_check");
+    db.jdbc.update("UPDATE app_users SET role='viewer' WHERE username='operator'");
+    db.jdbc.execute(
+        "ALTER TABLE app_users ADD CONSTRAINT app_users_role_check CHECK(role IN"
+            + " ('admin','viewer'))");
+    var before = db.one("SELECT password_hash FROM app_users WHERE username='operator'");
     var overrides = new HashMap<String, Object>();
     overrides.put("MIGRATE_DATABASE", "false");
     environment
@@ -490,9 +708,20 @@ class BackendIntegrationTest {
       overrides.put("MIGRATE_DATABASE", "true");
       db.initialize();
       db.ready();
-      assertEquals(before, db.one("SELECT * FROM app_users WHERE username='admin'"));
+      var legacy = db.one("SELECT * FROM app_users WHERE username='operator'");
+      assertEquals("viewer", legacy.get("role"));
+      assertEquals(false, legacy.get("active"));
+      assertEquals(before.get("password_hash"), legacy.get("password_hash"));
+      mvc.perform(get("/api/auth/me").cookie(old.cookie)).andExpect(status().isUnauthorized());
       assertEquals(
           1, ((Number) db.one("SELECT count(*) AS n FROM fruit_results").get("n")).intValue());
+      var admin = login("admin");
+      write(
+          "/api/admin/users/" + old.id + "/settings",
+          Map.of("role", "operator", "active", true),
+          admin,
+          200);
+      login("operator");
     } finally {
       overrides.put("MIGRATE_DATABASE", "true");
       db.initialize();
@@ -502,6 +731,7 @@ class BackendIntegrationTest {
 
   @Test
   void simultaneousFirstRequestsUseOneReceipt() throws Exception {
+    write("/api/sessions/new", Map.of(), login("operator"), 200);
     byte[] jpeg = sample();
     try (var executor = Executors.newFixedThreadPool(4)) {
       var tasks = new ArrayList<Callable<JsonNode>>();
@@ -558,6 +788,7 @@ class BackendIntegrationTest {
 
   @Test
   void failedReceiptSerializationRollsBackTheFruitInsert() throws Exception {
+    write("/api/sessions/new", Map.of(), login("operator"), 200);
     byte[] jpeg = sample();
     assertThrows(
         ApiError.class,

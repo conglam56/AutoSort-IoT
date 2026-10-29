@@ -68,10 +68,10 @@
         <div><h1 id="page-title">Tổng quan phân loại</h1><p id="page-subtitle">Một góc nhìn rõ ràng cho từng phiên vận hành.</p></div>
         <div class="header-actions" id="header-controls">
           <label class="source-select"><span>Nguồn</span><select id="data-source" aria-label="Nguồn dữ liệu"><option value="demo">Mô phỏng</option><option value="live">Máy chủ AI</option></select></label>
-          <button id="btn-new-session" class="btn btn-action" hidden disabled><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Phiên mới</button>
+          <button id="btn-new-session" class="btn btn-action" hidden disabled><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Phiên mới</button><button id="btn-end-session" class="btn btn-neutral" hidden disabled>Kết thúc phiên</button>
         </div>
       </div>
-      <p id="session-permission-note" class="permission-note">Chỉ quản trị viên được tạo phiên mới.</p>
+      <p id="session-permission-note" class="permission-note">Demo công khai · Đăng nhập để vận hành phiên thật.</p>
 
       <div class="source-notice" id="source-notice" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span id="source-notice-text">Chế độ mô phỏng · Ảnh và số liệu mẫu để trải nghiệm giao diện.</span><span class="notice-tag" id="source-state">Demo</span></div>
 
@@ -135,7 +135,7 @@
         </section>
       </section>
       <section id="tab-admin" class="view-panel" aria-labelledby="tab-admin-btn" hidden>
-        <div class="admin-intro"><strong>Quyền đúng, vận hành rõ ràng.</strong><p>Người dùng xem và xuất dữ liệu. Quản trị viên quản lý tài khoản và tạo phiên phân loại.</p></div>
+        <div class="admin-intro"><strong>Quyền đúng, vận hành rõ ràng.</strong><p>Operator giám sát và quản lý phiên dữ liệu. Admin có thêm quyền quản trị tài khoản.</p></div>
         <div class="admin-tabs" role="group" aria-label="Mục quản trị"><button id="admin-users-tab" class="btn btn-action" aria-pressed="true">Tài khoản</button><button id="admin-audit-tab" class="btn btn-neutral" aria-pressed="false">Nhật ký hoạt động</button></div>
         <p id="admin-error" class="form-error" role="alert" tabindex="-1" hidden></p>
         <section id="admin-users-panel" class="panel admin-panel" aria-labelledby="admin-users-title">
@@ -155,8 +155,9 @@
     </main>
   </div>
 
-  <dialog id="session-dialog" class="app-dialog" aria-labelledby="session-dialog-title"><form method="dialog"><div class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></div><h2 id="session-dialog-title">Bắt đầu phiên mô phỏng mới?</h2><p>Phiên hiện tại sẽ được lưu trong lịch sử. Phiên mới bắt đầu với 0 quả.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Giữ phiên hiện tại</button><button class="btn btn-action" value="confirm">Tạo phiên mới</button></div></form></dialog>
-  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Theo dõi phiên phân loại</h2><ol class="guide-steps"><li>Chọn <strong>Mô phỏng</strong> để xem ảnh và số liệu mẫu.</li><li>Chỉ <strong>quản trị viên</strong> được tạo phiên mới và thêm kết quả mô phỏng.</li><li>Mở <strong>Lịch sử phiên</strong> để tìm kiếm, lọc nhãn và xuất báo cáo CSV.</li><li>Đăng nhập để xem dữ liệu <strong>Máy chủ AI</strong>. Quản trị viên có thêm mục <strong>Quản trị</strong> để quản lý tài khoản và xem nhật ký.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
+  <dialog id="session-dialog" class="app-dialog" aria-labelledby="session-dialog-title"><form method="dialog"><div class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></div><h2 id="session-dialog-title">Tạo phiên dữ liệu mới?</h2><p>Phiên bắt đầu với 0 quả. Chỉ tạo khi chưa có phiên chạy. Thao tác này không bật motor hoặc điều khiển ESP32.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Giữ phiên hiện tại</button><button class="btn btn-action" value="confirm">Tạo phiên mới</button></div></form></dialog>
+  <dialog id="end-session-dialog" class="app-dialog" aria-labelledby="end-session-title"><form method="dialog"><h2 id="end-session-title">Kết thúc phiên dữ liệu?</h2><p id="end-session-target"></p><p>Kết quả cũ được giữ. Máy chủ ngừng nhận ảnh mới cho phiên này. Đây không phải lệnh dừng băng tải; kiểm tra thiết bị theo quy trình phần cứng.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Hủy</button><button class="btn btn-action" value="confirm">Kết thúc phiên dữ liệu</button></div></form></dialog>
+  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Theo dõi phiên phân loại</h2><ol class="guide-steps"><li>Chọn <strong>Mô phỏng</strong> để xem ảnh và số liệu mẫu.</li><li><strong>Operator và Admin</strong> đăng nhập để tạo/kết thúc phiên dữ liệu thật; thao tác này không bật/tắt thiết bị.</li><li>Mở <strong>Lịch sử phiên</strong> để tìm kiếm, lọc nhãn và xuất báo cáo CSV.</li><li>Đăng nhập để xem dữ liệu <strong>Máy chủ AI</strong>. Quản trị viên có thêm mục <strong>Quản trị</strong> để quản lý tài khoản và xem nhật ký.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
   <div class="toast-shelf" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
   <dialog id="login-dialog" class="app-dialog login-dialog" aria-labelledby="login-title">
     <form id="login-form" method="post">
@@ -174,14 +175,14 @@
     <h2 id="admin-create-title">Thêm tài khoản</h2><p>Cấp quyền phù hợp với công việc của từng thành viên.</p>
     <p id="admin-create-error" class="form-error" role="alert" tabindex="-1" hidden></p>
     <label class="login-field">Tên đăng nhập<input id="admin-new-username" autocomplete="off" required minlength="3" maxlength="64" pattern="[a-zA-Z0-9_.\-]+" aria-describedby="username-help"></label><small id="username-help">3–64 ký tự: chữ, số, dấu chấm, gạch dưới hoặc gạch ngang.</small>
-    <label class="login-field">Vai trò<select id="admin-new-role"><option value="viewer">Người dùng — chỉ xem</option><option value="admin">Quản trị viên</option></select></label>
+    <label class="login-field">Vai trò<select id="admin-new-role"><option value="operator">Nhân viên vận hành</option><option value="admin">Quản trị viên</option></select></label>
     <label class="login-field">Mật khẩu ban đầu<input id="admin-new-password" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
     <label class="login-field">Nhập lại mật khẩu<input id="admin-new-password-confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="256"></label>
     <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-create-dialog">Hủy</button><button type="submit" class="btn btn-action">Tạo tài khoản</button></div>
   </form></dialog>
   <dialog id="admin-edit-dialog" class="app-dialog account-dialog" aria-labelledby="admin-edit-title"><form id="admin-edit-form" method="post">
     <h2 id="admin-edit-title">Quyền và trạng thái</h2><p id="admin-edit-target"></p><p id="admin-edit-error" class="form-error" role="alert" tabindex="-1" hidden></p>
-    <label class="login-field">Vai trò<select id="admin-edit-role"><option value="viewer">Người dùng — chỉ xem</option><option value="admin">Quản trị viên</option></select></label>
+    <label class="login-field">Vai trò<select id="admin-edit-role"><option value="operator">Nhân viên vận hành</option><option value="admin">Quản trị viên</option></select></label>
     <label class="account-checkbox"><input id="admin-edit-active" type="checkbox"> Cho phép đăng nhập</label>
     <p class="form-help">Thay đổi quyền hoặc trạng thái sẽ đăng xuất tài khoản này trên các thiết bị.</p>
     <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-edit-dialog">Hủy</button><button type="submit" class="btn btn-action">Lưu thay đổi</button></div>

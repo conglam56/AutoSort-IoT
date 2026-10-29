@@ -25,9 +25,9 @@ Biến môi trường của tiến trình có ưu tiên cao hơn file `.env`.
 Backend không đọc `.env` của camera-bridge hay file mật khẩu cloud.
 
 - PostgreSQL trống: bật `INITIALIZE_DATABASE=true`, đặt mật khẩu bootstrap riêng
-  12–256 ký tự. Tạo schema v2 và admin một lần trong giao dịch.
-- Database cũ v1: bật `MIGRATE_DATABASE=true` để thêm bảng biên nhận v2.
-- Database đã có admin: giữ nguyên tài khoản, hash mật khẩu và phiên đăng nhập.
+  12–256 ký tự. Tạo schema v3 và admin một lần trong giao dịch.
+- Database cũ v1/v2: bật `MIGRATE_DATABASE=true` để nâng lên v3. Viewer cũ bị khóa, thu hồi token và chờ Admin cấp role mới; không tự nâng quyền.
+- Database đã có admin: giữ nguyên tài khoản và hash mật khẩu. Phiên Viewer cũ bị thu hồi khi migration.
   Argon2id do Python tạo được Spring Security đọc trực tiếp.
 - Sau khi khởi tạo/migration thành công, có thể tắt hai cờ và gỡ mật khẩu bootstrap.
   Không có tài khoản hoặc mật khẩu mặc định.
@@ -44,12 +44,13 @@ Giữ nguyên URL và JSON mà dashboard và bridge dùng:
 - `/api/auth/login`, `/me`, `/logout`, `/password`.
 - `/api/admin/users`, `/{id}/settings`, `/{id}/password`, `/{id}/revoke-sessions`.
 - `/api/admin/audit-logs`, `/api/audit-logs` (đường dẫn tương thích).
-- `/api/session/current`, `/api/sessions`, `/api/sessions/{id}`, `/api/sessions/new`.
+- `/api/session/current`, `/api/sessions`, `/api/sessions/{id}`, `/api/sessions/new`, `/api/sessions/{id}/end`.
 - `POST /infer`: multipart `fruit_id`, `camera_id`, `image`, header `X-API-Key`
   và `Idempotency-Key` tùy chọn. Ảnh JPEG tối đa 1.000.000 byte, 25 megapixel.
 
-Viewer chỉ đọc/xuất dữ liệu. Admin mới được tạo phiên và quản trị tài khoản.
-GET không tự tạo phiên. Mọi POST từ tài khoản cần Origin được phép và CSRF token
+Guest chỉ xem Demo. Operator/Admin đọc dữ liệu thật, xuất CSV, tạo và kết thúc phiên dữ liệu. Chỉ Admin quản trị tài khoản và đọc nhật ký quản trị.
+GET và `/infer` không tự tạo phiên. Tạo phiên khi đã có RUNNING trả 409; kết thúc lặp giữ nguyên endTime. Start/end hỗ trợ Idempotency-Key; không điều khiển phần cứng.
+Xem [báo cáo RBAC v3, migration và rollback](../docs/AUTH_RBAC_REFACTOR.md). Mọi POST từ tài khoản cần Origin được phép và CSRF token
 trong database; `/infer` xác thực riêng bằng key thiết bị.
 Cookie `autosort_session` HttpOnly, SameSite=Lax, hết hạn sau 8 giờ. Token chỉ
 lưu dưới dạng SHA-256 trong DB; không dùng JSESSIONID hoặc JWT/localStorage.

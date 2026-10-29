@@ -73,6 +73,8 @@ public class AuthService {
                 + " s.expires_at>now() AND u.active",
             digest(token));
     if (user == null) throw new ApiError(401, "Session expired. Please log in again");
+    if (!AccessPolicy.canOperate(user.get("role")))
+      throw new ApiError(401, "Account requires administrator role assignment");
     return user;
   }
 
@@ -97,7 +99,8 @@ public class AuthService {
             actor.get("id"),
             actor.get("token_hash"));
     if (fresh == null) throw new ApiError(401, "Login required");
-    if (admin && !fresh.get("role").equals("admin"))
+    AccessPolicy.requireOperator(fresh.get("role"));
+    if (admin && !AccessPolicy.isAdmin(fresh.get("role")))
       throw new ApiError(403, "Administrator permission required");
     return fresh;
   }
@@ -164,7 +167,10 @@ public class AuthService {
     boolean valid =
         passwords.matches(
             password, initial == null ? dummy : (String) initial.get("password_hash"));
-    if (initial == null || !valid || !Boolean.TRUE.equals(initial.get("active"))) {
+    if (initial == null
+        || !valid
+        || !Boolean.TRUE.equals(initial.get("active"))
+        || !AccessPolicy.canOperate(initial.get("role"))) {
       db.audit("login.failed", null, ip(request));
       throw new ApiError(401, "Invalid username or password");
     }
