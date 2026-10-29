@@ -1,4 +1,4 @@
--- Initial schema. Apply explicitly with: python manage.py init-db
+-- Additive schema v2. Apply with INITIALIZE_DATABASE or MIGRATE_DATABASE opt-in.
 CREATE TABLE IF NOT EXISTS schema_version (
     version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now()
 );
@@ -46,6 +46,14 @@ CREATE TABLE IF NOT EXISTS fruit_results (
     servo_action text NOT NULL
 );
 CREATE INDEX IF NOT EXISTS fruit_results_session ON fruit_results(session_id, sequence);
+-- Additive v2 migration: persisted receipts for safe Camera Bridge retries.
+CREATE TABLE IF NOT EXISTS inference_requests (
+    request_key varchar(128) PRIMARY KEY,
+    image_sha256 char(64) NOT NULL,
+    result_id bigint UNIQUE NOT NULL REFERENCES fruit_results(sequence) ON DELETE CASCADE,
+    response jsonb NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS audit_logs (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id uuid REFERENCES app_users(id) ON DELETE SET NULL,
@@ -54,3 +62,4 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO schema_version(version) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO schema_version(version) VALUES (2) ON CONFLICT DO NOTHING;

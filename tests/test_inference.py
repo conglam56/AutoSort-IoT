@@ -7,31 +7,24 @@ import unittest
 from unittest.mock import Mock, patch
 
 import numpy as np
-from fastapi import HTTPException
 from PIL import Image
-from starlette.datastructures import Headers, UploadFile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cloud-ai"))
-import main as api
+from worker import Engine, EngineError
+api = Engine(ROOT / "backend/target/missing-test-model")
 from inference import classification_probabilities, preprocess_image_bytes
 
 
 class InferenceTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        # Inference unit checks isolate persistence; PostgreSQL has separate integration tests.
-        persistence = patch.object(api, "record_fruit_to_session")
-        persistence.start()
-        self.addCleanup(persistence.stop)
+        # Spring Boot owns persistence; these tests exercise the unchanged image pipeline.
+        pass
 
     async def predict(self, probabilities, image_name="quatsample.jpg"):
         session = Mock()
         session.run.return_value = [np.array([probabilities], dtype=np.float32)]
-        upload = UploadFile(
-            file=io.BytesIO((ROOT / "cloud-ai" / image_name).read_bytes()),
-            filename=image_name,
-            headers=Headers({"content-type": "image/jpeg"}),
-        )
+        content = (ROOT / "cloud-ai" / image_name).read_bytes()
         with patch.multiple(
             api,
             model_ready=True,
@@ -41,7 +34,7 @@ class InferenceTests(unittest.IsolatedAsyncioTestCase):
             classes_list=["GREEN", "REJECT", "RIPE"],
             idx_to_class={"0": "GREEN", "1": "REJECT", "2": "RIPE"},
         ):
-            return await api.infer("F-test", "cam-test", upload)
+            return api.classify("F-test", "cam-test", content)
 
     async def test_confident_predictions_keep_original_probability_on_all_samples(self):
         cases = [
@@ -72,30 +65,24 @@ class InferenceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_incompatible_model_output_is_an_error(self):
         for output in ([2.0, 1.0, -1.0], [0.8, 0.2], [float("nan"), 0.0, 1.0]):
-            with self.subTest(output=output), self.assertRaises(HTTPException) as caught:
+            with self.subTest(output=output), self.assertRaises(EngineError) as caught:
                 await self.predict(output)
-            self.assertEqual(caught.exception.status_code, 500)
+            self.assertEqual(caught.exception.status, 500)
 
     async def test_missing_model_remains_explicitly_mock(self):
-        upload = UploadFile(
-            file=io.BytesIO((ROOT / "cloud-ai" / "quatsample.jpg").read_bytes()),
-            headers=Headers({"content-type": "image/jpeg"}),
-        )
+        content = (ROOT / "cloud-ai" / "quatsample.jpg").read_bytes()
         with patch.multiple(api, model_ready=False, ort_session=None):
             self.assertEqual(api.health()["mode"], "mock")
-            result = await api.infer("F-test", "cam-test", upload)
+            result = api.classify("F-test", "cam-test", content)
         self.assertEqual(result["label"], "MOCK")
         self.assertEqual(result["confidence"], 0.0)
 
     async def test_corrupt_jpeg_is_client_error(self):
-        upload = UploadFile(
-            file=io.BytesIO(b"\xff\xd8not-a-real-jpeg"),
-            headers=Headers({"content-type": "image/jpeg"}),
-        )
+        content = b"\xff\xd8not-a-real-jpeg"
         with patch.multiple(api, model_ready=True, ort_session=Mock()):
-            with self.assertRaises(HTTPException) as caught:
-                await api.infer("F-test", "cam-test", upload)
-        self.assertEqual(caught.exception.status_code, 400)
+            with self.assertRaises(EngineError) as caught:
+                api.classify("F-test", "cam-test", content)
+        self.assertEqual(caught.exception.status, 400)
 
 
 class PreprocessingTests(unittest.TestCase):

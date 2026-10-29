@@ -13,7 +13,7 @@ python -m http.server 8765 --bind 127.0.0.1 --directory dashboard
 Mở http://127.0.0.1:8765/. Mặc định là **Mô phỏng**, với hai phiên mẫu.
 Ảnh và số liệu mẫu luôn được ghi rõ trên giao diện.
 
-Khi chạy FastAPI, dashboard cũng có tại http://127.0.0.1:8000/dashboard/.
+Khi chạy Spring Boot, dashboard cũng có tại http://127.0.0.1:8000/dashboard/.
 Chọn **Nguồn → Máy chủ AI** để đọc các phiên trên dịch vụ. Trang được phục vụ
 tại `/dashboard/` dùng API cùng origin; bản static chạy riêng dùng
 `http://127.0.0.1:8000`.
@@ -62,7 +62,7 @@ Các endpoint đọc:
 Xác thực: `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`.
 Cookie HttpOnly và CSRF được API kiểm tra; dữ liệu nhạy cảm không lưu localStorage.
 Chỉ admin được `POST /api/sessions/new`. PostgreSQL lưu lịch sử bền vững.
-Xem cấu hình và cách tạo tài khoản trong [hướng dẫn API](../cloud-ai/README.md).
+Xem cấu hình và cách tạo tài khoản trong [hướng dẫn Spring Boot API](../backend/README.md).
 Chi tiết quản trị và phân quyền: [ADMIN_GUIDE.md](../docs/ADMIN_GUIDE.md).
 
 ## Giao diện

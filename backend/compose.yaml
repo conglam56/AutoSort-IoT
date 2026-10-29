@@ -1,20 +1,17 @@
 name: autosort
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18
     environment:
       POSTGRES_DB: autosort
       POSTGRES_USER: autosort
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in cloud-ai/.env}
-    ports:
-      - "127.0.0.1:5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in backend/.env}
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U autosort -d autosort"]
       interval: 5s
       timeout: 3s
       retries: 10
-    restart: unless-stopped
 volumes:
   postgres_data:

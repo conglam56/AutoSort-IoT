@@ -1,100 +1,77 @@
-# Triển khai AutoSort lên Render
+# Triển khai Java Spring Boot lên Render
 
-FastAPI, dashboard và model ONNX chạy trong một Web Service; dữ liệu ở Render
-PostgreSQL. Không phục vụ dataset huấn luyện, `.env` hay mật khẩu qua dịch vụ web.
-Cloud nhận ảnh để suy luận; người phụ trách AI huấn luyện và bàn giao model riêng.
+Backend mới dùng **Docker, Java 21 + Python ONNX worker nội bộ**. Dashboard và mọi
+API do Spring Boot phục vụ. PostgreSQL vẫn là database hiện có, không cần tạo lại
+tài khoản hay xóa dữ liệu. `render.yaml` mô tả một Web Service Docker Free mới,
+**không khai báo/tạo database mới**.
 
-## Cấu hình của dự án
+## Dịch vụ Python hiện có
 
-- Repository: `https://github.com/conglam56/AutoSort-IoT`, branch `main`.
-- Web Service hiện có: `AutoSort-IoT`, URL `https://autosort-iot.onrender.com`.
-- Giữ region `oregon` của dịch vụ hiện có; PostgreSQL phải cùng region/workspace.
-- Web Service và PostgreSQL đều dùng **Free** trong bản thử nghiệm này.
-- `render.yaml` là cấu hình tham khảo/tạo mới. Nếu đã có dịch vụ, dùng lại dịch vụ
-  đó; không tạo Blueprint thứ hai làm phát sinh tài nguyên trùng.
+Dịch vụ `AutoSort-IoT` tại `https://autosort-iot.onrender.com` trước đây dùng
+runtime Python và `python cloud-ai/render_start.py`. Runtime của dịch vụ Render
+không thể đổi trực tiếp sang Docker bằng sửa Blueprint. Merge mã không tự chuyển
+dịch vụ này sang Java. Không bấm triển khai mã mới bằng start command Python cũ;
+các module FastAPI cũ đã được thay bằng backend Java.
 
-Trong **Settings → Build & Deploy** của Web Service, dùng:
+Không sync Blueprint mới lên dịch vụ Python cũ để ép đổi runtime. Giữ bản đang
+live trong lúc kiểm tra dịch vụ Docker; việc chuyển traffic là bước triển khai riêng.
+
+## Tạo Web Service Docker
+
+Trong workspace AutoSort IoT, tạo Web Service **Free**, region **Oregon**, từ
+repository `conglam56/AutoSort-IoT`, branch `main`:
 
 | Mục | Giá trị |
 |---|---|
-| Root Directory | Để trống (root repository) |
-| Build Command | `pip install -r cloud-ai/requirements.txt` |
-| Start Command | `python cloud-ai/render_start.py` |
+| Tên | `AutoSort-IoT-Java` (phân biệt dịch vụ Python cũ) |
+| Runtime/Language | Docker |
+| Root Directory | Để trống |
+| Dockerfile Path | `./Dockerfile` |
+| Docker Build Context | `.` |
+| Docker Command | Để trống, dùng ENTRYPOINT của image |
 | Health Check Path | `/ready` |
 
-Root Directory phải là root repository để FastAPI đọc được thư mục `dashboard/`
-cùng cấp với `cloud-ai/`. `.python-version` cố định dòng Python 3.12.
-Không dùng `python cloud-ai/main.py` để chạy production: lối chạy trực tiếp đó
-dành cho phát triển local và bật reload.
+Image chỉ copy backend, dashboard, worker và model; không chứa dataset, `.env`,
+file tài khoản, thư mục `.local` hoặc Git. Chạy bằng user không phải root.
+JVM giới hạn heap 160 MB; ONNX dùng CPU một thread. Cần đo bộ nhớ/độ trễ với model
+nhóm bàn giao trước khi kết luận gói Free đủ cho chạy thực tế.
 
-## Database và biến môi trường
+## Biến môi trường và giữ dữ liệu
 
-Tạo PostgreSQL `autosort-postgres`, plan Free, cùng region `oregon`, phiên bản 18.
-Ưu tiên **Internal Database URL**. Trong cấu hình tạo mới bằng Blueprint, database
-được giới hạn kết nối bên ngoài bằng `ipAllowList: []`.
+- `DATABASE_URL`: **Internal Database URL của autosort-postgres hiện có**, cùng
+  workspace/region. Không gửi URL chứa mật khẩu vào chat hoặc commit vào Git.
+- `DATABASE_SSLMODE=require`, `COOKIE_SECURE=true`.
+- `DEVICE_API_KEY`: giữ cùng key thiết bị nếu tiếp tục dùng bridge hiện có.
+- `MIGRATE_DATABASE=true`: cho phép nâng schema v1 lên v2 theo giao dịch có khóa.
+  Chỉ thêm bảng biên nhận; không đổi mật khẩu, phiên hay dữ liệu phân loại.
+- Với database đang có admin, không cần bootstrap. Với database trống mới, cần
+  `INITIALIZE_DATABASE=true`, `BOOTSTRAP_ADMIN_USERNAME` và mật khẩu riêng.
+- Không đặt `ALLOWED_ORIGINS` thì backend dùng `RENDER_EXTERNAL_URL` của chính
+  dịch vụ Java. Nếu có domain riêng, đặt đúng origins HTTPS. Cookie/token cũ ở DB
+  vẫn hợp lệ nhưng đổi hostname thì trình duyệt cần đăng nhập lại.
+- `PORT` dùng biến Render cấp. Python và đường dẫn worker/model đã đặt trong image.
 
-| Biến | Giá trị |
-|---|---|
-| `DATABASE_URL` | Internal Database URL của Render PostgreSQL |
-| `DATABASE_SSLMODE` | `require` |
-| `COOKIE_SECURE` | `true` |
-| `INITIALIZE_DATABASE` | `true` cho lần đầu tạo database |
-| `BOOTSTRAP_ADMIN_USERNAME` | `admin` |
-| `BOOTSTRAP_ADMIN_PASSWORD` | Chuỗi ngẫu nhiên riêng, 12–256 ký tự |
-| `DEVICE_API_KEY` | Chuỗi ngẫu nhiên riêng, tối thiểu 32 ký tự |
-| `FORWARDED_ALLOW_IPS` | `127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16` |
+## Kiểm tra và chuyển sang Java
 
-Không đặt `ALLOWED_ORIGINS` thì trên Render ứng dụng tự lấy đúng
-`RENDER_EXTERNAL_URL`. Nếu thêm domain riêng, đặt danh sách origin HTTPS cụ thể;
-không dùng `*`. Không đặt giá trị localhost trên cloud.
+1. Xác nhận deploy Java `live`; `/health` có `backend=spring-boot` và `/ready` trả 200.
+2. Đăng nhập bằng tài khoản hiện có; xem lịch sử cũ, thử quyền admin/viewer.
+3. Kiểm tra model. Khi chưa có `best.onnx` + `classes.json`, vẫn là MOCK và bridge
+   sẽ từ chối chạy trạm. Khi có model, health phải có `mode=onnx`, `model_ready=true`.
+4. Đổi `CLOUD_INFER_URL` của bridge sang URL **dịch vụ Java** + `/infer`, mở dashboard
+   tại URL mới. Kiểm tra một quả từ điện thoại đến dữ liệu cloud và ESP32.
+5. Chỉ sau khi xác nhận chạy tốt mới dừng dịch vụ Python cũ hoặc chuyển domain.
+   Gỡ/tắt cờ migration và mật khẩu bootstrap sau khi thành công.
 
-`render_start.py` là bước khởi tạo tường minh trước khi chạy Uvicorn. Khi cho phép
-`INITIALIZE_DATABASE=true`, nó tạo schema v1 nếu chưa có; chỉ tạo admin khi
-database chưa có tài khoản nào. Nếu lỗi tạo tài khoản thì giao dịch tạo schema
-cũng rollback. Khởi động lại không đổi mật khẩu hoặc tái tạo tài khoản đã khóa.
-API chạy trực tiếp bằng Uvicorn vẫn yêu cầu schema đã được tạo trước như cũ.
+Quay lại artifact Python cũ không được xóa schema v2 hoặc bảng dữ liệu mới;
+migration mang tính thêm mới và schema cũ vẫn giữ nguyên. Xem kỹ dữ liệu ghi từ
+hai phiên bản nếu vận hành song song; dùng một backend cho trạm tại thời điểm cắt chuyển.
 
-Sau lần đầu thành công, có thể đặt `INITIALIZE_DATABASE=false` và gỡ
-`BOOTSTRAP_ADMIN_PASSWORD` khỏi môi trường nếu không cần giữ để tra lại mật khẩu.
-Mật khẩu tài khoản đã được băm trong PostgreSQL; không bị đổi theo biến bootstrap.
-Thao tác này không làm mất dữ liệu. Khi nâng schema sau này, cần migration riêng;
-script này không tự nâng schema của một database đã có.
+## Giới hạn Free và nguồn
 
-`/ready` kiểm tra schema và kết nối database, trả 503 khi PostgreSQL không khả dụng.
-`/health` cho biết model ONNX hay MOCK. Dịch vụ vẫn sẵn sàng thử nghiệm khi chưa có
-model; không diễn giải MOCK là nhãn phân loại thật.
+Free Web Service có thể ngủ khi không có truy cập; PostgreSQL Free có hạn sử dụng
+và không có backup quản lý. Xuất dữ liệu trước hạn, kiểm tra lại chính sách và
+đánh thức dịch vụ trước buổi demo. Không tự nâng gói trả phí.
 
-## Kiểm tra sau triển khai
-
-1. Mở `/ready`: phải trả `status=ready`.
-2. Mở `/health`: xác nhận mode, model version và trạng thái model.
-3. Mở `/dashboard/`, đăng nhập bằng admin vừa khởi tạo, tạo một phiên.
-4. Từ máy Camera Bridge, đặt `CLOUD_INFER_URL=https://autosort-iot.onrender.com/infer`
-   và `DEVICE_API_KEY` riêng được lưu trong môi trường dịch vụ Render.
-5. Gửi ảnh JPEG mẫu, kiểm tra API trả kết quả và dashboard ghi nhận cùng mã quả.
-6. Khởi động lại dịch vụ, kiểm tra phiên và kết quả cũ còn nguyên trong PostgreSQL.
-7. Khi có model, đưa `best.onnx` và `classes.json` vào `cloud-ai/model/`, triển khai
-   lại và kiểm tra `/health` có `model_ready=true` rồi thử camera thực tế.
-
-Thiết lập viewer, đổi quyền và đặt lại mật khẩu trong mục **Quản trị** của dashboard.
-CLI `cloud-ai/manage.py` vẫn dùng cho việc phục hồi/bảo trì từ môi trường có kết nối
-database. Free không có shell, nên nếu dùng CLI trên máy cá nhân phải tạm cho
-phép IP cần thiết trong database và dùng External Database URL với TLS. Không
-đưa kết nối đó vào Git hoặc chat. Giới hạn proxy tin cậy phải được đối chiếu với
-cấu hình mạng thực tế khi triển khai ở nền tảng khác.
-
-## Giới hạn Free
-
-Free Web Service có thể ngủ sau 15 phút không có truy cập; thời gian khởi động
-lại có thể vượt timeout Camera Bridge. Không cam kết chạy băng chuyền liên tục
-bằng gói này. PostgreSQL Free có giới hạn 1 GB và hết hạn sau 30 ngày; cần xuất
-dữ liệu trước hạn hoặc người dùng chủ động quyết định gói phù hợp. Ảnh snapshot
-trong PostgreSQL cũng chiếm dung lượng này. Không tự nâng lên gói trả phí.
-
-Nguồn chính thức:
-
-- [Triển khai FastAPI](https://render.com/docs/deploy-fastapi)
-- [Biến môi trường Render](https://render.com/docs/environment-variables)
-- [Blueprint YAML](https://render.com/docs/blueprint-spec)
-- [Kết nối PostgreSQL và TLS](https://render.com/docs/postgresql-creating-connecting)
+- [Docker trên Render](https://render.com/docs/docker)
+- [Blueprint specification](https://render.com/docs/blueprint-spec)
 - [Giới hạn Free](https://render.com/docs/free)

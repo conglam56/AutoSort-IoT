@@ -2,6 +2,12 @@
 .venv312/
 .local/
 __pycache__/
+target/
+*.class
+.project
+.classpath
+.settings/
+backend/bin/
 *.py[cod]
 .env
 .env.*

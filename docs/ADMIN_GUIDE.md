@@ -58,4 +58,6 @@ Các POST cần cookie phiên, Origin được phép và `X-CSRF-Token`. API ki�
 tài khoản và phiên đăng nhập ngay trong giao dịch ghi, không chỉ dựa vào quyền
 đã đọc trước đó. Khi bị đổi quyền/khóa, người dùng không thể tiếp tục dùng cookie cũ.
 Lỗi 401 yêu cầu đăng nhập lại; 403 là thiếu quyền/CSRF; 409 là trùng tên hoặc thao
-tác bị chặn để bảo toàn quyền quản trị. Không cần thay đổi schema database v1.
+tác bị chặn để bảo toàn quyền quản trị. Backend hiện dùng Spring Boot với schema
+v2; nâng v1 bằng cờ `MIGRATE_DATABASE=true` theo [hướng dẫn backend](../backend/README.md),
+giữ nguyên tài khoản và hash Argon2id cũ.
