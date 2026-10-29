@@ -1,9 +1,3 @@
-fastapi
-uvicorn
-python-multipart
 onnxruntime
 numpy
 pillow
-psycopg[binary]>=3.2,<4
-pwdlib[argon2]>=0.2,<1
-python-dotenv>=1,<2

@@ -2,6 +2,7 @@
 .venv312/
 .local/
 __pycache__/
+target/
 *.py[cod]
 .env
 .env.*

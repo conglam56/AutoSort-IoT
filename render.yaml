@@ -1,38 +1,24 @@
-# Free demonstration deployment. Keep the repository root so dashboard/ is included.
+# Create a separate Docker service. Do not change the runtime of the existing Python service.
+# Reuse its PostgreSQL URL and device key via private env vars; never create a second database.
 services:
   - type: web
-    name: AutoSort-IoT
-    runtime: python
+    name: AutoSort-IoT-Java
+    runtime: docker
     plan: free
     region: oregon
     branch: main
     autoDeployTrigger: commit
-    buildCommand: pip install -r cloud-ai/requirements.txt
-    startCommand: python cloud-ai/render_start.py
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /ready
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: autosort-postgres
-          property: connectionString
+        sync: false
       - key: DATABASE_SSLMODE
         value: require
       - key: COOKIE_SECURE
-        value: "true"
+        value: 'true'
       - key: DEVICE_API_KEY
-        generateValue: true
-      - key: INITIALIZE_DATABASE
-        value: "true"
-      - key: BOOTSTRAP_ADMIN_PASSWORD
-        generateValue: true
-      - key: BOOTSTRAP_ADMIN_USERNAME
-        value: admin
-      - key: FORWARDED_ALLOW_IPS
-        value: 127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
-
-databases:
-  - name: autosort-postgres
-    plan: free
-    region: oregon
-    postgresMajorVersion: "18"
-    ipAllowList: []
+        sync: false
+      - key: MIGRATE_DATABASE
+        value: 'true'

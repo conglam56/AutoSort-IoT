@@ -1,3 +1,5 @@
 -r requirements.txt
 -r ../camera-bridge/requirements.txt
 httpx>=0.28,<1
+psycopg[binary]>=3.2,<4
+onnx>=1.17,<2

@@ -1,4 +1,4 @@
--- Initial schema. Apply explicitly with: python manage.py init-db
+-- Additive schema v2. Apply with INITIALIZE_DATABASE or MIGRATE_DATABASE opt-in.
 CREATE TABLE IF NOT EXISTS schema_version (
     version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now()
 );

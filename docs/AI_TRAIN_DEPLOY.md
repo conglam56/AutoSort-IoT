@@ -1,6 +1,6 @@
 # Hướng Dẫn Huấn Luyện AI Và Triển Khai ONNX Lên Cloud Cho AutoSort IoT
 
-Tài liệu này cung cấp quy trình từng bước từ việc tổ chức dataset quất, huấn luyện mô hình YOLO11 Classification trên Google Colab GPU miễn phí, xuất mô hình ONNX Runtime và tích hợp vào FastAPI Web Service trên Render Free.
+Tài liệu này cung cấp quy trình từ dataset quất, train YOLO11 Classification trên Colab, export ONNX và tích hợp vào Spring Boot + Python AI worker nội bộ trên Render.
 
 ---
 
@@ -26,7 +26,7 @@ Tài liệu này cung cấp quy trình từng bước từ việc tổ chức da
 +-------------------------------------------------------------+
 | Giai Đoạn 2: Cloud Suy Luận (Render Free Web Service)       |
 |                                                             |
-|   FastAPI (main.py) + ONNX Runtime (CPU)                    |
+|   Spring Boot HTTP API + Python ONNX worker (CPU)           |
 |   - Đo bộ nhớ và thời gian xử lý với model thực tế         |
 |   - Luồng CPU đơn: intra_op_num_threads = 1                |
 |   - Tự động fallback MOCK nếu chưa có model                 |
@@ -121,17 +121,18 @@ khả năng phát hiện sai lệch của công cụ parity; không đo chất l
 
 ---
 
-## 5. Chạy Thử FastAPI Local
+## 5. Chạy Thử Spring Boot Local
 
 Cài đặt phụ thuộc cho service:
 ```powershell
 pip install -r cloud-ai/requirements.txt
 ```
 
-Cấu hình PostgreSQL, `.env` và tài khoản theo [`cloud-ai/README.md`](../cloud-ai/README.md)
-trước khi khởi chạy FastAPI:
+Cấu hình PostgreSQL, `backend/.env` và Python worker theo [`backend/README.md`](../backend/README.md)
+trước khi khởi chạy Spring Boot từ root repository:
 ```powershell
-python -m uvicorn main:app --app-dir cloud-ai --host 127.0.0.1 --port 8000 --reload
+mvn -f backend/pom.xml package -DskipTests
+java -jar backend/target/autosort-backend-1.0.0.jar
 ```
 
 ### Kiểm tra Health Check:
@@ -149,8 +150,7 @@ Truy cập `http://127.0.0.1:8000/health`:
 ```
 
 ### Kiểm tra Inference:
-Gửi ảnh qua Swagger UI tại `http://127.0.0.1:8000/docs` (Authorize bằng device key)
-hoặc PowerShell. Đặt `DEVICE_API_KEY` từ cấu hình riêng, không ghi key vào Git:
+Gửi ảnh bằng PowerShell. Đặt `DEVICE_API_KEY` từ cấu hình riêng, không ghi key vào Git:
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8000/infer" -Method Post -Headers @{'X-API-Key'=$env:DEVICE_API_KEY} -Form @{
     fruit_id = "F0001";
@@ -167,15 +167,15 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8000/infer" -Method Post -Headers @{'X-
    ```
    AutoSort IoT/
    └── cloud-ai/
-       ├── main.py
+       ├── worker.py
        ├── inference.py
        ├── requirements.txt
        └── model/
            ├── best.onnx
            └── classes.json
    ```
-2. Cấu hình service với thư mục gốc `cloud-ai`, cài `requirements.txt` và chạy
-   `uvicorn main:app --host 0.0.0.0 --port $PORT` trong môi trường triển khai.
+2. Dùng Dockerfile tại root để chạy Spring Boot và worker Python nội bộ;
+   xem [hướng dẫn Render](RENDER_DEPLOY.md). Backend Java ở `backend/`, không chạy Uvicorn.
 3. Đưa model và metadata vào bản triển khai, rồi kiểm tra `/health` trả
    `"mode":"onnx"`, `"model_ready":true` trước khi thử `/infer`.
 4. Đo thời gian suy luận, bộ nhớ và thời gian khởi động trên gói hosting thực tế.

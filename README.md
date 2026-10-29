@@ -1,6 +1,8 @@
 # AutoSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
 
-**Đây là bộ khung của dự án cho 3 thành viên, không phải hệ thống đã hoàn thiện.**
+Backend HTTP dùng **Java 21 / Spring Boot**, PostgreSQL và Spring Security.
+AI ONNX chạy bằng Python worker nội bộ, giữ nguyên pipeline train. Phần cứng và
+model thật vẫn cần được bàn giao để kiểm thử toàn bộ hệ thống.
 
 Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đúng vị trí → Điện thoại (IP Webcam) chụp JPEG → Máy tính gửi Internet tới Cloud → AI phân loại GREEN / RIPE / REJECT → ESP32 điều khiển băng chuyền & 2 servo gạt → Dashboard hiển thị kết quả.
 
@@ -8,11 +10,12 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
 
 | Thư mục | Người phụ trách | Hiện trạng |
 |---|---|---|
-| `cloud-ai/` | A — AI & Cloud | FastAPI có luồng suy luận ONNX; hiện trả `MOCK` vì chưa có model đã train |
+| `backend/` | Cloud & Web | Spring Boot: API, dashboard, auth/admin, PostgreSQL và idempotency |
+| `cloud-ai/` | AI | Python ONNX worker nội bộ; hiện trả `MOCK` vì chưa có model đã train |
 | `training/` | A — AI & Cloud | Notebook Colab, kiểm tra dataset, train YOLO11, export ONNX và kiểm tra parity |
 | `tests/` | Cả nhóm | Kiểm thử confidence, xử lý ảnh, chuyển dữ liệu và đóng gói |
 | `esp32-controller/` | B — IoT | Chờ tích hợp firmware chính thức do thành viên phần cứng quản lý |
-| `camera-bridge/` | B — IoT | Script Python lấy ảnh từ Điện thoại (IP Webcam) và gọi Cloud FastAPI |
+| `camera-bridge/` | B — IoT | Python lấy ảnh từ điện thoại và gọi Cloud Spring Boot |
 | `dashboard/` | C — Web | Đã hoàn thiện giao diện giám sát thời gian thực, quản lý phiên và xuất CSV |
 | `hardware/` | B — IoT | Chờ tài liệu phần cứng chính thức từ thành viên phụ trách |
 | `docs/` | Cả nhóm | Hướng dẫn train/deploy và nguồn dữ liệu |
@@ -25,15 +28,9 @@ bàn giao firmware](camera-bridge/README.md).
 
 ## Bắt đầu ngay (Người A)
 
-1. Mở thư mục **`cloud-ai`** trong VS Code hoặc chuyển Terminal tới nó.
-2. Trong PowerShell, chạy:
-
-   ```powershell
-   py -m venv .venv
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-   ```
-3. Cấu hình PostgreSQL và `.env`, chạy `manage.py init-db`, tạo tài khoản rồi
-   khởi động API theo [`cloud-ai/README.md`](cloud-ai/README.md).
+1. Cài Java 21, Maven 3.9+, Python 3.12 và PostgreSQL.
+2. Cài phụ thuộc Python cho AI worker bằng `pip install -r cloud-ai/requirements.txt`.
+3. Cấu hình `backend/.env`, build/chạy Spring Boot theo [`backend/README.md`](backend/README.md).
 4. Mở `http://127.0.0.1:8000/dashboard/` và đăng nhập. Camera Bridge cần `DEVICE_API_KEY`.
 5. Gửi `kumquat-dataset-only.zip` cho người phụ trách huấn luyện; gói chỉ chứa dataset, không kèm code train. Nếu dùng notebook có sẵn của dự án, xem cách đóng gói riêng trong [`docs/AI_TRAIN_DEPLOY.md`](docs/AI_TRAIN_DEPLOY.md).
 
@@ -52,9 +49,9 @@ Chạy kiểm thử từ thư mục gốc sau khi cài các phụ thuộc của 
 .\cloud-ai\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Cài `cloud-ai/requirements-dev.txt` để có thư viện kiểm thử HTTP. Đặt
-`AUTOSORT_TEST_DATABASE_URL` để chạy thêm kiểm thử xác thực với PostgreSQL thật;
-xem cách chạy trong [`cloud-ai/README.md`](cloud-ai/README.md).
+Cài `cloud-ai/requirements-dev.txt` cho kiểm thử Python. Đặt
+`AUTOSORT_TEST_DATABASE_URL` rồi chạy `mvn -f backend/pom.xml verify` để kiểm thử
+API Java với PostgreSQL riêng; xem [`backend/README.md`](backend/README.md).
 
 ## Các bước phát triển về sau
 
