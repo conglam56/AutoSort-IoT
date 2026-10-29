@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+cloud-ai/model/classes.json text eol=lf
+cloud-ai/model/SHA256SUMS text eol=lf

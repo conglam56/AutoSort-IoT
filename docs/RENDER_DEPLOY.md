@@ -12,7 +12,11 @@ tài khoản hay xóa dữ liệu. `render.yaml` mô tả một Web Service Dock
 - Dashboard: https://autosort-iot-java.onrender.com/dashboard/
 - Camera Bridge: `CLOUD_INFER_URL=https://autosort-iot-java.onrender.com/infer`.
 - Dùng lại `autosort-postgres`, schema v3; Admin và Operator đã kiểm tra đăng nhập.
-- Model chưa được bàn giao nên AI vẫn ở chế độ MOCK.
+- Bản tích hợp v1 kèm detector `autosort-yolo11n-detect-v1` trong
+  `cloud-ai/model/`. Sau khi triển khai bản này, xác nhận `/health` có
+  `mode=onnx`, `model_ready=true`, `task=detect` và đúng phiên bản model.
+  Đây là thử tích hợp; chất lượng trên trạm chưa được xác nhận, xem
+  [kết quả và giới hạn](AI_DETECTION_RESULTS.md).
 
 Nếu bridge đã có `.env` riêng, cần sửa `CLOUD_INFER_URL` trong file đó; thay đổi
 giá trị mặc định không ghi đè biến môi trường đã đặt.

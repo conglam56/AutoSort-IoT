@@ -1,0 +1,34 @@
+{
+  "task": "detect",
+  "output_format": "yolo11_raw",
+  "classes": [
+    "GREEN",
+    "RIPE",
+    "REJECT"
+  ],
+  "idx_to_class": {
+    "0": "GREEN",
+    "1": "RIPE",
+    "2": "REJECT"
+  },
+  "class_to_idx": {
+    "GREEN": 0,
+    "RIPE": 1,
+    "REJECT": 2
+  },
+  "num_classes": 3,
+  "imgsz": 320,
+  "threshold": 0.7,
+  "model_version": "autosort-yolo11n-detect-v1",
+  "candidate_threshold": 0.25,
+  "nms_iou": 0.7,
+  "target_iou": 0.5,
+  "class_margin": 0.15,
+  "target_roi": [
+    0,
+    0,
+    1,
+    1
+  ],
+  "deployment_status": "candidate_pending_review"
+}

@@ -11,6 +11,7 @@
 !cloud-ai/requirements.txt
 !cloud-ai/worker.py
 !cloud-ai/inference.py
+!cloud-ai/detection.py
 !cloud-ai/model/
 !cloud-ai/model/**
 **/.env
