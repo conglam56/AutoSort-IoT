@@ -1,4 +1,4 @@
-# AutoSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
+# AutoSort IoT — Băng chuyền phân loại nông sản bằng Cloud AI
 
 Luồng vận hành: **đăng nhập trước khi vào dashboard**, không còn demo công
 khai. Chạy bridge để kết nối trạm rồi điều khiển bằng **Bắt đầu / Tạm dừng /
