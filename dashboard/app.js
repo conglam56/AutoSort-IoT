@@ -25,6 +25,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
   };
   let demoSessions = [];
   let storageWarningShown = false;
+  const failedImageSources = new Set();
   let adminConsole;
   const isAdmin = () => isAdminRole(state.user);
   const mayOperate = () => canOperate(state.user);
@@ -46,11 +47,33 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
   function setText(id, value) { $(id).textContent = value; }
   function safeImage(value) {
     if (typeof value !== 'string') return '';
+    value = value.trim();
+    if (!value) return '';
     if (/^data:image\/(jpeg|png|webp);base64,[a-z\d+/=]+$/i.test(value)) return value;
     try {
       const url = new URL(value, location.href);
       return ['http:', 'https:', 'file:'].includes(url.protocol) && url.origin === location.origin ? url.href : '';
     } catch { return ''; }
+  }
+  function appendSnapshotImage(container, fruit, className, alt) {
+    const src = safeImage(fruit.image);
+    const showUnavailable = message => {
+      container.replaceChildren(document.createTextNode(message));
+      container.classList.add(className === 'strip-thumb-img' ? 'strip-no-image' : 'table-no-image');
+      container.title = message + ' · ' + fruit.id;
+    };
+    if (!src || (state.mode !== 'demo' && fruit.image.startsWith('samples/'))) {
+      showUnavailable('Chưa có ảnh'); return;
+    }
+    if (failedImageSources.has(src)) { showUnavailable('Không tải được ảnh'); return; }
+    const image = document.createElement('img');
+    image.className = className; image.alt = alt; image.loading = 'lazy';
+    image.addEventListener('error', () => {
+      failedImageSources.add(src);
+      showUnavailable('Không tải được ảnh');
+    }, { once: true });
+    image.src = src;
+    container.append(image);
   }
   function saveDemo() {
     try { localStorage.setItem(DEMO_KEY, JSON.stringify(demoSessions)); }
@@ -187,13 +210,14 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     const image = $('latest-fruit-img');
     const src = safeImage(fruit?.image);
     // The API may return a sample placeholder for an unavailable snapshot.
-    const hasImage = Boolean(src) && (state.mode === 'demo' || !fruit.image.startsWith('samples/'));
+    const failedImage = failedImageSources.has(src);
+    const hasImage = Boolean(src) && !failedImage && (state.mode === 'demo' || !fruit.image.startsWith('samples/'));
     image.hidden = !hasImage;
-    if (hasImage) { image.src = src; image.alt = LABEL_NAMES[fruit.label] + ', mã quả ' + fruit.id; }
+    if (hasImage) { if (image.getAttribute('src') !== src) image.src = src; image.alt = LABEL_NAMES[fruit.label] + ', mã quả ' + fruit.id; }
     else image.removeAttribute('src');
     $('camera-empty').hidden = hasImage;
-    $('camera-empty').querySelector('strong').textContent = fruit ? 'Chưa có ảnh ghi nhận' : 'Chờ ảnh đầu tiên';
-    $('camera-empty').querySelector('span').textContent = fruit ? 'Máy chủ đã gửi kết quả nhưng chưa có ảnh chụp kèm theo.' : state.mode === 'demo' ? 'Nhấn “Mô phỏng một quả” để bắt đầu.' : 'Kết quả sẽ xuất hiện khi phiên có dữ liệu.';
+    $('camera-empty').querySelector('strong').textContent = failedImage ? 'Không tải được ảnh' : fruit ? 'Chưa có ảnh ghi nhận' : 'Chờ ảnh đầu tiên';
+    $('camera-empty').querySelector('span').textContent = failedImage ? 'Thông tin phân loại vẫn được giữ. Chọn một quả khác để xem ảnh.' : fruit ? 'Máy chủ đã gửi kết quả nhưng chưa có ảnh chụp kèm theo.' : state.mode === 'demo' ? 'Nhấn “Mô phỏng một quả” để bắt đầu.' : 'Kết quả sẽ xuất hiện khi phiên có dữ liệu.';
     $('ai-overlay-tag').hidden = !fruit;
     const confidence = fruit ? (fruit.confidence * 100).toFixed(1) : null;
     setText('overlay-label-badge', fruit ? fruit.label : '—');
@@ -250,10 +274,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
       card.setAttribute('aria-label', 'Xem quả ' + fruit.id + ', ' + (LABEL_NAMES[fruit.label] || 'Chưa phân loại'));
       card.setAttribute('aria-pressed', String(key === selected));
       const wrap = document.createElement('div'); wrap.className = 'strip-thumb-wrap';
-      const src = safeImage(fruit.image);
-      if (src && (state.mode === 'demo' || !fruit.image.startsWith('samples/'))) {
-        const image = document.createElement('img'); image.className = 'strip-thumb-img'; image.src = src; image.alt = ''; image.loading = 'lazy'; wrap.append(image);
-      } else { wrap.classList.add('strip-no-image'); wrap.textContent = 'Chưa có ảnh'; }
+      appendSnapshotImage(wrap, fruit, 'strip-thumb-img', '');
       const meta = document.createElement('div'); meta.className = 'strip-meta';
       const id = document.createElement('span'); id.className = 'strip-id'; id.textContent = fruit.id;
       const stamp = document.createElement('span'); stamp.className = 'strip-time'; stamp.textContent = time(fruit.timestamp);
@@ -303,9 +324,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
       values.forEach((value, index) => {
         const cell = document.createElement('td');
         if (index === 1) {
-          const src = safeImage(fruit.image);
-          if (src && (state.mode === 'demo' || !fruit.image.startsWith('samples/'))) { const image = document.createElement('img'); image.src = src; image.alt = 'Quả ' + fruit.id; image.className = 'table-thumb'; image.loading = 'lazy'; cell.append(image); }
-          else cell.textContent = '—';
+          appendSnapshotImage(cell, fruit, 'table-thumb', 'Quả ' + fruit.id);
         } else if (index === 2) cell.append(badge(fruit));
         else cell.textContent = value;
         row.append(cell);
@@ -400,6 +419,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     if (!$('login-dialog').open) $('login-dialog').showModal();
   }
   function clearLiveData() {
+    failedImageSources.clear();
     state.sessions = []; state.currentSession = null; state.selectedHistorySessionId = null;
     state.selectedFruitId = null; state.lastSync = null; state.health = null; state.cloudOnline = false;
   }
@@ -526,7 +546,15 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
       state.filter = button.dataset.filter;
       document.querySelectorAll('.segment-btn').forEach(item => { const active = item === button; item.classList.toggle('active', active); item.setAttribute('aria-pressed', String(active)); }); renderTable();
     }));
-    $('latest-fruit-img').addEventListener('error', () => { $('latest-fruit-img').hidden = true; $('camera-empty').hidden = false; $('camera-empty').querySelector('strong').textContent = 'Không tải được ảnh'; $('camera-empty').querySelector('span').textContent = 'Chọn một quả khác hoặc kiểm tra lại nguồn ảnh.'; });
+    $('latest-fruit-img').addEventListener('error', () => {
+      const image = $('latest-fruit-img');
+      const src = image.getAttribute('src');
+      if (!src) return;
+      failedImageSources.add(src); image.hidden = true; image.removeAttribute('src');
+      $('camera-empty').hidden = false;
+      $('camera-empty').querySelector('strong').textContent = 'Không tải được ảnh';
+      $('camera-empty').querySelector('span').textContent = 'Thông tin phân loại vẫn được giữ. Chọn một quả khác để xem ảnh.';
+    });
     loadDemo(); renderSource(); renderLive(); renderHistory();
     const bootRevision = state.revision;
     request('/api/auth/me').then(user => { if (bootRevision !== state.revision || state.user) return; updateIdentity(user); $('data-source').value = 'live'; changeMode(); }).catch(() => {});
