@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#17634f">
+  <title>Đăng nhập — AutoSort</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="login-page">
+  <header class="login-header">
+    <div class="login-logo brand" aria-label="AutoSort — Trạm phân loại">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40" fill="none"><path d="M20 12C20 6 25 3 31 5c-1 6-5 9-11 7Z" fill="#83b798"/><path d="M13 13c-7 2-9 14-3 20 5 5 17 4 21-3 4-8-1-18-8-17-4 1-6-1-10 0Z" fill="#efad57"/><path d="m12 24 5 5 11-12" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span>AutoSort<span class="brand-sub">Trạm phân loại</span></span>
+    </div>
+  </header>
+  <main class="login-layout">
+    <div class="login-scene" aria-hidden="true">
+      <div class="login-orbit login-orbit-outer"></div>
+      <div class="login-orbit login-orbit-inner"></div>
+      <span class="login-scene-line"></span>
+      <div class="login-scene-copy">
+        <p class="login-scene-title">Điều khiển<br>trạm phân loại.</p>
+        <p class="login-scene-description">Theo dõi vận hành và chất lượng<br>trên cùng một hệ thống.</p>
+      </div>
+    </div>
+    <section class="login-form-panel" aria-labelledby="login-heading">
+      <div class="login-card">
+        <h1 id="login-heading">Đăng nhập</h1>
+        <p class="login-intro">Chào mừng bạn quay lại với AutoSort.</p>
+        <form id="login-form" method="post">
+          <label for="login-username">Tên đăng nhập</label>
+          <input id="login-username" name="username" autocomplete="username" required maxlength="64" autofocus>
+          <label for="login-password">Mật khẩu</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="256">
+          <p id="login-error" class="form-error" role="alert" hidden></p>
+          <button id="login-submit" class="btn btn-action" type="submit">Đăng nhập</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="login.js"></script>
+</body>
+</html>

@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import sqlite3
 import sys
+import threading
 import time
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
@@ -23,6 +24,7 @@ LOG = logging.getLogger("autosort-bridge")
 LABELS = frozenset({"GREEN", "RIPE", "REJECT"})
 MAX_IMAGE_BYTES = 1_000_000
 MAX_RESPONSE_BYTES = 16_384
+CONTROLLER_MAX_JOB_SECONDS = 25.0  # Firmware 30s AI watchdog leaves margin for PC/Serial.
 TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
 
 
@@ -135,6 +137,7 @@ class PhoneCamera:
 class CloudAI:
     def __init__(self, settings, session):
         self.settings, self.session = settings, session
+        self.run_id = None
 
     def check_ready(self):
         """Wake the Free service before the controller starts waiting for a fruit."""
@@ -169,7 +172,8 @@ class CloudAI:
                 with self.session.post(
                     self.settings.cloud_url, data={"fruit_id": fruit_id, "camera_id": self.settings.camera_id},
                     files={"image": ("fruit.jpg", image, "image/jpeg")},
-                    headers={"X-API-Key": self.settings.api_key, "Idempotency-Key": request_id},
+                    headers={"X-API-Key": self.settings.api_key, "Idempotency-Key": request_id,
+                             **({"X-Run-Id": self.run_id} if self.run_id else {})},
                     timeout=min(self.settings.request_timeout, remaining), stream=True, allow_redirects=False,
                 ) as response:
                     if response.status_code == 200:
@@ -200,6 +204,7 @@ class CloudAI:
         valid_confidence = type(confidence) in {int, float} and 0 <= confidence <= 1 and math.isfinite(confidence)
         label, reason = result.get("label"), result.get("decision_reason")
         if (result.get("fruit_id") != fruit_id or result.get("camera_id") != self.settings.camera_id
+                or (self.run_id is not None and result.get("run_id") != self.run_id)
                 or result.get("request_id") != request_id or not isinstance(label, str) or label not in LABELS or not valid_confidence
                 or not isinstance(result.get("model_version"), str) or not result["model_version"]
                 or result["model_version"].lower().startswith("mock")
@@ -208,6 +213,74 @@ class CloudAI:
                 or (reason == "CLASSIFIED" and result.get("raw_label") != label)):
             raise BridgeError("Kết quả cloud sai mã quả, MOCK hoặc không hợp lệ; không dùng nhãn này để điều khiển.")
         return label
+
+
+class DeviceRun:
+    """One process run owns one cloud session; retries reuse its UUID."""
+    def __init__(self, settings, session, manual=False):
+        self.settings, self.session = settings, session
+        self.id = str(uuid4())
+        self.mode = "MANUAL_TEST" if manual else "CONVEYOR"
+        self.attempted = False
+        self.last_beat = 0.0
+        self._stop = threading.Event()
+        self._thread = None
+        self._heartbeat_error = False
+
+    def call(self, action, reason=None):
+        parts = urlsplit(self.settings.cloud_url)
+        prefix = parts.path.rsplit("/", 1)[0]
+        url = urlunsplit((parts.scheme, parts.netloc, prefix + f"/device/runs/{self.id}/{action}", "", ""))
+        payload = {"cameraId": self.settings.camera_id}
+        if action != "heartbeat": payload["mode"] = self.mode
+        if reason: payload["reason"] = reason
+        for attempt in range(2 if action != "heartbeat" else 1):
+            try:
+                with self.session.post(url, json=payload, headers={"X-API-Key": self.settings.api_key},
+                                       timeout=3, stream=True, allow_redirects=False) as response:
+                    if response.status_code == 200:
+                        result = response_json(response)
+                        if result.get("runId") != self.id or result.get("status") not in {"RUNNING", "COMPLETED"}:
+                            raise BridgeError("Phản hồi phiên tự động không hợp lệ.")
+                        if action != "stop" and result["status"] != "RUNNING":
+                            raise BridgeError("Lượt chạy đã kết thúc; không tự mở lại.")
+                        if action == "stop" and result["status"] != "COMPLETED":
+                            raise BridgeError("Cloud chưa xác nhận kết thúc lượt chạy.")
+                        self.last_beat = time.monotonic()
+                        return result
+                    if response.status_code not in TRANSIENT_STATUS:
+                        raise BridgeError("Không mở/cập nhật được phiên tự động. Cần API schema v4; nếu còn phiên cũ, đóng phiên đó trước.")
+            except requests.RequestException:
+                pass
+            if attempt == 0 and action != "heartbeat": time.sleep(.25)
+        raise BridgeError("Mất kết nối quản lý phiên tự động.")
+
+    def start(self):
+        self.attempted = True
+        return self.call("start")
+
+    def heartbeat(self):
+        if self._heartbeat_error:
+            raise BridgeError("Phiên thử ảnh đã mất kết nối cloud; khởi động lại bridge để tạo lượt mới.")
+        if self._thread is not None: return
+        if time.monotonic() - self.last_beat >= 10:
+            self.call("heartbeat")
+
+    def keep_manual_alive(self):
+        # input() blocks in --manual; use a dedicated run HTTP session, never the inference session.
+        def loop():
+            while not self._stop.wait(10):
+                try: self.call("heartbeat")
+                except BridgeError:
+                    self._heartbeat_error = True
+                    return
+        self._thread = threading.Thread(target=loop, daemon=True)
+        self._thread.start()
+
+    def stop(self, reason):
+        self._stop.set()
+        if self._thread is not None: self._thread.join(timeout=4)
+        if self.attempted: self.call("stop", reason)
 
 
 class EventJournal:
@@ -272,15 +345,50 @@ def process_trigger(trigger_id, settings, camera, cloud, journal, port=None):
     command = f"SORT:{label}\n".encode("ascii")
     if port is not None:
         # Failed/partial writes are ambiguous: never reconnect or resend automatically.
-        if port.write(command) != len(command):
-            raise serial.SerialException("Incomplete controller write")
-        port.flush()
+        controller_write(port, command)
     journal.finish(request_id, label)
     LOG.info("%s -> %s%s", fruit_id, label, " (kiểm tra thủ công, không gửi Serial)" if port is None else "")
     return label
 
 
-def main():
+def controller_write(port, command):
+    """A partial command is ambiguous; never reconnect or retry a motor command."""
+    port._autosort_uncertain_write = True
+    if port.write(command) != len(command):
+        raise serial.SerialException("Incomplete controller write")
+    port.flush()
+    port._autosort_uncertain_write = False
+
+
+def arm_controller(port, settings):
+    if settings.job_timeout > CONTROLLER_MAX_JOB_SECONDS:
+        raise BridgeError("JOB_TIMEOUT_SECONDS phải <=25 giây với firmware USB Serial (watchdog 30 giây).")
+    session_id = uuid4().hex
+    controller_write(port, f"BRIDGE:READY:{session_id}\n".encode("ascii"))
+    return session_id
+
+
+def wait_controller_started(port, session_id):
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        line = port.read_until(b"\n", 128)
+        if line == f"CONTROLLER:RUNNING:{session_id}\n".encode("ascii"): return
+        if line.startswith(b"FAULT:"): raise BridgeError("Firmware từ chối chạy. Kiểm tra trạm rồi reset ESP32.")
+    raise BridgeError("ESP32 chưa xác nhận chạy; cần firmware USB Serial mới.")
+
+
+def stop_controller(port):
+    if getattr(port, "_autosort_uncertain_write", False): return False
+    controller_write(port, b"BRIDGE:STOP\n")
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        line = port.read_until(b"\n", 128)
+        if line == b"FAULT:BRIDGE_STOP\n": return True
+        if line.startswith(b"FAULT:"): return False
+    return False
+
+
+def legacy_main():
     # Windows redirected output may default to cp1252; keep Vietnamese help/logs readable.
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
@@ -290,36 +398,58 @@ def main():
     args = parser.parse_args()
     load_dotenv(Path(__file__).with_name(".env"))
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    port = journal = None
+    port = journal = run = None
+    run_reason = "START_FAILED"
+    serial_failed = controller_fault = False
     try:
         settings = Settings.from_environment(manual=args.manual)
         with requests.Session() as phone_session, requests.Session() as cloud_session:
             camera, cloud = PhoneCamera(settings, phone_session), CloudAI(settings, cloud_session)
             cloud.check_ready()
             journal = EventJournal(settings.state_path)
+            run = DeviceRun(settings, requests.Session(), manual=args.manual)
+            run.start()
+            if args.manual: run.keep_manual_alive()
+            cloud.run_id = run.id
             if not args.manual:
                 port = serial.Serial(settings.serial_port, settings.baud_rate, timeout=1, write_timeout=2)
                 time.sleep(2)
+                session_id = arm_controller(port, settings)
+                wait_controller_started(port, session_id)
                 LOG.info("Đã kết nối ESP32 controller; chỉ nhận từng quả một.")
+            run_reason = "BRIDGE_ERROR"
+            last_ping = 0.0
             while True:
+                run.heartbeat()
                 if args.manual:
                     input("Nhấn Enter để chụp ảnh từ điện thoại (Ctrl+C để dừng): ")
+                    run.heartbeat()
                     trigger_id = None
                 else:
+                    if time.monotonic() - last_ping >= 1.0:
+                        controller_write(port, b"BRIDGE:PING\n")
+                        last_ping = time.monotonic()
                     raw = port.read_until(b"\n", 128)
                     if not raw:
                         continue
                     if not raw.endswith(b"\n"):
                         raise BridgeError("Serial trả dòng không hoàn chỉnh/quá dài. Dừng bridge để kiểm tra firmware.")
-                    trigger_id = parse_trigger(raw.decode("ascii", errors="replace").strip())
+                    line = raw.decode("ascii", errors="replace").strip()
+                    if line.startswith("FAULT:"):
+                        controller_fault = True
+                        raise BridgeError("Firmware đã khóa trạm. Kiểm tra phần cứng/quả đang dở, reset ESP32 rồi chạy lại bridge.")
+                    trigger_id = parse_trigger(line)
                     if trigger_id == "":
                         continue
                     if trigger_id is None:
                         LOG.warning("TRIGGER chưa có ID: không phân biệt được trigger lặp. Firmware nên gửi TRIGGER:<boot-id>:<counter>.")
                 process_trigger(trigger_id, settings, camera, cloud, journal, port)
     except (KeyboardInterrupt, EOFError):
+        run_reason = "NORMAL_STOP"
         LOG.info("Đã dừng bridge. Firmware phải có watchdog để xử lý lượt đang chờ.")
     except (serial.SerialException, OSError, sqlite3.Error):
+        serial_failed = True
+        run_reason = "SERIAL_ERROR"
         LOG.error("Lỗi Serial hoặc nhật ký cục bộ. Dừng bridge; không tự kết nối/gửi lại lệnh. Kiểm tra trạm trước khi chạy lại.")
         return 1
     except BridgeError as error:
@@ -327,10 +457,32 @@ def main():
         return 1
     finally:
         if port is not None:
+            if controller_fault:
+                run_reason = "CONTROLLER_FAULT"
+            elif not serial_failed:
+                try:
+                    if not stop_controller(port): run_reason = "STOP_UNCONFIRMED"
+                except (serial.SerialException, OSError): run_reason = "SERIAL_ERROR"
             port.close()
         if journal is not None:
             journal.close()
+        if run is not None:
+            try: run.stop(run_reason)
+            except BridgeError:
+                LOG.warning("Chưa xác nhận đóng phiên trên cloud; phiên sẽ hết hạn khi mất heartbeat (90 giây).")
+            finally: run.session.close()
     return 0
+
+
+def main():
+    if '--manual' in sys.argv: return legacy_main()
+    load_dotenv(Path(__file__).with_name('.env'))
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s %(message)s')
+    from web_control import web_main
+    try: return web_main(Settings.from_environment())
+    except BridgeError as error:
+        LOG.error('%s', error)
+        return 1
 
 
 if __name__ == "__main__":

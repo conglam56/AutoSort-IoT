@@ -1,11 +1,22 @@
 # Triển khai Java Spring Boot lên Render
 
+Bản sửa mới có [đăng nhập bắt buộc và điều khiển web](WEB_CONTROL.md), cần
+schema **v5**, bridge và firmware mới. Giữ `MIGRATE_DATABASE=true` khi deploy,
+kiểm tra `/health.web_control_supported=true`. Các mốc v3/v4 bên dưới là lịch
+sử. Kiểm tra các endpoint trên đúng dịch vụ sau khi triển khai.
+
 Backend mới dùng **Docker, Java 21 + Python ONNX worker nội bộ**. Dashboard và mọi
 API do Spring Boot phục vụ. PostgreSQL vẫn là database hiện có, không cần tạo lại
 tài khoản hay xóa dữ liệu. `render.yaml` mô tả một Web Service Docker Free mới,
 **không khai báo/tạo database mới**.
 
 ## Địa chỉ cloud đang sử dụng
+
+Thay đổi cục bộ mới có [phiên tự động theo bridge](AUTOMATIC_SESSIONS.md),
+cần migration schema **v4** và triển khai backend đồng bộ với bridge/firmware.
+Giữ `MIGRATE_DATABASE=true`; sau deploy kiểm tra
+`/health.automatic_sessions_supported=true`. Nội dung dưới đây ghi lại mốc
+cloud v3 đã triển khai trước đó, không xác nhận v4 đã live.
 
 Đã triển khai dịch vụ `AutoSort-IoT-Java` trên gói Free ngày 29/10/2026:
 

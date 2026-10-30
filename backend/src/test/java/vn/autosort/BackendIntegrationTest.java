@@ -29,6 +29,296 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 @EnabledIfEnvironmentVariable(named = "AUTOSORT_TEST_DATABASE_URL", matches = ".+")
 class BackendIntegrationTest {
+  @Autowired DeviceRunService runs;
+  @Autowired StationService station;
+
+  @Test
+  void expiredStartClosesItsUnacknowledgedRun() throws Exception {
+    UUID agent = UUID.randomUUID();
+    String base = "/device/station/" + agent;
+    stationPost(base + "/register", Map.of("cameraId", "phone"), 200);
+    var start = control("START", login("operator"), "unacknowledged-start");
+    stationPost(base + "/poll", Map.of(), 200);
+    UUID run = UUID.fromString(start.path("runId").asText());
+    runs.start(run, "phone", "CONVEYOR");
+    db.jdbc.update(
+        "UPDATE station_commands SET expires_at=clock_timestamp()-interval '1 second' WHERE id=?",
+        UUID.fromString(start.path("id").asText()));
+    station.sweep();
+    assertNull(sorting.current());
+    assertEquals("FAULT", ((Map<?, ?>) station.current()).get("state"));
+    assertEquals("COMPLETED", ((Map<?, ?>) runs.start(run, "phone", "CONVEYOR")).get("status"));
+  }
+
+  @Test
+  void stopPreemptsPendingStartAndPreventsDelayedStartup() throws Exception {
+    UUID agent = UUID.randomUUID();
+    String base = "/device/station/" + agent;
+    stationPost(base + "/register", Map.of("cameraId", "phone"), 200);
+    var user = login("operator");
+    var start = control("START", user, "preempt-start");
+    stationPost(base + "/poll", Map.of(), 200);
+    var stop = control("STOP", user, "preempt-stop");
+    assertEquals(start.path("runId"), stop.path("runId"));
+    stationPost(
+        base + "/ack/" + start.path("id").asText(),
+        Map.of("state", "RUNNING", "success", true),
+        409);
+    var pending = value(stationPost(base + "/poll", Map.of(), 200));
+    assertEquals(stop.path("id"), pending.path("command").path("id"));
+    stationPost(
+        base + "/ack/" + stop.path("id").asText(), Map.of("state", "IDLE", "success", true), 200);
+    var delayed =
+        (Map<?, ?>) runs.start(UUID.fromString(start.path("runId").asText()), "phone", "CONVEYOR");
+    assertEquals("COMPLETED", delayed.get("status"));
+    assertNull(sorting.current());
+  }
+
+  MvcResult stationPost(String path, Object body, int expected) throws Exception {
+    return mvc.perform(
+            post(path)
+                .header("X-API-Key", KEY)
+                .contentType("application/json")
+                .content(json.writeValueAsString(body)))
+        .andExpect(status().is(expected))
+        .andReturn();
+  }
+
+  JsonNode control(String action, Session user, String key) throws Exception {
+    long revision = ((Number) ((Map<?, ?>) station.current()).get("revision")).longValue();
+    return value(
+        mvc.perform(
+                post("/api/station/commands")
+                    .cookie(user.cookie)
+                    .header("Origin", ORIGIN)
+                    .header("X-CSRF-Token", user.csrf)
+                    .header("Idempotency-Key", key)
+                    .contentType("application/json")
+                    .content(
+                        json.writeValueAsString(Map.of("action", action, "revision", revision))))
+            .andExpect(status().isOk())
+            .andReturn());
+  }
+
+  @Test
+  void dashboardRequiresLoginAndStationCommandsRequireRoleCsrfAndDeviceKey() throws Exception {
+    mvc.perform(get("/dashboard/index.html"))
+        .andExpect(status().is3xxRedirection())
+        .andExpect(redirectedUrl("/dashboard/login.html"));
+    mvc.perform(get("/dashboard/login.html")).andExpect(status().isOk());
+    mvc.perform(post("/api/station/commands").contentType("application/json").content("{}"))
+        .andExpect(status().isUnauthorized());
+    UUID agent = UUID.randomUUID();
+    mvc.perform(
+            post("/device/station/" + agent + "/register")
+                .contentType("application/json")
+                .content("{\"cameraId\":\"phone\"}"))
+        .andExpect(status().isUnauthorized());
+    var user = login("operator");
+    mvc.perform(get("/dashboard/index.html").cookie(user.cookie)).andExpect(status().isOk());
+    mvc.perform(
+            post("/api/station/commands")
+                .cookie(user.cookie)
+                .header("Idempotency-Key", "x")
+                .contentType("application/json")
+                .content("{\"action\":\"START\",\"revision\":0}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void webStartPauseResumeStopWaitForAckAndKeepSessionDuringPause() throws Exception {
+    UUID agent = UUID.randomUUID();
+    String base = "/device/station/" + agent;
+    stationPost(base + "/register", Map.of("cameraId", "phone"), 200);
+    var user = login("operator");
+    var start = control("START", user, "web-start");
+    assertEquals("IDLE", ((Map<?, ?>) station.current()).get("state"));
+    var delivered = value(stationPost(base + "/poll", Map.of(), 200)).path("command");
+    assertEquals(start.path("id"), delivered.path("id"));
+    UUID run = UUID.fromString(start.path("runId").asText());
+    runs.start(run, "phone", "CONVEYOR");
+    stationPost(
+        base + "/ack/" + start.path("id").asText(),
+        Map.of("state", "RUNNING", "success", true),
+        200);
+    var session = sorting.current().get("id");
+    var pause = control("PAUSE", user, "web-pause");
+    stationPost(base + "/poll", Map.of(), 200);
+    stationPost(
+        base + "/ack/" + pause.path("id").asText(),
+        Map.of("state", "PAUSED", "success", true),
+        200);
+    assertEquals("PAUSED", ((Map<?, ?>) station.current()).get("state"));
+    assertEquals(session, sorting.current().get("id"));
+    var resume = control("RESUME", user, "web-resume");
+    stationPost(base + "/poll", Map.of(), 200);
+    stationPost(
+        base + "/ack/" + resume.path("id").asText(),
+        Map.of("state", "RUNNING", "success", true),
+        200);
+    var stop = control("STOP", user, "web-stop");
+    stationPost(base + "/poll", Map.of(), 200);
+    assertNotNull(sorting.current());
+    stationPost(
+        base + "/ack/" + stop.path("id").asText(), Map.of("state", "IDLE", "success", true), 200);
+    assertNull(sorting.current());
+    assertEquals("IDLE", ((Map<?, ?>) station.current()).get("state"));
+    // Replayed old ACK cannot resurrect an already stopped run.
+    stationPost(
+        base + "/ack/" + start.path("id").asText(),
+        Map.of("state", "RUNNING", "success", true),
+        200);
+    assertEquals("IDLE", ((Map<?, ?>) station.current()).get("state"));
+    var second = control("START", user, "web-second");
+    assertNotEquals(start.path("runId"), second.path("runId"));
+  }
+
+  @Test
+  void staleCommandsAndOldBridgeCannotControlReconnectedStation() throws Exception {
+    UUID agent = UUID.randomUUID();
+    String base = "/device/station/" + agent;
+    stationPost(base + "/register", Map.of("cameraId", "phone"), 200);
+    UUID other = UUID.randomUUID();
+    stationPost("/device/station/" + other + "/register", Map.of("cameraId", "phone"), 409);
+    var cmd = control("START", login("admin"), "expire-control");
+    db.jdbc.update(
+        "UPDATE station_commands SET expires_at=clock_timestamp()-interval '1 second' WHERE id=?",
+        UUID.fromString(cmd.path("id").asText()));
+    var poll = value(stationPost(base + "/poll", Map.of(), 200));
+    assertTrue(poll.path("command").isNull());
+    db.jdbc.update(
+        "UPDATE station_state SET last_seen=clock_timestamp()-interval '20 seconds' WHERE id=1");
+    station.sweep();
+    stationPost(base + "/poll", Map.of(), 409);
+    stationPost("/device/station/" + other + "/register", Map.of("cameraId", "phone"), 200);
+    stationPost(
+        base + "/ack/" + cmd.path("id").asText(), Map.of("state", "RUNNING", "success", true), 409);
+  }
+
+  MvcResult device(UUID id, String action, Map<String, Object> body, int expected)
+      throws Exception {
+    return mvc.perform(
+            post("/device/runs/" + id + "/" + action)
+                .header("X-API-Key", KEY)
+                .contentType("application/json")
+                .content(json.writeValueAsString(body)))
+        .andExpect(status().is(expected))
+        .andReturn();
+  }
+
+  @Test
+  void deviceRunLifecycleIsAuthenticatedIdempotentAndIndependentOfBrowser() throws Exception {
+    UUID id = UUID.randomUUID();
+    var body = Map.<String, Object>of("cameraId", "phone", "mode", "CONVEYOR");
+    mvc.perform(
+            post("/device/runs/" + id + "/start")
+                .contentType("application/json")
+                .content(json.writeValueAsString(body)))
+        .andExpect(status().isUnauthorized());
+    var first = value(device(id, "start", body, 200));
+    assertEquals(first, value(device(id, "start", body, 200)));
+    assertEquals("RUNNING", first.path("status").asText());
+    assertEquals(true, sorting.current().get("automatic"));
+    var operator = login("operator");
+    write("/api/sessions/" + first.path("sessionId").asText() + "/end", Map.of(), operator, 409);
+    device(UUID.randomUUID(), "start", body, 409);
+    device(id, "heartbeat", Map.of("cameraId", "phone"), 200);
+    device(id, "heartbeat", Map.of("cameraId", "wrong-camera"), 409);
+    var stop =
+        Map.<String, Object>of("cameraId", "phone", "mode", "CONVEYOR", "reason", "NORMAL_STOP");
+    var closed = value(device(id, "stop", stop, 200));
+    assertEquals(closed, value(device(id, "stop", stop, 200)));
+    assertEquals("COMPLETED", value(device(id, "start", body, 200)).path("status").asText());
+    assertNull(sorting.current());
+    device(id, "heartbeat", Map.of("cameraId", "phone"), 409);
+    device(UUID.randomUUID(), "start", body, 200);
+  }
+
+  @Test
+  void lateStartCannotReopenStoppedRunAndMissingHeartbeatClosesOnlyAutomaticSession()
+      throws Exception {
+    UUID id = UUID.randomUUID();
+    var body = Map.<String, Object>of("cameraId", "phone", "mode", "CONVEYOR");
+    device(
+        id, "stop", Map.of("cameraId", "phone", "mode", "CONVEYOR", "reason", "START_FAILED"), 200);
+    var stopped = value(device(id, "start", body, 200));
+    assertEquals("COMPLETED", stopped.path("status").asText());
+    assertNull(sorting.current());
+    UUID next = UUID.randomUUID();
+    var started = value(device(next, "start", body, 200));
+    db.jdbc.update(
+        "UPDATE device_runs SET last_seen=clock_timestamp()-interval '100 seconds' WHERE run_id=?",
+        next);
+    runs.expire();
+    assertNull(sorting.current());
+    var row =
+        db.one(
+            "SELECT * FROM sorting_sessions WHERE id=?",
+            UUID.fromString(started.path("sessionId").asText()));
+    assertEquals("COMPLETED", row.get("status"));
+    assertEquals("CONNECTION_LOST", row.get("end_reason"));
+    write("/api/sessions/new", Map.of(), login("operator"), 200);
+    runs.expire();
+    assertNotNull(sorting.current()); // Legacy manual sessions are never expired by a device lease.
+  }
+
+  @Test
+  void automaticInferenceCannotCrossRunBoundaryButStoredReceiptReplays() throws Exception {
+    UUID id = UUID.randomUUID();
+    device(id, "start", Map.of("cameraId", "phone", "mode", "CONVEYOR"), 200);
+    infer("missing-run", "F-1", "phone", sample(), 409);
+    var bytes = sample();
+    var result =
+        mvc.perform(
+                multipart("/infer")
+                    .file(new MockMultipartFile("image", "fruit.jpg", "image/jpeg", bytes))
+                    .param("fruit_id", "F-run")
+                    .param("camera_id", "phone")
+                    .header("X-API-Key", KEY)
+                    .header("Idempotency-Key", "run-fruit")
+                    .header("X-Run-Id", id))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertEquals(id.toString(), value(result).path("run_id").asText());
+    device(
+        id, "stop", Map.of("cameraId", "phone", "mode", "CONVEYOR", "reason", "NORMAL_STOP"), 200);
+    device(UUID.randomUUID(), "start", Map.of("cameraId", "phone", "mode", "CONVEYOR"), 200);
+    mvc.perform(
+            multipart("/infer")
+                .file(new MockMultipartFile("image", "fruit.jpg", "image/jpeg", bytes))
+                .param("fruit_id", "F-new")
+                .param("camera_id", "phone")
+                .header("X-API-Key", KEY)
+                .header("X-Run-Id", id))
+        .andExpect(status().isConflict());
+    var replay =
+        mvc.perform(
+                multipart("/infer")
+                    .file(new MockMultipartFile("image", "fruit.jpg", "image/jpeg", bytes))
+                    .param("fruit_id", "F-run")
+                    .param("camera_id", "phone")
+                    .header("X-API-Key", KEY)
+                    .header("Idempotency-Key", "run-fruit")
+                    .header("X-Run-Id", id))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertEquals(value(result), value(replay));
+    assertTrue(sorting.current().get("fruits") instanceof List<?> list && list.isEmpty());
+  }
+
+  @Test
+  void concurrentAutomaticStartsProduceOneSession() throws Exception {
+    UUID id = UUID.randomUUID();
+    try (var pool = Executors.newFixedThreadPool(4)) {
+      var tasks = new ArrayList<Callable<Object>>();
+      for (int i = 0; i < 4; ++i) tasks.add(() -> runs.start(id, "phone", "CONVEYOR"));
+      var answers = pool.invokeAll(tasks);
+      for (var answer : answers) assertEquals(answers.getFirst().get(), answer.get());
+    }
+    assertEquals(
+        1, ((Number) db.one("SELECT count(*) AS n FROM sorting_sessions").get("n")).intValue());
+  }
+
   @Test
   void inferenceAndEndSerializeWithoutWritingAfterCompletion() throws Exception {
     var operator = login("operator");
@@ -295,16 +585,27 @@ class BackendIntegrationTest {
 
   @BeforeEach
   void reset() {
-    db.jdbc.execute(
-        "TRUNCATE app_users,auth_sessions,sorting_sessions,fruit_results,audit_logs,login_limits"
-            + " RESTART IDENTITY CASCADE");
-    for (String role : List.of("admin", "operator"))
-      db.jdbc.update(
-          "INSERT INTO app_users(id,username,password_hash,role) VALUES (?,?,?,?)",
-          UUID.randomUUID(),
-          role,
-          passwords.encode(PASSWORD),
-          role);
+    db.transaction(
+        () -> {
+          db.stationLock();
+          db.sortingLock();
+          db.jdbc.execute(
+              "TRUNCATE"
+                  + " app_users,auth_sessions,sorting_sessions,fruit_results,audit_logs,login_limits"
+                  + " RESTART IDENTITY CASCADE");
+          db.jdbc.update(
+              "UPDATE station_state SET"
+                  + " agent_id=NULL,camera_id=NULL,last_seen=NULL,reported='OFFLINE',run_id=NULL,revision=0"
+                  + " WHERE id=1");
+          for (String role : List.of("admin", "operator"))
+            db.jdbc.update(
+                "INSERT INTO app_users(id,username,password_hash,role) VALUES (?,?,?,?)",
+                UUID.randomUUID(),
+                role,
+                passwords.encode(PASSWORD),
+                role);
+          return null;
+        });
   }
 
   record Session(Cookie cookie, String csrf, String id) {}
@@ -369,7 +670,7 @@ class BackendIntegrationTest {
 
   @Test
   void servesDashboardModulesAndHealth() throws Exception {
-    mvc.perform(get("/dashboard/index.html"))
+    mvc.perform(get("/dashboard/index.html").cookie(login("operator").cookie))
         .andExpect(status().isOk())
         .andExpect(content().string(org.hamcrest.Matchers.containsString("tab-admin-btn")));
     mvc.perform(get("/dashboard/admin.js")).andExpect(status().isOk());

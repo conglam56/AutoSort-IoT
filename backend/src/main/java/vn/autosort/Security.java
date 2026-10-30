@@ -54,7 +54,8 @@ public class Security {
     c.setAllowedOrigins(settings.origins);
     c.setAllowCredentials(true);
     c.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
-    c.setAllowedHeaders(List.of("Content-Type", "X-CSRF-Token", "X-API-Key", "Idempotency-Key"));
+    c.setAllowedHeaders(
+        List.of("Content-Type", "X-CSRF-Token", "X-API-Key", "Idempotency-Key", "X-Run-Id"));
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", c);
     return source;
@@ -87,10 +88,21 @@ public class Security {
       response.setHeader("X-Content-Type-Options", "nosniff");
       response.setHeader("Referrer-Policy", "same-origin");
       response.setHeader("X-Frame-Options", "DENY");
-      if (path.startsWith("/api/") || path.equals("/infer"))
-        response.setHeader("Cache-Control", "no-store");
+      if (path.startsWith("/api/")
+          || path.equals("/infer")
+          || path.startsWith("/device/")
+          || path.startsWith("/dashboard")) response.setHeader("Cache-Control", "no-store");
       try {
-        if (path.equals("/infer") && !request.getMethod().equals("OPTIONS")) {
+        if (path.equals("/dashboard/index.html") || path.equals("/dashboard/")) {
+          try {
+            auth.current(request);
+          } catch (ApiError e) {
+            response.sendRedirect("/dashboard/login.html");
+            return;
+          }
+        }
+        if ((path.equals("/infer") || path.startsWith("/device/"))
+            && !request.getMethod().equals("OPTIONS")) {
           if (!AuthService.equal(request.getHeader("X-API-Key"), settings.deviceKey))
             throw new ApiError(401, "Invalid device API key");
         } else if (path.startsWith("/api/")

@@ -1,5 +1,12 @@
 # AutoSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
 
+Luồng vận hành: **đăng nhập trước khi vào dashboard**, không còn demo công
+khai. Chạy bridge để kết nối trạm rồi điều khiển bằng **Bắt đầu / Tạm dừng /
+Tiếp tục / Kết thúc** trên web. Bắt đầu mở phiên, Tạm dừng giữ phiên, Kết thúc
+đóng phiên sau xác nhận firmware. Xem [WEB_CONTROL.md](docs/WEB_CONTROL.md).
+Cần backend schema v5 và cập nhật bridge/firmware đồng bộ;
+xem [hướng dẫn triển khai](docs/RENDER_DEPLOY.md) để kiểm tra bản đang chạy.
+
 Backend HTTP dùng **Java 21 / Spring Boot**, PostgreSQL và Spring Security.
 AI ONNX chạy bằng Python worker nội bộ. Phần cứng và model cần được kiểm thử
 bằng camera tại trạm trước khi kết luận toàn bộ hệ thống hoạt động thực tế.
@@ -21,7 +28,7 @@ Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đún
 | `cloud-ai/` | AI | Python ONNX worker nội bộ; trả `MOCK` khi chưa cài model hợp lệ vào `cloud-ai/model/` |
 | `training/` | A — AI & Cloud | Notebook Colab, kiểm tra dataset, train YOLO11, export ONNX và kiểm tra parity |
 | `tests/` | Cả nhóm | Kiểm thử confidence, xử lý ảnh, chuyển dữ liệu và đóng gói |
-| `esp32-controller/` | B — IoT | Chờ tích hợp firmware chính thức do thành viên phần cứng quản lý |
+| `esp32-controller/` | B — IoT | Firmware USB Serial đã ghép giao thức bridge; cần nạp và hiệu chỉnh trên băng tải thực |
 | `camera-bridge/` | B — IoT | Python lấy ảnh từ điện thoại và gọi Cloud Spring Boot |
 | `dashboard/` | C — Web | Đã hoàn thiện giao diện giám sát thời gian thực, quản lý phiên và xuất CSV |
 | `hardware/` | B — IoT | Chờ tài liệu phần cứng chính thức từ thành viên phụ trách |
@@ -32,6 +39,13 @@ cảm biến và điều khiển motor/servo. Thư mục giữ chỗ `esp32-came
 Bridge có cấu hình `.env`, kiểm tra model thật, retry HTTP có chống ghi trùng và
 nhật ký trigger để tránh gửi lại lệnh. Xem [hướng dẫn camera điện thoại và giao thức
 bàn giao firmware](camera-bridge/README.md).
+Firmware từ bộ bàn giao phần cứng đã được chuyển sang USB Serial tại
+[`esp32-controller/AutoSortSerial`](esp32-controller/README.md), có CONTROL/ACK,
+heartbeat và watchdog AI. Mỗi lượt chỉ xử lý một quả, chưa xác nhận vận hành
+thực trên cơ khí của nhóm.
+Phiên dữ liệu [tạo khi Bắt đầu trên web, đóng sau Kết thúc](docs/WEB_CONTROL.md);
+Tạm dừng/Tiếp tục giữ nguyên phiên. Tính năng cần backend schema v5, bridge và firmware
+được cập nhật đồng bộ; kiểm tra `/health.web_control_supported=true` trước khi vận hành.
 
 ## Bắt đầu ngay (Người A)
 

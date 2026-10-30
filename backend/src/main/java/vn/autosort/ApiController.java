@@ -50,6 +50,8 @@ public class ApiController {
             "spring-boot",
             "idempotency_supported",
             true);
+    result.put("automatic_sessions_supported", true);
+    result.put("web_control_supported", true);
     result.putAll(engine.health());
     return result;
   }
@@ -105,7 +107,8 @@ public class ApiController {
       @RequestPart MultipartFile image,
       @RequestHeader(value = "Idempotency-Key", required = false)
           @Pattern(regexp = "[A-Za-z0-9_.:-]{1,128}")
-          String key)
+          String key,
+      @RequestHeader(value = "X-Run-Id", required = false) UUID runId)
       throws java.io.IOException {
     if (!Set.of("image/jpeg", "image/jpg").contains(Objects.toString(image.getContentType(), "")))
       throw new ApiError(415, "Only image/jpeg is supported");
@@ -116,6 +119,6 @@ public class ApiController {
     if (bytes.length < 2 || bytes[0] != (byte) 0xff || bytes[1] != (byte) 0xd8)
       throw new ApiError(400, "Invalid JPEG data");
     return sorting.infer(
-        key, fruit_id, camera_id, bytes, () -> engine.classify(fruit_id, camera_id, bytes));
+        key, fruit_id, camera_id, bytes, runId, () -> engine.classify(fruit_id, camera_id, bytes));
   }
 }
