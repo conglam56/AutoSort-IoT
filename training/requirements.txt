@@ -1,4 +1,4 @@
-ultralytics>=8.3.0
+ultralytics>=8.4.191
 onnx>=1.16.0
 onnxruntime>=1.18.0
 torch

@@ -32,6 +32,7 @@ class Engine:
         self.idx_to_class = dict(enumerate(self.classes_list))
         self.task = 'classify'
         self.detection_policy = {}
+        self.fruit_localizer = None
         directory = Path(model_dir or os.getenv("AI_MODEL_DIR", Path(__file__).with_name("model")))
         if not (directory / "best.onnx").is_file():
             return
@@ -68,6 +69,11 @@ class Engine:
             if self.task == 'detect' and (len(outputs) != 1 or outputs[0].type != 'tensor(float)' or len(outputs[0].shape) != 3 or outputs[0].shape[:2] != [1, 7]):
                 raise ValueError('Expected a three-class YOLO11 detection output')
             self.input_name = inputs[0].name
+            if 'localizer' in meta:
+                if self.task != 'detect' or self.detection_policy['decision_policy'] != 'highest_confidence':
+                    raise ValueError('Fruit localization requires highest-confidence detection')
+                from localization import FruitLocalizer
+                self.fruit_localizer = FruitLocalizer(directory, meta['localizer'])
             self.model_ready = True
         except Exception as error:
             self.ort_session = None
@@ -105,6 +111,9 @@ class Engine:
                 policy = self.detection_policy
                 candidates = detection_candidates(output, self.classes_list, geometry,
                                                   policy['candidate_threshold'], policy['nms_iou'])
+                if self.fruit_localizer is not None:
+                    from localization import recover_full_frame_candidates
+                    candidates, _ = recover_full_frame_candidates(content, self.fruit_localizer, self, candidates)
                 decision = decide_detection(candidates, self.confidence_threshold, policy['roi'],
                                             policy['target_iou'], policy['class_margin'], policy['decision_policy'])
                 return {**result, **decision, 'model_version': self.model_version,

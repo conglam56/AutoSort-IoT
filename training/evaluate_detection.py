@@ -1,6 +1,7 @@
 """Evaluate production ONNX decisions on a fixed prepared split, without tuning."""
 import argparse
 from collections import Counter, defaultdict
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -54,6 +55,8 @@ def main():
     for path in sorted((Path(__file__).resolve().parents[1] / 'cloud-ai').glob('*.jpg')):
         smoke.append({'file': path.name, 'result': engine.classify('smoke-only', 'evaluation-only', path.read_bytes())})
     report = {'model': engine.health(), 'split': args.split, 'total_images': len(rows),
+              'dataset_manifest_sha256': hashlib.sha256((root/'manifest.json').read_bytes()).hexdigest(),
+              'dataset_counts': manifest['counts'],
               'single_annotated_fruit_images': scored, 'excluded_multi_fruit_images': excluded,
               'final_label_confusion': {k: dict(v) for k, v in matrix.items()},
               'classified_decisions': classified, 'correct_classified_decisions': correct_classified,
@@ -64,7 +67,7 @@ def main():
                               'Single annotated fruit does not guarantee no unannotated fruit appears in the image.',
                               'Fallback REJECT is not evidence that the model detected a defect.',
                               'This fixed split was not used to tune threshold or ROI.',
-                              'No physical hardware or station-phone validation was performed.']}
+                              'No physical hardware or station-phone validation was performed.'] + manifest.get('limitations', [])}
     args.output.write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps({k: v for k, v in report.items() if k not in {'images', 'samples'}}, indent=2))
 

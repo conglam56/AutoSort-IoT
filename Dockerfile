@@ -13,7 +13,7 @@ RUN python3 -m venv /opt/ai && /opt/ai/bin/pip install --no-cache-dir -r /tmp/ai
 RUN useradd --system --uid 10001 --create-home autosort
 WORKDIR /app
 COPY --from=build --chown=autosort:autosort /src/backend/target/autosort-backend-1.0.0.jar app.jar
-COPY --chown=autosort:autosort cloud-ai/worker.py cloud-ai/inference.py cloud-ai/detection.py cloud-ai/
+COPY --chown=autosort:autosort cloud-ai/worker.py cloud-ai/inference.py cloud-ai/detection.py cloud-ai/localization.py cloud-ai/
 # Directory exists even before the team supplies a model.
 COPY --chown=autosort:autosort cloud-ai/model/ cloud-ai/model/
 ENV PYTHON_BIN=/opt/ai/bin/python AI_WORKER_PATH=/app/cloud-ai/worker.py AI_MODEL_DIR=/app/cloud-ai/model PYTHONDONTWRITEBYTECODE=1

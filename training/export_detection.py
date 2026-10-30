@@ -20,6 +20,7 @@ def main():
     args = parser.parse_args()
     if args.destination.exists():
         raise ValueError('Export destination exists; existing artifacts preserved')
+    os.environ.setdefault('YOLO_CONFIG_DIR', str(args.destination.resolve().parent/'settings-export'))
     os.environ['YOLO_AUTOINSTALL'] = 'false'
     os.environ['ULTRALYTICS_SAFE_LOAD'] = 'true'
     import cv2

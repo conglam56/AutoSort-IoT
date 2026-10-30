@@ -7,7 +7,8 @@ một detector ba lớp với ID cố định: GREEN=0, RIPE=1, REJECT=2.
 Khi hợp nhất nhãn train, quả có lỗi ngoại quan được gán REJECT dù còn xanh
 hay đã chín. Chính sách suy luận hiện tại theo yêu cầu mới là
 [policy3](AI_DETECTION_POLICY3.md): chọn nhãn có điểm cao nhất, không cưỡng
-chế ưu tiên REJECT. Nhãn ground truth và trọng số huấn luyện được giữ nguyên.
+chế ưu tiên REJECT. Bản v1 đang phục vụ được giữ nguyên. Ứng viên v2 có
+rà nhãn và bổ sung ảnh riêng được mô tả trong [AI_MODEL_V2.md](AI_MODEL_V2.md).
 
 ## Chuẩn bị dữ liệu
 

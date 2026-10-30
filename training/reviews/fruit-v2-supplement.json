@@ -1,0 +1,2224 @@
+{
+  "format_version": 1,
+  "review_date": "2026-10-30",
+  "archive_sha256": "03d43104a0c6eda6681c23415bec8fe404ff6c919d44de35b247bb9b72105251",
+  "source": {
+    "title": "Orange Fruit Image Dataset for Classification",
+    "authors": [
+      "Ashif Shuvo",
+      "Most.Subrina Afrin Monika",
+      "Wahada Jinnat Oishy Bhuian"
+    ],
+    "version": 2,
+    "doi": "10.17632/zk4hzhtcdd.2",
+    "url": "https://data.mendeley.com/datasets/zk4hzhtcdd/2",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "download_url": "https://data.mendeley.com/public-files/datasets/zk4hzhtcdd/files/a24abb41-22e7-4df2-b910-6dcf31bac35f/file_downloaded"
+  },
+  "split": "train",
+  "selection": "Seed 20261030; shuffle sorted archive members, first 80 fresh and 80 rotten; manually exclude doubtful labels/localizations. No predictions used as ground-truth classes.",
+  "limitations": [
+    "Supplemental oranges differ from target kumquats.",
+    "224px images do not gain true detail when upscaled.",
+    "Many images are near-duplicates or augmented versions of a few physical fruits. All supplemental images stay in one training-only group.",
+    "Provisional visual review has not been independently adjudicated.",
+    "No supplemental image or augmentation may be used for evaluation."
+  ],
+  "accepted": [
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0730.jpg",
+      "sha256": "1793a4fe2cb70b03d0356baf53e7111ffb9d7768a28747c4f6f4cb49055920eb",
+      "class": 1,
+      "box": [
+        0.48255007714033127,
+        0.5263404846191406,
+        0.7326357513666153,
+        0.8918972015380859
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1075.jpg",
+      "sha256": "945a32a7bb9af9036bd1dadde302c5321d43804023f43ae1ce283903bfa09e00",
+      "class": 1,
+      "box": [
+        0.5568748787045479,
+        0.500483188778162,
+        0.7700953334569931,
+        0.8929442688822746
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1167.jpg",
+      "sha256": "fc76f22c505d6e9671f920d2759c0e04ddfdadeb5f34f88dcc2cee18cbfcf8a2",
+      "class": 1,
+      "box": [
+        0.5256213322281837,
+        0.474475622177124,
+        0.7619871348142624,
+        0.8718152046203613
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0979.jpg",
+      "sha256": "ecec6b32224db2691457d97d9bcc30f8f0207e7c1a3b666d0cb059fcd30849e6",
+      "class": 1,
+      "box": [
+        0.4903456084430218,
+        0.4714550841599703,
+        0.7954153791069984,
+        0.8704488538205624
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1678.jpg",
+      "sha256": "d451a6631c41f3202b6f3757895b05447b3a3e6607ef509ae394f0c062c7e4b7",
+      "class": 1,
+      "box": [
+        0.5468139126896858,
+        0.46771850623190403,
+        0.795714721083641,
+        0.8712846748530865
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1173.jpg",
+      "sha256": "a7d9f603ecd08de27aedde0ca6ecba8eb3ae6243856f86243237483b7b7a4000",
+      "class": 1,
+      "box": [
+        0.47497761994600296,
+        0.5190355125814676,
+        0.713003620505333,
+        0.9281442277133465
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1151.jpg",
+      "sha256": "56df093fd0e0c19974b44503fbd876b6f3fefb866914270d49206a9b1d7c3dc5",
+      "class": 1,
+      "box": [
+        0.5411063060164452,
+        0.4598458828404546,
+        0.8017822057008743,
+        0.8813332673162222
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0302.jpg",
+      "sha256": "dfbb6bd9b47fea1bc7e8baf40fa0fdb76277d75a1ab84ddab311631a2dac75bd",
+      "class": 1,
+      "box": [
+        0.46721723675727844,
+        0.4472676273435354,
+        0.9242787957191467,
+        0.8277147300541401
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1138.jpg",
+      "sha256": "bd3e4f1fd5e72d0f12403f82bc1170441335fb6085ed3126fb59266e4331f4d7",
+      "class": 1,
+      "box": [
+        0.5090615302324295,
+        0.48266001231968403,
+        0.7548029124736786,
+        0.8484899662435055
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2892.jpg",
+      "sha256": "ffa651db612c6b3bfc3ae9a2453d7f6b6f5a6069f28886c5d6e30d5cd798ef84",
+      "class": 1,
+      "box": [
+        0.562300443649292,
+        0.5971704944968224,
+        0.7449822425842285,
+        0.8056590110063553
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1489.jpg",
+      "sha256": "52fefeb14ae375e6800496f44d2f115be910268177759255f1635fa97a89a3b0",
+      "class": 1,
+      "box": [
+        0.5260271802544594,
+        0.5253923404961824,
+        0.8201429098844528,
+        0.941667940467596
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1323.jpg",
+      "sha256": "ef3693ff9c6952c7aa7bdd08c54a3c0e4ea170cb289c5204c8bcd3eeaf97c43c",
+      "class": 1,
+      "box": [
+        0.48193176463246346,
+        0.5151164121925831,
+        0.7451924905180931,
+        0.8176633939146996
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0560.jpg",
+      "sha256": "742b7160480690ace723455a47bdb9d84d3e69d4793fbce90ad99931540323c8",
+      "class": 1,
+      "box": [
+        0.5219608023762703,
+        0.5288887545466423,
+        0.7782153934240341,
+        0.8597026020288467
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1150.jpg",
+      "sha256": "a2989f1e6296d0bf2b6084eff73b8976fc2d52cae32fdd007db5ff77aaf06fec",
+      "class": 1,
+      "box": [
+        0.44090815633535385,
+        0.432174283254426,
+        0.7142527848482132,
+        0.861940348171629
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1474.jpg",
+      "sha256": "79e81c6910fdd0b4f8a3494c5e56887782edde831ff940e0a5aaafce68cee5b2",
+      "class": 1,
+      "box": [
+        0.4762420766055584,
+        0.48703997768461704,
+        0.7832622304558754,
+        0.8755934350192547
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1827.jpg",
+      "sha256": "05b4b8ad4e8a16fa1acaecd2888d8f4ec41cc05879f395b70bff4842ccd90e83",
+      "class": 1,
+      "box": [
+        0.46735087037086487,
+        0.460539442487061,
+        0.8007543683052063,
+        0.8883041497319937
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1020.jpg",
+      "sha256": "5c4c93c3a05c98b09043f2b05a9ecebafe8e35deeb7861ac2fe364469e5fd0c5",
+      "class": 1,
+      "box": [
+        0.4691885933279991,
+        0.5039179436862469,
+        0.7533781081438065,
+        0.8890225663781166
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0583.jpg",
+      "sha256": "07334e35d450c4899bf61ed6fe11c1ea1493ae3dde6e4624e28ae95ff542b427",
+      "class": 1,
+      "box": [
+        0.4978986717760563,
+        0.47858932614326477,
+        0.7616403624415398,
+        0.8482614159584045
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1085.jpg",
+      "sha256": "781df470b0817366f38bdf98238b940a3cdd5566de0ebdb9ac3e08483a5f8c99",
+      "class": 1,
+      "box": [
+        0.5203983038663864,
+        0.505255376920104,
+        0.777149111032486,
+        0.9234914071857929
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0975.jpg",
+      "sha256": "794512e91373733d6dc0d4c038e8313a14c84e7d683938ad4f7c98466e546361",
+      "class": 1,
+      "box": [
+        0.4650304727256298,
+        0.5385501720011234,
+        0.7352404966950417,
+        0.8904792591929436
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2790.jpg",
+      "sha256": "13b290fd8f2afd68a4db7d412091e0ffdfee6d84774f8afc869dfbed9afeb458",
+      "class": 1,
+      "box": [
+        0.5158982872962952,
+        0.4519215881591663,
+        0.9617987871170044,
+        0.9009598374832422
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2754.jpg",
+      "sha256": "bb5cb0b3796795ef9f7cafce5652e76c8f1a7b93d1d9f0fd57f48578831221c4",
+      "class": 1,
+      "box": [
+        0.4440645040012896,
+        0.5317021496593952,
+        0.8717864630743861,
+        0.8518266901373863
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0584.jpg",
+      "sha256": "7cfe570deeead6253ef44b81fac8cf84299e31a60734f6a229800ce5948e6d26",
+      "class": 1,
+      "box": [
+        0.4831286184489727,
+        0.49294164776802063,
+        0.7713356986641884,
+        0.8245750069618225
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0756.jpg",
+      "sha256": "bb5676c0f7adcfad3be29958638fa03ad31ff53c756e9beeeeca1cc35fa12079",
+      "class": 1,
+      "box": [
+        0.4969099536538124,
+        0.4631769775878638,
+        0.7344260662794113,
+        0.9134766818024218
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1197.jpg",
+      "sha256": "f8af4cfbbac2ed49177b12308c1b4c084d73a7b54595b7e826bbc0cdbcdd85c3",
+      "class": 1,
+      "box": [
+        0.4927254393696785,
+        0.4582756571471691,
+        0.7448836416006088,
+        0.7835864201188087
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1332.jpg",
+      "sha256": "52cd28f0f9eb3677fae891466d94a41938cd039d9d87c48e45a5a9ecce7e855f",
+      "class": 1,
+      "box": [
+        0.5173574537038803,
+        0.5051511339843273,
+        0.75627401471138,
+        0.8140019550919533
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0394.jpg",
+      "sha256": "b3e005eee5e67777ebe33e7218c4e3136f97d824509f5d4850a824dbd98fa3e7",
+      "class": 1,
+      "box": [
+        0.4561058818362653,
+        0.538232646882534,
+        0.8916490199044347,
+        0.9080401211977005
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2930.jpg",
+      "sha256": "6dbe708293d68b93c1cbfd7e1606e434a48fdabdbe2c462a33ee62b4a17522aa",
+      "class": 1,
+      "box": [
+        0.5136935040354729,
+        0.5114675462245941,
+        0.7639291435480118,
+        0.7913917899131775
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0841.jpg",
+      "sha256": "0b3f40df2902749c3d9d235dd2493bed4e2d9a650eda8533fbbd685e6a203e11",
+      "class": 1,
+      "box": [
+        0.46664851158857346,
+        0.5319397449493408,
+        0.7635147720575333,
+        0.8406491279602051
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0110.jpg",
+      "sha256": "f4c9b28e1194ee8bc96a7bacf35f7e245082c6eb07601e8c97875e6036141eb2",
+      "class": 1,
+      "box": [
+        0.48756168410182,
+        0.42959399800747633,
+        0.8203851357102394,
+        0.8357216957956553
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0132.jpg",
+      "sha256": "0a13cec895f4e4deb952983f7bedd1a0391233433d4877c512bbbf70424f02ee",
+      "class": 1,
+      "box": [
+        0.5548859611153603,
+        0.5389324948191643,
+        0.8837131708860397,
+        0.8889138847589493
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2343.jpg",
+      "sha256": "d3bab4febd346da696fec8e6082274b41c5f426b6ab4db7c358d8946471866da",
+      "class": 1,
+      "box": [
+        0.49941931292414665,
+        0.47876280546188354,
+        0.8427080288529396,
+        0.8613666296005249
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1559.jpg",
+      "sha256": "62a3232e119b590aff5e59e82807f055aa52be336949e1f625db8554393b7510",
+      "class": 1,
+      "box": [
+        0.5176677405834198,
+        0.5284277722239494,
+        0.7951099276542664,
+        0.9235284477472305
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1799.jpg",
+      "sha256": "7f5c4593d2e2116c053c0a57b9bf48090077aff446c0c323891dc57162f8ce8f",
+      "class": 1,
+      "box": [
+        0.5039399042725563,
+        0.4500881194835529,
+        0.7909336537122726,
+        0.8944709778297693
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1436.jpg",
+      "sha256": "5a9c2c7e8b4eac1bc76698c56ed5f1042e994e56bfec39c92b911cc202b715de",
+      "class": 1,
+      "box": [
+        0.49828246980905533,
+        0.5392577163875103,
+        0.727369949221611,
+        0.892496682703495
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0960.jpg",
+      "sha256": "0449dcd5e64ab2995b9dfba0e40bc8fa6c878a413da606ef9285dbd8ed8cd212",
+      "class": 1,
+      "box": [
+        0.47425221651792526,
+        0.46370831737294793,
+        0.6984361559152603,
+        0.8966602561995387
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2857.jpg",
+      "sha256": "14aacdf1f5cd2cc6218e80f1c0443478ef2e50a86728aeedf252bca16be3a35d",
+      "class": 1,
+      "box": [
+        0.47019926086068153,
+        0.554337240755558,
+        0.8220567032694817,
+        0.861612007021904
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1439.jpg",
+      "sha256": "12f7f62bc54f9a50479aee5529cb67ca2b81c2ecc52019c8cc0a71966b126586",
+      "class": 1,
+      "box": [
+        0.5169539898633957,
+        0.5027446262538433,
+        0.7293578684329987,
+        0.85909853130579
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0701.jpg",
+      "sha256": "85e65566f112fd047dd78bbcd5d91eaf61d6217230c2f1d9539264255861f854",
+      "class": 1,
+      "box": [
+        0.4714816138148308,
+        0.5284570567309856,
+        0.7372605949640274,
+        0.8814182057976723
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0943.jpg",
+      "sha256": "a783d7f2ac0f7aa151f978e9f6dbe076ab88a057bb6f7b0549f33322317d371e",
+      "class": 1,
+      "box": [
+        0.4910907782614231,
+        0.45720556378364563,
+        0.7981039211153984,
+        0.8793979287147522
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0785.jpg",
+      "sha256": "d1c0903dc80785c63c813ec0ee1dcfdac2a356de80182e7e6cd80fe1c8661448",
+      "class": 1,
+      "box": [
+        0.4654870368540287,
+        0.4493241369709722,
+        0.7363907620310783,
+        0.8982397198706167
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0980.jpg",
+      "sha256": "68e67b9c1ffbe07235c58d63eb04289162a933dbf556fb8ce3e1c3a59e4bea08",
+      "class": 1,
+      "box": [
+        0.5406031906604767,
+        0.4959280490875244,
+        0.7238112092018127,
+        0.883674144744873
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1577.jpg",
+      "sha256": "b2154e43585c0be3bd4ed8deadc49437e4ba27a2d21730331ab32cd9505359e6",
+      "class": 1,
+      "box": [
+        0.5425874292850494,
+        0.5086208395659924,
+        0.7374127507209778,
+        0.890342153608799
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2112.jpg",
+      "sha256": "625acd1d0d53c13357a221f166a33d5c7c46a37cbff24768efa8d386a261123e",
+      "class": 1,
+      "box": [
+        0.4721497166901827,
+        0.49973875284194946,
+        0.8450293801724911,
+        0.8141442537307739
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2212.jpg",
+      "sha256": "6b66fae3fac4fffb888fdcb943c90f0a51cff81db00b8a9c9a28d3f6abb81534",
+      "class": 1,
+      "box": [
+        0.4711920144036412,
+        0.47045688703656197,
+        0.8819231744855642,
+        0.8125118240714073
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0446.jpg",
+      "sha256": "5dab275bf4c5d5a34bf36ba05a5a5ae4495b3d51040db5f3042d26157b4e3afb",
+      "class": 1,
+      "box": [
+        0.46015019388869405,
+        0.4634654042311013,
+        0.9014435773715377,
+        0.9108491903170943
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0484.jpg",
+      "sha256": "b70977ef5deeabcab8cc1764723e7116432b774bebc8f0ea8455043b1cb91647",
+      "class": 1,
+      "box": [
+        0.515168409794569,
+        0.4738394618034363,
+        0.9325091019272804,
+        0.8663305044174194
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2749.jpg",
+      "sha256": "21869c93e7f17d4a6d7fc266988216869a0c5bcf1bcc1bfc37a06a06b6aa7fa0",
+      "class": 1,
+      "box": [
+        0.5457347929477692,
+        0.4751525759929791,
+        0.8308218121528625,
+        0.9434409856330603
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1509.jpg",
+      "sha256": "bfd6c1119947c13f97f9184b09389c8f9f873d224fc1d7e0d3131f97d1ba9133",
+      "class": 1,
+      "box": [
+        0.5532205104827881,
+        0.5114294625818729,
+        0.7886338233947754,
+        0.8403519913554192
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1066.jpg",
+      "sha256": "1da8174e79a1bb9b4b068761b76cb9d423f023edc5b21c3833e8ad0759ea15c1",
+      "class": 1,
+      "box": [
+        0.5320015028119087,
+        0.4776909649372101,
+        0.7370439618825912,
+        0.8856454491615295
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2951.jpg",
+      "sha256": "ea9c026777d503ea5f9e5926f464201335658ee02268c83a7d5035d1246c89fc",
+      "class": 1,
+      "box": [
+        0.4842464327812195,
+        0.544487189501524,
+        0.7861179113388062,
+        0.9050289168953896
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1279.jpg",
+      "sha256": "b63beb441a9882a8659a0559ded5b08a3521672d887d338ea6ecd28a683ac9a8",
+      "class": 1,
+      "box": [
+        0.5455715879797935,
+        0.44800010323524475,
+        0.6960474997758865,
+        0.81025630235672
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1395.jpg",
+      "sha256": "7e08302db7d303f2d458dcc910cb9a3adedfb878a985db42308717844fb475bc",
+      "class": 1,
+      "box": [
+        0.5518894270062447,
+        0.4526908278421615,
+        0.8107744306325912,
+        0.9049961805430939
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1031.jpg",
+      "sha256": "d7e5c66f8911a3c945733fda53bcbeadcd189f119d71db4cf2fbc014b63cd591",
+      "class": 1,
+      "box": [
+        0.5297723188996315,
+        0.49865897372365,
+        0.7486626356840134,
+        0.8426050767302513
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2134.jpg",
+      "sha256": "ff336fa634b957c784730f84261f7c8dbbb19ef9404dc1f6dd532c3f66a08bcb",
+      "class": 1,
+      "box": [
+        0.5355981476604939,
+        0.43232364673167467,
+        0.8808379396796227,
+        0.8221660610288382
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1867.jpg",
+      "sha256": "73f8b7f007b5af7915e257178f510d5dcd988d8b7a1da48b10602bdbc6750021",
+      "class": 1,
+      "box": [
+        0.4322170130908489,
+        0.49162641540169716,
+        0.7245816960930824,
+        0.8393391892313957
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1372.jpg",
+      "sha256": "39db4af367caf0ac6118fe7a1d6db13294e0b26bd6c55143f3821a86d8c05469",
+      "class": 1,
+      "box": [
+        0.4561593048274517,
+        0.5320260860025883,
+        0.7052808776497841,
+        0.8638850972056389
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit: intact ripe orange skin.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2473.jpg",
+      "sha256": "89358c09436521a8e00c929383dfe289435a977efd3e3b09aef7315a529e8888",
+      "class": 2,
+      "box": [
+        0.5344476997852325,
+        0.4780621640384197,
+        0.7424116730690002,
+        0.85819361358881
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2046.jpg",
+      "sha256": "983437abf7f67ef1d984161c80d441150d78fc2c518e3872e3470c5093a9d891",
+      "class": 2,
+      "box": [
+        0.45657339692115784,
+        0.4823736008256674,
+        0.9109647870063782,
+        0.9245704300701618
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2610.jpg",
+      "sha256": "8ac657197ad9d73dcd028feb7b9b3bcd7b4b2eef30c207ee045a351ff4063f49",
+      "class": 2,
+      "box": [
+        0.56,
+        0.585,
+        0.84,
+        0.81
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class. Manual whole-fruit extent correction for P0083."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2661.jpg",
+      "sha256": "7b6d80f62cb304c5b05b3d46f4c6aa174dad4a0ee56eea59dd0aca1fb4ced566",
+      "class": 2,
+      "box": [
+        0.5157462246716022,
+        0.49846530333161354,
+        0.8243475183844566,
+        0.8371831104159355
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2228.jpg",
+      "sha256": "de4d461dfba062be85b52bd2b4081034905ed14075285be0cb1022a4cafe01ce",
+      "class": 2,
+      "box": [
+        0.47681005485355854,
+        0.5127036683261395,
+        0.8870496414601803,
+        0.8659713044762611
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0363.jpg",
+      "sha256": "680ab9db0b64b84069bfb3ce8d70d5ff7916ced290439f874838c7b1842b1c6a",
+      "class": 2,
+      "box": [
+        0.4369645342230797,
+        0.5160961896181107,
+        0.5346202403306961,
+        0.57170769572258
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1363.jpg",
+      "sha256": "163c6e8511c731321fc69bd9ed0be2a0ccdcc170943142f16d6464e6004d704e",
+      "class": 2,
+      "box": [
+        0.47390942461788654,
+        0.4682068470865488,
+        0.8515786193311214,
+        0.8347962610423565
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2027.jpg",
+      "sha256": "69c9cf115c5fd9f01ce480d0b746c96fe422264d33fa8d1d1629ea254f678189",
+      "class": 2,
+      "box": [
+        0.4490985928568989,
+        0.4807358253747225,
+        0.8863531234674156,
+        0.852300550788641
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0628.jpg",
+      "sha256": "a5ec453dadecd82442a86c0f479a290e9183687435c7b1cddc8797d45d27867e",
+      "class": 2,
+      "box": [
+        0.5178276151418686,
+        0.43455494195222855,
+        0.4734310209751129,
+        0.5152294486761093
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2646.jpg",
+      "sha256": "c618ea77cc091aa6d2357259139c27aaccaa874329aea4b69444d6e96439bd77",
+      "class": 2,
+      "box": [
+        0.448719835258089,
+        0.5326492115855217,
+        0.8927252769935876,
+        0.9160554558038712
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2966.jpg",
+      "sha256": "2eb67039ab2cc951029088d54476313cc26758e8cf1b345a39d5273e634d28a3",
+      "class": 2,
+      "box": [
+        0.5507564023137093,
+        0.512253288179636,
+        0.8398076146841049,
+        0.8569580242037773
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1733.jpg",
+      "sha256": "89613e89a30054e3525386e4b9a2fd87611991673dd58ed20b1711b655f22be8",
+      "class": 2,
+      "box": [
+        0.5391208976507187,
+        0.5127519257366657,
+        0.8046896755695343,
+        0.8533530458807945
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0530.jpg",
+      "sha256": "c540dfd13cc1489af23b4881a81f08cf50ce688c65dbd13ba4147aac4051a1eb",
+      "class": 2,
+      "box": [
+        0.5427718013525009,
+        0.4908459857106209,
+        0.4659726917743683,
+        0.4883127063512802
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1189.jpg",
+      "sha256": "c84a2bf3ba997cee10046c4a848799185d1251e393e629ed27690215f6dec9d0",
+      "class": 2,
+      "box": [
+        0.4613644424825907,
+        0.5482401885092258,
+        0.8566453568637371,
+        0.8880411311984062
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1034.jpg",
+      "sha256": "cfcf997d70d15a8a717c3d9e3d91c8f0c3cd258acdd56ea5a073c80fe967226c",
+      "class": 2,
+      "box": [
+        0.5195087529718876,
+        0.5275832004845142,
+        0.9162248894572258,
+        0.8960408791899681
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1291.jpg",
+      "sha256": "56cbfa2d00b985cc009158f4152141eccdae44f52c45914ccdaa4de3052cbdf8",
+      "class": 2,
+      "box": [
+        0.45929584465920925,
+        0.4959332523867488,
+        0.8654392249882221,
+        0.9451191071420908
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2680.jpg",
+      "sha256": "104cfb610ba379548d3e9be2861361521c3d9fb4aa7b4f9134feb85bb6676a75",
+      "class": 2,
+      "box": [
+        0.5006995014846325,
+        0.4378924905322492,
+        0.8260060921311378,
+        0.8604550482705235
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2250.jpg",
+      "sha256": "95c06f3e0ded2d4b2e9039c502ca91c8ce938f1af87162e454361743c4b41ed0",
+      "class": 2,
+      "box": [
+        0.5200896859169006,
+        0.47515455447137356,
+        0.9109011888504028,
+        0.8801697976887226
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1424.jpg",
+      "sha256": "52b89339202c551b2179a6f19543967dc3663690893c0fa329cefa296dbd1a68",
+      "class": 2,
+      "box": [
+        0.479835307225585,
+        0.4829845018684864,
+        0.8667518384754658,
+        0.7730385884642601
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1325.jpg",
+      "sha256": "d47d9732cef1573650a66dd75b4a16b6488e20a67d7f8d1884a75e156a32dbc3",
+      "class": 2,
+      "box": [
+        0.46948910877108574,
+        0.4576140404678881,
+        0.8464300408959389,
+        0.8917501447722316
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2096.jpg",
+      "sha256": "ed0359d31faf60d607262f270b8bd293f28e28c34131d41b38d2c2618e3122bd",
+      "class": 2,
+      "box": [
+        0.5032963398844004,
+        0.4552901089191437,
+        0.9147637598216534,
+        0.9105802178382874
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1610.jpg",
+      "sha256": "5245e1e506577da3c89907cea1b13e3d1a5ff0a8e0da8af4a7048951656af6d8",
+      "class": 2,
+      "box": [
+        0.5021004490554333,
+        0.5473343245685101,
+        0.7980376854538918,
+        0.8946156278252602
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1431.jpg",
+      "sha256": "3d12ef4142fecde1b8185528a5bc0d65b3f44df801c19ba2efb03a24c7d58b0f",
+      "class": 2,
+      "box": [
+        0.49338415265083313,
+        0.5045911408960819,
+        0.8814530968666077,
+        0.8569878861308098
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1596.jpg",
+      "sha256": "16a5c08f684c66c836fc590411d38bfb7f8f2bf5c32967b31b6b169ec3f787cd",
+      "class": 2,
+      "box": [
+        0.5092010088264942,
+        0.5245718359947205,
+        0.8101193532347679,
+        0.8564480543136597
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2812.jpg",
+      "sha256": "08955d48c651f6c7003177933de6eeb400c57afe7a36e180a7b32061d0a6330f",
+      "class": 2,
+      "box": [
+        0.46280708303675056,
+        0.5132715739309788,
+        0.9136917116120458,
+        0.8888474628329277
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2601.jpg",
+      "sha256": "f5cd70af5c60d21bbdc147704dc1cdedbc22f5021d5e6a34b682d1097c165c0b",
+      "class": 2,
+      "box": [
+        0.548729695379734,
+        0.5087631978094578,
+        0.663743183016777,
+        0.8155816718935966
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2946.jpg",
+      "sha256": "05140478f12bc07120c736bc25874e45a1eab44680c0a1a284dc0074ebc875c1",
+      "class": 2,
+      "box": [
+        0.49223814019933343,
+        0.5296611413359642,
+        0.9563253400847316,
+        0.926748588681221
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1027.jpg",
+      "sha256": "49388b062ae0822ba039c3f5c7f37d5fdee3d23079339bacf1edd3e6ff626743",
+      "class": 2,
+      "box": [
+        0.5493241287767887,
+        0.5020582787692547,
+        0.8832681700587273,
+        0.8374917283654213
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1678.jpg",
+      "sha256": "2058e758f9465dc2893ee2c62a9e3cc5f6294ac4bd03dbf180350b7c62dc7f6f",
+      "class": 2,
+      "box": [
+        0.49948710203170776,
+        0.518485676497221,
+        0.7589038610458374,
+        0.8466505780816078
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0538.jpg",
+      "sha256": "a99039381acd799515afc975ca5b506f39fef3a6d10e20590c938333e80a44e0",
+      "class": 2,
+      "box": [
+        0.49296970665454865,
+        0.47778573632240295,
+        0.4587814509868622,
+        0.48107272386550903
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1285.jpg",
+      "sha256": "f0f14f2d2cf9d52ba5838901906677d5b0bc92d7cb0d834bd1cca260ad1394aa",
+      "class": 2,
+      "box": [
+        0.5227888636291027,
+        0.5191887654364109,
+        0.8727702274918556,
+        0.9112065955996513
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2961.jpg",
+      "sha256": "cff7aeaf7cab1d12b94f5cef9d87f48caef8ea749fb5d81cfe557d796e8a415d",
+      "class": 2,
+      "box": [
+        0.5195114649832249,
+        0.5046592280268669,
+        0.8879500553011894,
+        0.8107724338769913
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0879.jpg",
+      "sha256": "9f9b4b25c7519eb51b1c9d1a647cb2cb73f962bdf3b9a458a77328315e015956",
+      "class": 2,
+      "box": [
+        0.5693665221333504,
+        0.48902375996112823,
+        0.6977516263723373,
+        0.6987542808055878
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1796.jpg",
+      "sha256": "af51b2142b9fd4202ed07309efafd224a2421ad9a510bb2ea87192a474e871f6",
+      "class": 2,
+      "box": [
+        0.4594843853265047,
+        0.48078907653689384,
+        0.8589872382581234,
+        0.833894707262516
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1566.jpg",
+      "sha256": "70e643f134af7a6c0299451294ca78b323522dffe814ebd5c31beb0fd0963c68",
+      "class": 2,
+      "box": [
+        0.5094551928341389,
+        0.5470947101712227,
+        0.852311871945858,
+        0.8732099384069443
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2511.jpg",
+      "sha256": "98895a78f9dfa9289213509aac811586a5c6b10029733b7f905b7d4f6135b899",
+      "class": 2,
+      "box": [
+        0.5047267079353333,
+        0.45648487843573093,
+        0.7165437936782837,
+        0.8258186094462872
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1909.jpg",
+      "sha256": "2b81a7ddd9afeb1b21476a2e0932de54f8302972d788cb07ee9e4780bce17665",
+      "class": 2,
+      "box": [
+        0.5113448668271303,
+        0.5585556328296661,
+        0.9330136440694332,
+        0.8793955445289612
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0581.jpg",
+      "sha256": "ac4d79f0de1da8f7316c8ef5aab19d3dcfb86835f8bbb14262c260f3bf456b9a",
+      "class": 2,
+      "box": [
+        0.46033287048339844,
+        0.520454004406929,
+        0.46117401123046875,
+        0.4495095908641815
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1621.jpg",
+      "sha256": "94c6326a85139fa3b3e5b4d8f4867247dc5a3a77d78f7972ca230a436c931e3a",
+      "class": 2,
+      "box": [
+        0.5584452599287033,
+        0.5261286124587059,
+        0.8179363310337067,
+        0.9153481274843216
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2497.jpg",
+      "sha256": "dc10c29fe5432f4a497ba7ccb48dc0bdb604690266bf4be7ba763255ee709296",
+      "class": 2,
+      "box": [
+        0.46581119298934937,
+        0.5377696640789509,
+        0.7939985990524292,
+        0.9240603670477867
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1731.jpg",
+      "sha256": "7cacddf19b4ad9188a36109cbc70db73e84fb801fa91e2d7f2eb8e9d1c0fe1fa",
+      "class": 2,
+      "box": [
+        0.5079633332788944,
+        0.5259317383170128,
+        0.8513325974345207,
+        0.847575381398201
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1498.jpg",
+      "sha256": "09848d20a86cfe196a2d07f325953d349eca7b818c469b167c942f2484d369c1",
+      "class": 2,
+      "box": [
+        0.5361292809247971,
+        0.5043214149773121,
+        0.8212637007236481,
+        0.8142838105559349
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2451.jpg",
+      "sha256": "abdb5089652bc7794d6df250315054cd1c7f37a394091584f4aa4418fa911b26",
+      "class": 2,
+      "box": [
+        0.49927936866879463,
+        0.45572189101949334,
+        0.8365283235907555,
+        0.8845831630751491
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1661.jpg",
+      "sha256": "76878fb6f3cbd195cd9dfefe36722a3bce65c02fd0a7bdfd23011125f710ea40",
+      "class": 2,
+      "box": [
+        0.4972335919737816,
+        0.5319889672100544,
+        0.8274362832307816,
+        0.8641324266791344
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1019.jpg",
+      "sha256": "c7b04c168327ab8a8f32187f4b38722719757ecfa5e6e2f87a434f90328a5303",
+      "class": 2,
+      "box": [
+        0.5238791517913342,
+        0.4987057074904442,
+        0.8552497997879982,
+        0.8554163724184036
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0187.jpg",
+      "sha256": "7682ec2d29a147087fd2d6aa9453d7813eed7da5884d7a32a26f1df564ba7912",
+      "class": 2,
+      "box": [
+        0.5371064096689224,
+        0.5087379366159439,
+        0.5840068757534027,
+        0.5220386683940887
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1139.jpg",
+      "sha256": "377213c27377da2f1df2c426dae9644bf6563cb20835a5dd8e46c90b261d85a2",
+      "class": 2,
+      "box": [
+        0.45844131149351597,
+        0.4930467251688242,
+        0.8521161191165447,
+        0.8986323587596416
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0976.jpg",
+      "sha256": "e37a00ebf88e0610c5b017656a88ea025e22e3b6b1b203435434ecf1e272d023",
+      "class": 2,
+      "box": [
+        0.5050293020904064,
+        0.4618820250034332,
+        0.850119985640049,
+        0.9069965481758118
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0321.jpg",
+      "sha256": "92b9f46094d5c489dc7768e754e2c49ccc64e5b8783dcb97f333f7de9a1cec92",
+      "class": 2,
+      "box": [
+        0.43601682782173157,
+        0.48262985050678253,
+        0.581473171710968,
+        0.5227920711040497
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1103.jpg",
+      "sha256": "b06a209be3c3e1d7d032e2787c286cbfe136063170bad031b5c7738b7717125e",
+      "class": 2,
+      "box": [
+        0.48085268773138523,
+        0.5432148948311806,
+        0.8899255506694317,
+        0.8663667887449265
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0165.jpg",
+      "sha256": "78e856a0b1acdd66b9f96e8d2be9855c3af688bc86f2364023e9c24fa12e2aa8",
+      "class": 2,
+      "box": [
+        0.45385555922985077,
+        0.5201817452907562,
+        0.5200203955173492,
+        0.4651424288749695
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2923.jpg",
+      "sha256": "a6693a39f5fd0f4f00fa59e034b4d42b83346275cb27daff7471b5483fd89f8a",
+      "class": 2,
+      "box": [
+        0.5219217166304588,
+        0.5202980153262615,
+        0.860363557934761,
+        0.8621866479516029
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2779.jpg",
+      "sha256": "6b556d478f3adf12636049d25ab854f23c313dae504871f6ab6d546e544e63c0",
+      "class": 2,
+      "box": [
+        0.5044988691806793,
+        0.5253943502902985,
+        0.9151504635810852,
+        0.9437502026557922
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2196.jpg",
+      "sha256": "c603058e0f21a4b04a9df2c57c6bf97d26b0428841fc229dc03bce9072b9f250",
+      "class": 2,
+      "box": [
+        0.5191483199596405,
+        0.5651582255959511,
+        0.7096921801567078,
+        0.7380679100751877
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0248.jpg",
+      "sha256": "64ccadddb801b6952abd5fc9a1832e87d80ca2767ffbdb6e4a1ac149cba1dbf8",
+      "class": 2,
+      "box": [
+        0.560282900929451,
+        0.4378100708127022,
+        0.5833313167095184,
+        0.5216110795736313
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2952.jpg",
+      "sha256": "3db95d126f51516da04edaf2d9262d93050cf077b77120454c6b82d58703deda",
+      "class": 2,
+      "box": [
+        0.5312191545963287,
+        0.5132505297660828,
+        0.8808425068855286,
+        0.9541963338851929
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1929.jpg",
+      "sha256": "18a2f14a98f612a1c638851312e6995a9198019733d468d0e60f24e60a7a417a",
+      "class": 2,
+      "box": [
+        0.4418830214999616,
+        0.5367918834090233,
+        0.8578131319954991,
+        0.8553663045167923
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2600.jpg",
+      "sha256": "46d849e70108f4924a82f7f60d50535b38160269ea6900a3c2647f24108f4de0",
+      "class": 2,
+      "box": [
+        0.49546387791633606,
+        0.5192700251936913,
+        0.7108650803565979,
+        0.8436513692140579
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_1074.jpg",
+      "sha256": "397ec957eb4a36cadb3a6ce5d2cc2a2f6138963afb786f7065dc30fa5fedbb46",
+      "class": 2,
+      "box": [
+        0.4974663555622101,
+        0.5561199672520161,
+        0.8981929421424866,
+        0.8842476829886436
+      ],
+      "dimensions": [
+        224,
+        224
+      ],
+      "reason": "Visually screened single whole citrus fruit with visible mold/rot or large lesions.",
+      "annotation_method": "Model localization proposal visually checked; source folder and visible condition determine class."
+    }
+  ],
+  "quarantine": [
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2472.jpg",
+      "sha256": "11e53dfe984a18630f0ad53fadd9896c31603b837661718d10c46cf23889aa58",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0055.jpg",
+      "sha256": "d04e981a21aa9d6e8e4bcbaa2fb6894b92c6b59440121f926d3bb8ace00cbcb0",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2952.jpg",
+      "sha256": "9d040fb09bb7a6bc5ec6eb58efd61a44194fa09a70002f16872662b22d5ec2e0",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0347.jpg",
+      "sha256": "a6a1482efa3539c66ede5e3222e8ca6829572b7b8a3ea4bf813abebef2610aa2",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1932.jpg",
+      "sha256": "ca415385d9a3686eb9ca55ff1a4d77fc805b1d972205af4a84675f536c0c769f",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2264.jpg",
+      "sha256": "e741f422aaa079574371e529c2f255e49fa397df03edab7eb8ebeec9ff67e2e3",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2505.jpg",
+      "sha256": "9ba202e3ee8c0a73dc5f975ddb484f69c4a3fe0faf6e1a80f2a11c6a7aeb8556",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1970.jpg",
+      "sha256": "125890404f62ccdb1b0e2bd52070beab9b7981ee6acf789d7ccf6bda418eaa13",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0331.jpg",
+      "sha256": "721e55884223e1ab0b8f33f75e2915f5cdab68cfac3a21c225df7099f2882996",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2318.jpg",
+      "sha256": "a1e2306b4fe6b91cf88f93f2d83c374463693477fcbf4650f3bb8c58b97b2f9f",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2454.jpg",
+      "sha256": "f3c9cc84a33210a0ef596fb8b08ff2e396962e48e34f31ba9899758ccec2cd37",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2616.jpg",
+      "sha256": "0c52d53f139df3c9ad5e94c3be4101770d3e9d0481ae70100e14505ee7afa732",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2447.jpg",
+      "sha256": "18a5087e44d4354bc8c5ef070459c4be57abe5b8768d311b30891bf2fd54222d",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2455.jpg",
+      "sha256": "38dcc1b25cf2be6bdb3d4b72aedf81c2ddf40df97e8feb7661417768fa22fb77",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2376.jpg",
+      "sha256": "6436c4f92296f420eb8807624a8195af4da74b17646be84985d7c55b5febe934",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2259.jpg",
+      "sha256": "73de455224579f81709d4ad6d8aa161fb92a008ccf2f913d01df83b8eaa71345",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0028.jpg",
+      "sha256": "525e9cfb660b4b52de3f2680b3d38dabddcebd0a960418c180e211854d1a7b8a",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0311.jpg",
+      "sha256": "04aa59386b7c7bd9f876095e0bd09a5be531621a234879519ad532f91e42f952",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0012.jpg",
+      "sha256": "3834098d65271f5c23a963bf6f4252b1c8fd72bb2e097ff1d9a3d47262f52e0d",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_0040.jpg",
+      "sha256": "bcb52543d2ba98b0fd1b0ff77c003282e8ddde217eab1c5991b47ce7f323e032",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2537.jpg",
+      "sha256": "f7479716fd252684e4030e3a5aeef64600219f1ce22ff69725fe682d6e19f8ad",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_1949.jpg",
+      "sha256": "0c403df043d02e4b775f30e2edfcc4b8add42943d85544bd8ad1eed877372ef1",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/fresh_orange/fresh_orange_2428.jpg",
+      "sha256": "9e760aff6cf27c9011d9580ce00cc1b80470fe42952c64cd5090d53bd089b6f9",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0795.jpg",
+      "sha256": "9387807ba1e32e6ed23521ff8b3ef7882eef3aa2cf9f617db86a418e4ee282f5",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2394.jpg",
+      "sha256": "73a7ad6ccabc65065144a96aaffcc4d5e4305d16f440e6e73f3bd172f72f108c",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0691.jpg",
+      "sha256": "13357b078b78ba6e82f589def9167a48fa2543026c53f5b085f1e80126c8248a",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2338.jpg",
+      "sha256": "ed41828f38abbe293fa4128fca5e33bb7d3151f5ed51ac883ae032916790accd",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0481.jpg",
+      "sha256": "5d4c05e4aad3cc227da942d70be9a28650898b51d6eb42e908ef696aad7eca80",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0720.jpg",
+      "sha256": "61f153e26310bbc07859d9a79420c7c664a55fbefba9b8ad912c9951d85a97f7",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2181.jpg",
+      "sha256": "a9a7fbb64d1db51614a505ac80afde65bd4eea3e4daa69cb9f8bacaa74e69a44",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0756.jpg",
+      "sha256": "2962d75683eca6b0673fbafc6076115657ab2c8f530815eb3e0718e6672d8155",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2413.jpg",
+      "sha256": "2404b9a885ba33127b0b8e528a732a2f70893157250271da533b9e3b66c82148",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0519.jpg",
+      "sha256": "bf263433ab202e46f1992710c015af431d7bb210494a15fbfc35b435447afc3d",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0826.jpg",
+      "sha256": "c43b5a538f862137505ca8ff345f5895727fde7118f7a5b0e1b42c7878b973b2",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0578.jpg",
+      "sha256": "9967071c99debbe6ed7cb662fbef9a30eb2565c2454d9a6c3640a74658a8a5bf",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0674.jpg",
+      "sha256": "f9b3e8d3e55cb4435700e9fe77aa6839cb9900dedf3012c9932702a2730055b9",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0251.jpg",
+      "sha256": "bd00daf8767e8f5d7dea6f914366824339b8a699c4eb7bd0bff8184bfb5cc6dc",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0729.jpg",
+      "sha256": "74cb5fef4e75dea04c9dcf37b42d24cbe5e383ee737d3cafb93ac5c426e99b3f",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0666.jpg",
+      "sha256": "65cdfcfaa21b563d28ffbc6ac8d8c521b0b2dd1b2d0495f64307daaf44dc50ec",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0454.jpg",
+      "sha256": "3306dd394fb3bcb57e203829c4b43cb4fb32bb50390180b9071b6ccfe9d5333b",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0772.jpg",
+      "sha256": "7a09a632d3a7adfc5ed751d27b030a83aabfd197e9121cf0b1f63105ca5216e1",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_2187.jpg",
+      "sha256": "65805a209f51ca2f189dc5cc357bc5787cdb73f9b915a38ca281a7b07f8530ca",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0448.jpg",
+      "sha256": "b7756a7243209f6e0b36a8a7b2c9bdbc78b0e686f04e09bab3179f26ddaea3f9",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    },
+    {
+      "archive_member": "dataset/rotten_orange/rotten_orange_0588.jpg",
+      "sha256": "f8d69a006420a184989161b91e95cc0a208dd1afc60efbeddecdb74fd621e86d",
+      "reason": "Visual review excluded ambiguous/shriveled fresh fruit, augmentation artifacts, multiple fruit, or a localization proposal that did not enclose the whole fruit accurately."
+    }
+  ]
+}

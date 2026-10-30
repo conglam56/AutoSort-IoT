@@ -104,11 +104,15 @@ class DetectionDatasetTests(unittest.TestCase):
         self.build()
         folder = self.root / 'output'
         (folder / '.env').write_text('PRIVATE_VALUE=not-for-package')
+        (folder / 'review_changes.json').write_text('{"review": "fixture"}')
+        (folder / 'supplement_review.json').write_text('{"supplement": "fixture"}')
         output = self.root / 'training.zip'
         create_detection_package(folder, output)
         with zipfile.ZipFile(output) as archive:
             names = archive.namelist()
             self.assertNotIn('datasets/kumquat-detection/.env', names)
+            self.assertIn('datasets/kumquat-detection/review_changes.json', names)
+            self.assertIn('datasets/kumquat-detection/supplement_review.json', names)
             self.assertIn('datasets/kumquat-detection/labels/test', '\n'.join(names))
             notebook = json.loads(archive.read('training/AutoSort_Detection_Train.ipynb'))
             for cell in notebook['cells']:

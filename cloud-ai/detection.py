@@ -13,7 +13,14 @@ cv2.setNumThreads(1)
 
 def preprocess_detection_bytes(content, size):
     image = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_COLOR)
-    if image is None or not isinstance(size, int) or size < 16:
+    return preprocess_detection_image(image, size)
+
+
+def preprocess_detection_image(image, size):
+    """Letterbox decoded BGR pixels without re-encoding localized fruit crops."""
+    if (not isinstance(image, np.ndarray) or image.dtype != np.uint8
+            or image.ndim != 3 or image.shape[2] != 3 or min(image.shape[:2]) < 1
+            or not isinstance(size, int) or size < 16):
         raise ValueError('Invalid detection image or size')
     height, width = image.shape[:2]
     ratio = min(size / height, size / width)
