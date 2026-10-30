@@ -58,7 +58,8 @@ class DetectionTests(unittest.TestCase):
         self.assertEqual(result['confidence'], .8)
 
     def test_multiple_objects_and_missing_target_never_return_good_label(self):
-        cases = [[], [self.candidate('GREEN', .99, (0, 0, .3, .3)), self.candidate('RIPE', .99, (.7, .7, 1, 1))]]
+        two_fruit = [self.candidate('GREEN', .8, (0, 0, .3, .3)), self.candidate('RIPE', .99, (.7, .7, 1, 1))]
+        cases = [[], two_fruit, list(reversed(two_fruit))]
         for candidates in cases:
             result = decide_detection(candidates, .7)
             self.assertEqual(result['label'], 'REJECT')
@@ -70,16 +71,42 @@ class DetectionTests(unittest.TestCase):
             self.candidate('RIPE', .9, (.3, .3, .7, .7))], .7, roi=(.2, .2, .8, .8))
         self.assertEqual(result['label'], 'RIPE')
 
-    def test_maturity_conflict_and_low_confidence_keep_existing_bridge_contract(self):
+    def test_highest_qualified_maturity_score_is_classified(self):
         candidates = [self.candidate('GREEN', .9), self.candidate('RIPE', .85)]
         result = decide_detection(candidates, .7)
-        self.assertEqual(result['decision_detail'], 'MATURITY_CONFLICT')
-        self.assertEqual(result['label'], 'REJECT')
+        self.assertEqual(result['decision_reason'], 'CLASSIFIED')
+        self.assertEqual(result['label'], 'GREEN')
+        self.assertEqual(result['confidence'], .9)
+
+    def test_low_confidence_and_exact_threshold_keep_existing_bridge_contract(self):
         result = decide_detection([self.candidate('GREEN', .6999)], .7)
         self.assertEqual(result['decision_reason'], 'LOW_CONFIDENCE')
         self.assertEqual(result['label'], 'REJECT')
         result = decide_detection([self.candidate('GREEN', float(np.float32(.7)))], .7)
         self.assertEqual(result['label'], 'GREEN')
+        below = float(np.nextafter(np.float32(.7), np.float32(0)))
+        self.assertEqual(decide_detection([self.candidate('RIPE', below)], .7)['decision_detail'], 'BELOW_THRESHOLD')
+
+    def test_qualified_ripe_is_not_vetoed_by_low_score_fruit_at_edges(self):
+        candidates = [
+            self.candidate('RIPE', .91831839, (.09, .10, .92, .90)),
+            self.candidate('RIPE', .64315474, (.85, .43, 1, 1)),
+            self.candidate('REJECT', .62864077, (.77, 0, 1, .45)),
+        ]
+        for order in (candidates, list(reversed(candidates))):
+            result = decide_detection(order, .7)
+            self.assertEqual(result['label'], 'RIPE')
+            self.assertEqual(result['confidence'], .9183)
+            self.assertEqual(result['decision_reason'], 'CLASSIFIED')
+
+    def test_multiple_weak_targets_remain_below_threshold(self):
+        result = decide_detection([
+            self.candidate('GREEN', .69, (0, 0, .3, .3)),
+            self.candidate('RIPE', .64, (.7, .7, 1, 1))], .7)
+        self.assertEqual(result['label'], 'REJECT')
+        self.assertEqual(result['raw_label'], 'GREEN')
+        self.assertEqual(result['confidence'], .69)
+        self.assertEqual(result['decision_detail'], 'BELOW_THRESHOLD')
 
     def test_metadata_rejects_unsupported_format_and_bad_roi(self):
         base = {'output_format': 'yolo11_raw'}

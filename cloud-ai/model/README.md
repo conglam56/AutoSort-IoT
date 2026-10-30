@@ -1,8 +1,16 @@
 # Model v1 dùng thử tích hợp
 
 Thư mục chứa `best.onnx` và `classes.json` để Docker nạp detector thật thay
-cho MOCK. Phiên bản `autosort-yolo11n-detect-v1`, YOLO11n ba lớp, ảnh 320px,
+cho MOCK. Phiên bản `autosort-yolo11n-detect-v1-policy2`, YOLO11n ba lớp, ảnh 320px,
 FP32, opset 17. Ánh xạ: GREEN=0, RIPE=1, REJECT=2. Ngưỡng giữ nguyên 0,7.
+
+Policy2 giữ nguyên trọng số ONNX, chỉ đổi cách ra quyết định: khung >= 70%
+mới được xét khi kiểm tra nhiều quả. GREEN/RIPE của cùng quả lấy điểm cao
+nhất đạt ngưỡng; REJECT đạt ngưỡng vẫn được ưu tiên trên cùng quả. Hai quả
+khác nhau cùng đạt ngưỡng vẫn chưa đủ xác định quả mục tiêu. `class_margin`
+được giữ để tương thích metadata cũ và không còn phủ quyết nhãn đạt ngưỡng.
+Các số liệu đánh giá v1 dưới đây là lịch sử trước policy2, không phải đánh
+giá độc lập của policy2; xem docs/AI_DETECTION_POLICY2.md.
 
 **Đây là model thử nghiệm để kiểm tra điện thoại/cloud/dashboard, chưa xác nhận
 chất lượng phân loại trên trạm.** Có 3/15 ảnh REJECT một quả trong test bị cho

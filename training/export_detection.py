@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--dataset', type=Path, required=True)
     parser.add_argument('--imgsz', type=int, default=320)
     parser.add_argument('--threshold', type=float, default=.7)
-    parser.add_argument('--model-version', default='autosort-yolo11n-detect-v1')
+    parser.add_argument('--model-version', default='autosort-yolo11n-detect-v1-policy2')
     args = parser.parse_args()
     if args.destination.exists():
         raise ValueError('Export destination exists; existing artifacts preserved')
