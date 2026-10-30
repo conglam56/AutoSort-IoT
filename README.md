@@ -1,4 +1,4 @@
-# AutoSort IoT — Băng chuyền phân loại quả quất bằng Cloud AI
+# AutoSort IoT — Băng chuyền phân loại nông sản bằng Cloud AI
 
 Backend HTTP dùng **Java 21 / Spring Boot**, PostgreSQL và Spring Security.
 AI ONNX chạy bằng Python worker nội bộ. Phần cứng và model cần được kiểm thử
