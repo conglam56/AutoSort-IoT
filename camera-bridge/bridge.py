@@ -1,4 +1,4 @@
-"""Phone JPEG -> Cloud AI -> USB Serial ESP32 controller (not ESP32-CAM)."""
+"""Phone JPEG / DroidCam webcam -> Cloud AI -> USB Serial ESP32 controller."""
 import argparse
 from dataclasses import dataclass
 import io
@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from PIL import Image, UnidentifiedImageError
 import requests
 import serial
+from bridge_errors import BridgeError
 
 LOG = logging.getLogger("autosort-bridge")
 LABELS = frozenset({"GREEN", "RIPE", "REJECT"})
@@ -26,10 +27,6 @@ MAX_IMAGE_BYTES = 1_000_000
 MAX_RESPONSE_BYTES = 16_384
 CONTROLLER_MAX_JOB_SECONDS = 25.0  # Firmware 30s AI watchdog leaves margin for PC/Serial.
 TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
-
-
-class BridgeError(RuntimeError):
-    """Operator-safe message; never contains URLs, headers or credentials."""
 
 
 @dataclass(frozen=True)
@@ -46,9 +43,13 @@ class Settings:
     startup_timeout: float = 90.0
     attempts: int = 3
     state_path: Path = Path(__file__).parent / ".local" / "bridge-state.sqlite3"
+    camera_source: str = "phone"
+    camera_index: int = 0
+    camera_backend: str = "auto"
+    video_path: str = ""
 
     @classmethod
-    def from_environment(cls, manual=False):
+    def from_environment(cls, manual=False, camera_only=False):
         try:
             settings = cls(
                 phone_url=os.getenv("PHONE_IP_WEBCAM_URL", ""), api_key=os.getenv("DEVICE_API_KEY", ""),
@@ -60,10 +61,26 @@ class Settings:
                 startup_timeout=float(os.getenv("STARTUP_TIMEOUT_SECONDS", "90")),
                 attempts=int(os.getenv("CLOUD_MAX_ATTEMPTS", "3")),
                 state_path=Path(os.getenv("BRIDGE_STATE_PATH", str(cls.state_path))),
+                camera_source=os.getenv("CAMERA_SOURCE", "phone"),
+                camera_index=int(os.getenv("CAMERA_INDEX", "0")),
+                camera_backend=os.getenv("CAMERA_BACKEND", "auto"),
+                video_path=os.getenv("CAMERA_VIDEO_PATH", ""),
             )
         except ValueError as error:
             raise BridgeError("Cấu hình số không hợp lệ trong camera-bridge/.env.") from error
-        for name, value in (("phone", settings.phone_url), ("cloud", settings.cloud_url)):
+        if settings.camera_source not in {"phone", "webcam", "video"}:
+            raise BridgeError("CAMERA_SOURCE phải là phone, webcam hoặc video.")
+        if not 0 <= settings.camera_index <= 64 or settings.camera_backend not in {"auto", "dshow", "msmf"}:
+            raise BridgeError("CAMERA_INDEX phải trong 0–64; CAMERA_BACKEND là auto, dshow hoặc msmf.")
+        if settings.camera_source == "video":
+            if not manual:
+                raise BridgeError("Video chỉ dùng xem trước hoặc --manual, không dùng để điều khiển băng chuyền.")
+            if not settings.video_path or not Path(settings.video_path).is_file():
+                raise BridgeError("CAMERA_VIDEO_PATH phải trỏ tới file video có sẵn.")
+        urls = [("cloud", settings.cloud_url)] if not camera_only else []
+        if settings.camera_source == "phone":
+            urls.append(("phone", settings.phone_url))
+        for name, value in urls:
             try:
                 parts = urlsplit(value)
                 valid = parts.scheme in {"http", "https"} and bool(parts.hostname) and not parts.username and not parts.password
@@ -74,10 +91,10 @@ class Settings:
                 valid = False
             if not valid:
                 raise BridgeError("Cần URL ảnh điện thoại HTTP/HTTPS và URL cloud HTTPS (HTTP chỉ cho localhost); không đặt mật khẩu trong URL.")
-        if (not settings.api_key or len(settings.api_key) < 32 or settings.api_key.startswith("replace_")
+        if (not camera_only and (not settings.api_key or len(settings.api_key) < 32 or settings.api_key.startswith("replace_"))
                 or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", settings.camera_id)):
             raise BridgeError("Cần DEVICE_API_KEY riêng tối thiểu 32 ký tự và CAMERA_ID hợp lệ.")
-        if not manual and not settings.serial_port:
+        if not manual and not camera_only and not settings.serial_port:
             raise BridgeError("Cần SERIAL_PORT; dùng --manual để kiểm tra khi không có ESP32.")
         durations = (settings.capture_timeout, settings.request_timeout, settings.job_timeout, settings.startup_timeout)
         if (not all(math.isfinite(v) and 0 < v <= 300 for v in durations)
@@ -106,6 +123,9 @@ class PhoneCamera:
     def __init__(self, settings, session):
         self.settings, self.session = settings, session
 
+    def close(self):
+        pass  # HTTP session lifetime belongs to the caller.
+
     def capture(self, deadline):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
@@ -132,6 +152,13 @@ class PhoneCamera:
         except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
             raise BridgeError("Điện thoại chưa trả ảnh JPEG hợp lệ (tối đa 25 megapixel).") from error
         return bytes(content)
+
+
+def create_camera(settings, session):
+    if settings.camera_source == "phone":
+        return PhoneCamera(settings, session)
+    from local_camera import LocalCamera
+    return LocalCamera(settings)
 
 
 class CloudAI:
@@ -398,13 +425,13 @@ def legacy_main():
     args = parser.parse_args()
     load_dotenv(Path(__file__).with_name(".env"))
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    port = journal = run = None
+    port = journal = run = camera = None
     run_reason = "START_FAILED"
     serial_failed = controller_fault = False
     try:
         settings = Settings.from_environment(manual=args.manual)
         with requests.Session() as phone_session, requests.Session() as cloud_session:
-            camera, cloud = PhoneCamera(settings, phone_session), CloudAI(settings, cloud_session)
+            camera, cloud = create_camera(settings, phone_session), CloudAI(settings, cloud_session)
             cloud.check_ready()
             journal = EventJournal(settings.state_path)
             run = DeviceRun(settings, requests.Session(), manual=args.manual)
@@ -422,7 +449,7 @@ def legacy_main():
             while True:
                 run.heartbeat()
                 if args.manual:
-                    input("Nhấn Enter để chụp ảnh từ điện thoại (Ctrl+C để dừng): ")
+                    input("Nhấn Enter để lấy ảnh từ nguồn camera đã chọn (Ctrl+C để dừng): ")
                     run.heartbeat()
                     trigger_id = None
                 else:
@@ -456,6 +483,8 @@ def legacy_main():
         LOG.error("%s", error)
         return 1
     finally:
+        if camera is not None:
+            camera.close()
         if port is not None:
             if controller_fault:
                 run_reason = "CONTROLLER_FAULT"

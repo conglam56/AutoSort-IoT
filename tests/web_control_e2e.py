@@ -25,6 +25,15 @@ def run_web_e2e(client,settings,folder,capture_gate):
     port=SerialFixture()
     with requests.Session() as http,bridge.EventJournal(folder/'web-bridge.sqlite3') as journal:
         agent=WebAgent(settings,port,http,journal)
+        if settings.camera_source == 'video':
+            # Keep inference in flight until PAUSE is ACKed, then decode a real video.
+            # This explicit fixture never opens a real COM port or production service.
+            capture = agent.local_camera.capture
+            def gated_capture(deadline):
+                if not capture_gate.wait(timeout=10):
+                    raise bridge.BridgeError('Video fixture gate timed out')
+                return capture(deadline)
+            agent.local_camera.capture = gated_capture
         try:
             agent.connect();assert port.state=='IDLE' and agent.run is None
             assert client.get('/api/session/current').json() is None
@@ -59,6 +68,8 @@ def run_web_e2e(client,settings,folder,capture_gate):
             assert saved['endReason']=='NORMAL_STOP' and len(saved['fruits'])==1
             actions=[w.decode().split(':')[2] for w in port.writes if w.startswith(b'CONTROL:')]
             assert actions==['START','PAUSE','RESUME','STOP']
+            if settings.camera_source == 'video':
+                print('E2E VIDEO OK: real MJPEG decode -> JPEG -> localhost Java/ORT/PostgreSQL -> scoped Serial fixture result.',flush=True)
             print('E2E WEB OK: authenticated START -> real session -> paused camera/AI job -> scoped GREEN result while PAUSED -> RESUME -> STOP closes session; one Serial command per action.',flush=True)
         finally:
             capture_gate.set();agent.close()

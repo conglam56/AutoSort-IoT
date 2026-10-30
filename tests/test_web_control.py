@@ -2,6 +2,7 @@
 from concurrent.futures import Future
 from pathlib import Path
 import sys
+import time
 import unittest
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
@@ -92,5 +93,38 @@ class WebControlTests(unittest.TestCase):
             self.agent.handle_command(start,1)
         frames=[call.args[0] for call in self.port.write.call_args_list if call.args[0].startswith(b'CONTROL:')]
         self.assertEqual(len(frames),1);self.assertIn(b':STOP:',frames[0])
+
+    def test_local_camera_failure_rejects_current_fruit_without_contacting_ai(self):
+        self.agent.local_camera=Mock()
+        self.agent.local_camera.capture.side_effect=bridge.BridgeError('Camera lost')
+        with patch('web_control.CloudAI') as cloud:
+            label=self.agent.infer(self.run,'request',time.monotonic()+5)
+        self.assertEqual(label,'REJECT')
+        cloud.return_value.classify.assert_not_called()
+        self.port.write.assert_not_called()  # Only the Serial owner may send the result.
+
+    def test_local_camera_bytes_use_same_cloud_contract_and_run_id(self):
+        self.agent.local_camera=Mock()
+        self.agent.local_camera.capture.return_value=b'jpeg-from-droidcam'
+        deadline=time.monotonic()+5
+        with patch('web_control.CloudAI') as cloud:
+            cloud.return_value.classify.return_value='GREEN'
+            self.assertEqual(self.agent.infer(self.run,'request',deadline),'GREEN')
+        self.assertEqual(cloud.return_value.run_id,self.run)
+        cloud.return_value.classify.assert_called_once_with(b'jpeg-from-droidcam','F-request','request',deadline)
+
+    def test_control_channel_loss_and_missing_ack_fail_instead_of_resending(self):
+        self.active()
+        self.port.read_until.return_value=b''
+        self.agent.api.side_effect=bridge.requests.ConnectionError('test')
+        with self.assertRaises(bridge.requests.ConnectionError):
+            self.agent.step()
+        commands=[c for c in self.port.write.call_args_list if c.args[0].startswith(b'CONTROL:')]
+        self.assertEqual(commands,[])
+        self.agent.api.side_effect=None
+        self.agent.pending={**self.command('PAUSE'),'deadline':time.monotonic()-1}
+        with self.assertRaises(bridge.BridgeError):
+            self.agent.step()
+        self.assertFalse(any(c.args[0].startswith(b'CONTROL:') for c in self.port.write.call_args_list))
 
 if __name__=='__main__':unittest.main()

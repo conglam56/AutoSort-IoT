@@ -49,6 +49,13 @@ Tạm dừng/Tiếp tục giữ nguyên phiên. Tính năng cần backend schema
 
 ## Bắt đầu ngay (Người A)
 
+Điện thoại qua USB dùng DroidCam Client và Camera Bridge. Có thể thử video mẫu
+và model v1 trên laptop khi chưa có thiết bị, không gọi cloud hoặc tạo phiên:
+xem [DroidCam và thử offline](docs/DROIDCAM_SETUP.md).
+Chu trình trạm: [dừng → chụp → chờ AI → chạy tiếp → gạt](docs/STATION_CYCLE.md).
+Thông số cơ khí nằm trong `StationConfig.h`; xem [bảng hiệu chỉnh](docs/STATION_CALIBRATION.md)
+trước khi thử thiết bị thật.
+
 1. Cài Java 21, Maven 3.9+, Python 3.12 và PostgreSQL.
 2. Cài phụ thuộc Python cho AI worker bằng `pip install -r cloud-ai/requirements.txt`.
 3. Cấu hình `backend/.env`, build/chạy Spring Boot theo [`backend/README.md`](backend/README.md).

@@ -1,13 +1,14 @@
 # ESP32 điều khiển qua USB Serial và web
 
 Sketch: [AutoSortSerial.ino](AutoSortSerial/AutoSortSerial.ino), kèm
-[Controller.h](AutoSortSerial/Controller.h). Bản gốc `D:/IoT_Arduino_Final` không bị sửa.
+[Controller.h](AutoSortSerial/Controller.h) và
+[StationConfig.h](AutoSortSerial/StationConfig.h). Bản gốc `D:/IoT_Arduino_Final` không bị sửa.
 
 ## Nạp và vận hành
 
 1. Arduino IDE: chọn **ESP32 Dev Module**, board package Espressif **3.3.12**
    (bản đã build kiểm chứng), đúng cổng COM.
-2. Mở `.ino`, giữ `Controller.h` trong cùng thư mục rồi Upload.
+2. Mở `.ino`, giữ cả hai file `.h` trong cùng thư mục rồi Upload.
 3. Đóng Serial Monitor. Chạy bridge mới; ESP32 chờ lệnh, motor vẫn dừng.
 4. Đăng nhập dashboard, dùng **Bắt đầu / Tạm dừng / Tiếp tục / Kết thúc**.
    Backend cần schema v5, `web_control_supported=true`. Xem [WEB_CONTROL.md](../docs/WEB_CONTROL.md).
@@ -26,11 +27,12 @@ Camera là điện thoại; bridge gửi JPEG lên cloud để suy luận.
 | USB Serial | 115200 baud |
 
 Motor: 1000 Hz, 8 bit, duty 150/255. Servo: 50 Hz, 14 bit, 500–2400 µs,
-góc nghỉ 0 và gạt 90. Sửa pin/PWM/dải xung trong `.ino`.
+góc nghỉ 0 và gạt 90 là giá trị ban đầu. Sửa pin/PWM/dải xung, thời gian
+và góc tại **StationConfig.h**, không sửa logic `.ino`/Controller.h.
 `DYNAMIC_BRAKE=true` giữ dừng HIGH/HIGH của driver MX1508 bàn giao;
 đặt false nếu driver thực tế dùng thả trôi, rồi hiệu chỉnh lại vị trí dừng.
 
-Timing trong `Config` ở `Controller.h`:
+Timing trong `Config` ở `StationConfig.h`:
 
 | Tham số | Mặc định |
 |---|---:|
@@ -40,8 +42,17 @@ Timing trong `Config` ở `Controller.h`:
 | Heartbeat ngoài WAIT_AI | 5.000 ms |
 | Debounce IR | 20 ms |
 | Camera tới servo 1 / servo 2 | 1.200 / 2.500 ms |
-| Giữ góc gạt | 400 ms |
+| Giữ góc gạt servo 1 / 2 | 400 / 400 ms |
 | Khoảng thoát bổ sung | 500 ms |
+| Góc nghỉ/gạt servo 1; servo 2 | 0°/90°; 0°/90° |
+
+Các giá trị này **chưa được đo trên trạm thật**. Xem
+[chu trình dừng/chụp/xử lý/gạt](../docs/STATION_CYCLE.md) và
+[bảng hiệu chỉnh](../docs/STATION_CALIBRATION.md). Nếu IR đặt ngay tại camera,
+có thể hiệu chỉnh `irToCameraMs=0`; servo có góc nghỉ/gạt và thời gian giữ
+riêng. Gate timing bắt đầu từ lúc nhận RESULT và bật motor chạy tiếp.
+Config sai góc/thời gian bị chặn khi build; bộ điều khiển cũng từ chối chạy
+với config không hợp lệ trong mô phỏng.
 
 Chỉ đưa **một quả mỗi lượt dispatch**. Phát hiện quả thứ hai khi đang xử lý
 quả trước sẽ khóa lỗi. Pause giữ trạng thái/timing và góc servo đang hoạt động;

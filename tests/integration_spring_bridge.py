@@ -3,6 +3,7 @@
 The camera and Serial are test fixtures. Production accounts/data are never used.
 """
 import argparse
+from dataclasses import replace
 import json
 import os
 from pathlib import Path
@@ -36,7 +37,10 @@ def main():
     parser.add_argument('--task', choices=['classify', 'detect'], default='classify')
     parser.add_argument('--automatic', action='store_true')
     parser.add_argument('--web-control', action='store_true')
+    parser.add_argument('--video-camera', action='store_true', help='Real local video decoder with the Serial fixture')
     args = parser.parse_args()
+    if args.video_camera and not args.web_control:
+        parser.error('--video-camera requires --web-control')
     url = os.environ["AUTOSORT_TEST_DATABASE_URL"]
     assert urlsplit(url).hostname in {"localhost", "127.0.0.1"}, "Integration test requires localhost PostgreSQL"
     schema = "autosort_e2e_" + uuid4().hex
@@ -127,6 +131,11 @@ def main():
                         def flush(self):
                             pass
                     settings = bridge.Settings(phone_url=f"http://127.0.0.1:{phone.server_port}/shot.jpg", api_key=key, cloud_url=origin + "/infer")
+                    if args.video_camera:
+                        from camera_check import make_sample
+                        video = folder / 'fixture.avi'
+                        make_sample(video)
+                        settings = replace(settings, camera_source='video', video_path=str(video), capture_timeout=5)
                     if args.web_control:
                         from web_control_e2e import run_web_e2e
                         run_web_e2e(client,settings,folder,capture_gate)
