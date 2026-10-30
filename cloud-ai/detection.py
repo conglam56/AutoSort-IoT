@@ -76,6 +76,8 @@ def detection_candidates(output, classes, geometry, candidate_threshold=.25, nms
 
 
 def decide_detection(candidates, threshold, roi=(0, 0, 1, 1), target_iou=.5, class_margin=.15):
+    # class_margin is accepted for existing callers/metadata, but policy2 uses
+    # the highest eligible maturity score rather than a second margin veto.
     def uncertain(detail, raw='REJECT', confidence=0.0):
         return {'label': 'REJECT', 'raw_label': raw, 'confidence': round(confidence, 4),
                 'decision_reason': 'LOW_CONFIDENCE', 'decision_detail': detail}
@@ -86,25 +88,25 @@ def decide_detection(candidates, threshold, roi=(0, 0, 1, 1), target_iou=.5, cla
             targets.append(candidate)
     if not targets:
         return uncertain('NO_TARGET')
-    # Candidate boxes must all refer to one fruit. Never classify another fruit
-    # merely because its confidence or box area is larger.
-    reference = targets[0]
-    if any(float(pair_iou(np.asarray(reference['box']), [c['box']])[0]) < target_iou for c in targets[1:]):
+    cutoff = float(np.asarray(threshold, dtype=np.float32))
+    eligible = [candidate for candidate in targets if candidate['confidence'] >= cutoff]
+    if not eligible:
+        best = max(targets, key=lambda candidate: candidate['confidence'])
+        return uncertain('BELOW_THRESHOLD', best['label'], best['confidence'])
+    # Only detections meeting the decision threshold can make the scene
+    # ambiguous. Low-score fruit at the edge must not veto a qualified target.
+    targets = eligible
+    reference = max(targets, key=lambda candidate: candidate['confidence'])
+    if any(float(pair_iou(np.asarray(reference['box']), [c['box']])[0]) < target_iou for c in targets):
         return uncertain('MULTIPLE_OR_AMBIGUOUS_TARGETS')
     scores = {}
     for candidate in targets:
         scores[candidate['label']] = max(scores.get(candidate['label'], 0), candidate['confidence'])
-    cutoff = float(np.asarray(threshold, dtype=np.float32))
     if scores.get('REJECT', 0) >= cutoff:
         return {'label': 'REJECT', 'raw_label': 'REJECT', 'confidence': round(scores['REJECT'], 4),
                 'decision_reason': 'CLASSIFIED', 'decision_detail': 'REJECT_PRIORITY'}
     ordered = sorted(scores.items(), key=lambda p: (-p[1], p[0]))
     label, confidence = ordered[0]
-    if confidence < cutoff:
-        return uncertain('BELOW_THRESHOLD', label, confidence)
-    maturity = sorted((s for c, s in scores.items() if c in {'GREEN', 'RIPE'}), reverse=True)
-    if len(maturity) > 1 and maturity[0] - maturity[1] < class_margin:
-        return uncertain('MATURITY_CONFLICT', label, confidence)
     return {'label': label, 'raw_label': label, 'confidence': round(confidence, 4),
             'decision_reason': 'CLASSIFIED', 'decision_detail': 'SINGLE_TARGET'}
 

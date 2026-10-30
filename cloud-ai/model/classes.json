@@ -19,7 +19,7 @@
   "num_classes": 3,
   "imgsz": 320,
   "threshold": 0.7,
-  "model_version": "autosort-yolo11n-detect-v1",
+  "model_version": "autosort-yolo11n-detect-v1-policy2",
   "candidate_threshold": 0.25,
   "nms_iou": 0.7,
   "target_iou": 0.5,

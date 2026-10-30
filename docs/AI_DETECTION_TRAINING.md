@@ -84,6 +84,9 @@ Worker vẫn trả GREEN/RIPE/REJECT hoặc MOCK và giữ hai reason mà Bridge
 
 NMS giữ riêng từng lớp để áp dụng REJECT cho cùng quả. Mặc định ROI là toàn
 ảnh và worker từ chối tự chọn một quả khi nhiều mục tiêu không nhất quán.
+Từ [policy2](AI_DETECTION_POLICY2.md), chỉ khung đạt ngưỡng quyết định (>= 70%
+mặc định) mới tham gia kiểm tra nhiều mục tiêu. Khung yếu ở mép không phủ
+quyết quả chính đã đủ tin cậy; không còn veto bởi `class_margin` cũ.
 `target_roi` trong classes.json là [left, top, right, bottom] chuẩn hóa và cần
 hiệu chỉnh bằng camera trạm. Không coi nhiều mục tiêu là một quả chỉ vì có
 điểm confidence lớn hơn.

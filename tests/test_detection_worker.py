@@ -56,6 +56,16 @@ class DetectionWorkerTests(unittest.TestCase):
         self.assertEqual(result['decision_reason'], 'LOW_CONFIDENCE')
         self.assertEqual(result['decision_detail'], 'NO_TARGET')
 
+    def test_real_onnx_qualified_ripe_ignores_weak_side_fruit(self):
+        output = np.zeros((1, 7, 3), dtype=np.float32)
+        output[0, :4] = [[160, 296, 284], [160, 228, 70], [264, 48, 72], [252, 176, 140]]
+        output[0, 5] = [.91831839, .64315474, .62864077]
+        engine = self.engine(output)
+        result = engine.classify('F-threshold', 'phone-test', (ROOT / 'cloud-ai/quatsample.jpg').read_bytes())
+        self.assertEqual(result['label'], 'RIPE')
+        self.assertEqual(result['confidence'], .9183)
+        self.assertEqual(result['decision_reason'], 'CLASSIFIED')
+
     def test_wrong_detection_shape_never_reports_ready(self):
         engine = self.engine(np.zeros((1, 6, 1), dtype=np.float32))
         self.assertFalse(engine.model_ready)

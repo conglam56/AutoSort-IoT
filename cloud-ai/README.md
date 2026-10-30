@@ -17,7 +17,10 @@ Input là NCHW float32 `(1,3,imgsz,imgsz)`; thứ tự lớp trong `classes.json
   EXIF/RGB, resize bilinear và center crop như trước. Không softmax lần hai.
 - `task=detect`, `output_format=yolo11_raw`: đầu ra `(1,7,anchors)`, letterbox
   OpenCV, class-aware NMS và quyết định cho một quả trong ROI. REJECT đủ tin cậy
-  được ưu tiên trên cùng quả. Nhiều mục tiêu, xung đột hoặc độ tin cậy thấp chuyển
+  được ưu tiên trên cùng quả. Chỉ khung đạt ngưỡng (mặc định >= 70%) được xét
+  khi kiểm tra nhiều mục tiêu; khung dưới ngưỡng không phủ quyết quả đã đạt.
+  GREEN/RIPE cùng một quả lấy nhãn có điểm cao nhất đã đạt ngưỡng.
+  Nhiều mục tiêu đủ ngưỡng hoặc độ tin cậy thấp chuyển
   nhánh REJECT với `decision_reason=LOW_CONFIDENCE` và `decision_detail` cụ thể.
 
 Không đổi tên một detector một lớp thành model ba lớp. Chuẩn bị dữ liệu và
