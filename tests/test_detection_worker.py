@@ -66,6 +66,26 @@ class DetectionWorkerTests(unittest.TestCase):
         self.assertEqual(result['confidence'], .9183)
         self.assertEqual(result['decision_reason'], 'CLASSIFIED')
 
+    def test_highest_confidence_policy_accepts_sub70_and_does_not_prioritize_reject(self):
+        self.meta.update(decision_policy='highest_confidence', threshold=0.0)
+        output = np.zeros((1, 7, 2), dtype=np.float32)
+        output[0, :4] = [[160, 160], [160, 160], [200, 200], [200, 200]]
+        output[0, 5, 0] = .61
+        output[0, 6, 1] = .59
+        engine = self.engine(output)
+        self.assertEqual(engine.health()['decision_policy'], 'highest_confidence')
+        result = engine.classify('F-highest', 'phone-test', (ROOT / 'cloud-ai/quatsample.jpg').read_bytes())
+        self.assertEqual(result['label'], 'RIPE')
+        self.assertEqual(result['confidence'], .61)
+        self.assertEqual(result['decision_detail'], 'HIGHEST_CONFIDENCE')
+
+    def test_highest_policy_does_not_invent_a_label_without_a_detection(self):
+        self.meta.update(decision_policy='highest_confidence', threshold=0.0)
+        engine = self.engine(np.zeros((1, 7, 1), dtype=np.float32))
+        result = engine.classify('F-empty', 'phone-test', (ROOT / 'cloud-ai/quatsample.jpg').read_bytes())
+        self.assertEqual(result['decision_detail'], 'NO_TARGET')
+        self.assertEqual(result['decision_reason'], 'LOW_CONFIDENCE')
+
     def test_wrong_detection_shape_never_reports_ready(self):
         engine = self.engine(np.zeros((1, 6, 1), dtype=np.float32))
         self.assertFalse(engine.model_ready)

@@ -2,7 +2,7 @@
 
 Trạng thái: **model thử nghiệm, chưa xác nhận vận hành trên trạm thật**.
 Các số liệu trong tài liệu này là của policy v1 trước khi thay đổi cách xét
-ngưỡng. Bản tích hợp mới dùng [policy2](AI_DETECTION_POLICY2.md); không dùng
+ngưỡng. Bản tích hợp mới dùng [policy3](AI_DETECTION_POLICY3.md); không dùng
 những số liệu cũ như đánh giá độc lập cho policy mới.
 Model đã train, xuất ONNX và kiểm tra bằng worker thực tế; chưa đưa vào cloud
 đang phục vụ hoặc điều khiển phần cứng. Không gọi mAP là độ chính xác băng chuyền.

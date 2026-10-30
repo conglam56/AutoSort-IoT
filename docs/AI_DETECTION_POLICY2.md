@@ -1,5 +1,8 @@
 # Chính sách ngưỡng 70% (policy2)
 
+Tài liệu lịch sử. Yêu cầu mới chuyển sang [policy3](AI_DETECTION_POLICY3.md):
+chọn điểm cao nhất, bỏ ngưỡng quyết định 70% và ưu tiên REJECT.
+
 Theo yêu cầu vận hành, chỉ khung có confidence >= 0,7 tham gia quyết định.
 Khung có tâm nằm ngoài ROI tiếp tục được bỏ qua. Trên cùng một quả:
 

@@ -16,12 +16,12 @@ Input là NCHW float32 `(1,3,imgsz,imgsz)`; thứ tự lớp trong `classes.json
 - `task=classify` (mặc định cho metadata cũ): đầu ra xác suất `(1,3)`, xử lý
   EXIF/RGB, resize bilinear và center crop như trước. Không softmax lần hai.
 - `task=detect`, `output_format=yolo11_raw`: đầu ra `(1,7,anchors)`, letterbox
-  OpenCV, class-aware NMS và quyết định cho một quả trong ROI. REJECT đủ tin cậy
-  được ưu tiên trên cùng quả. Chỉ khung đạt ngưỡng (mặc định >= 70%) được xét
-  khi kiểm tra nhiều mục tiêu; khung dưới ngưỡng không phủ quyết quả đã đạt.
-  GREEN/RIPE cùng một quả lấy nhãn có điểm cao nhất đã đạt ngưỡng.
-  Nhiều mục tiêu đủ ngưỡng hoặc độ tin cậy thấp chuyển
-  nhánh REJECT với `decision_reason=LOW_CONFIDENCE` và `decision_detail` cụ thể.
+  OpenCV và class-aware NMS. Metadata hiện tại dùng
+  `decision_policy=highest_confidence`: chọn khung có điểm cao nhất trong ROI
+  và nhãn của khung đó; không có ngưỡng quyết định 70% hay ưu tiên REJECT.
+  Bộ lọc phát hiện `candidate_threshold=0.25` vẫn loại khung nhiễu trước NMS.
+  Không có mục tiêu hợp lệ thì LOW_CONFIDENCE/REJECT với chi tiết NO_TARGET.
+  Metadata cũ thiếu decision_policy vẫn dùng chính sách threshold để tương thích.
 
 Không đổi tên một detector một lớp thành model ba lớp. Chuẩn bị dữ liệu và
 train/export detector theo [AI_DETECTION_TRAINING.md](../docs/AI_DETECTION_TRAINING.md).

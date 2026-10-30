@@ -78,7 +78,8 @@ class Engine:
                 "classes": self.classes_list if self.model_ready else ["MOCK"],
                 "model_version": self.model_version if self.model_ready else "mock-v0",
                 "threshold": self.confidence_threshold if self.model_ready else 0.0,
-                "task": self.task if self.model_ready else None}
+                "task": self.task if self.model_ready else None,
+                "decision_policy": self.detection_policy.get('decision_policy') if self.model_ready else None}
 
     def classify(self, fruit_id, camera_id, content):
         try:
@@ -105,7 +106,7 @@ class Engine:
                 candidates = detection_candidates(output, self.classes_list, geometry,
                                                   policy['candidate_threshold'], policy['nms_iou'])
                 decision = decide_detection(candidates, self.confidence_threshold, policy['roi'],
-                                            policy['target_iou'], policy['class_margin'])
+                                            policy['target_iou'], policy['class_margin'], policy['decision_policy'])
                 return {**result, **decision, 'model_version': self.model_version,
                         'inference_ms': round((time.perf_counter() - started) * 1000, 2)}
             tensor = preprocess_image_bytes(content, self.img_size)
