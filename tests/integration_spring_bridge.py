@@ -34,6 +34,8 @@ import bridge
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', choices=['classify', 'detect'], default='classify')
+    parser.add_argument('--automatic', action='store_true')
+    parser.add_argument('--web-control', action='store_true')
     args = parser.parse_args()
     url = os.environ["AUTOSORT_TEST_DATABASE_URL"]
     assert urlsplit(url).hostname in {"localhost", "127.0.0.1"}, "Integration test requires localhost PostgreSQL"
@@ -82,15 +84,19 @@ def main():
                         raise AssertionError("Java application readiness timeout")
                     health = client.get("/health").json()
                     assert health["backend"] == "spring-boot" and health["mode"] == "onnx"
-                    for asset in ("index.html", "app.js", "admin.js", "style.css"):
+                    assert client.get('/dashboard/index.html').status_code in (302,303,307)
+                    for asset in ("login.html", "app.js", "admin.js", "style.css"):
                         assert client.get("/dashboard/" + asset).status_code == 200
                     login = client.post("/api/auth/login", json={"username": "admin", "password": password})
                     login.raise_for_status()
                     client.headers["X-CSRF-Token"] = login.json()["csrfToken"]
-                    client.post("/api/sessions/new", headers={"Idempotency-Key": "e2e-start"}).raise_for_status()
+                    if not args.automatic and not args.web_control:
+                        client.post("/api/sessions/new", headers={"Idempotency-Key": "e2e-start"}).raise_for_status()
                     image = (ROOT / "cloud-ai/quatsample.jpg").read_bytes()
+                    capture_gate=threading.Event()
                     class Snapshot(BaseHTTPRequestHandler):
                         def do_GET(self):
+                            if args.web_control: capture_gate.wait(timeout=15)
                             self.send_response(200)
                             self.send_header("Content-Type", "image/jpeg")
                             self.end_headers()
@@ -121,15 +127,41 @@ def main():
                         def flush(self):
                             pass
                     settings = bridge.Settings(phone_url=f"http://127.0.0.1:{phone.server_port}/shot.jpg", api_key=key, cloud_url=origin + "/infer")
+                    if args.web_control:
+                        from web_control_e2e import run_web_e2e
+                        run_web_e2e(client,settings,folder,capture_gate)
+                        stop(process);process=None
+                        return
                     with requests.Session() as phone_session, LostResponse() as cloud_session, bridge.EventJournal(folder / "bridge.sqlite3") as journal:
                         cloud = bridge.CloudAI(settings, cloud_session)
                         cloud.check_ready()
+                        run_session = requests.Session()
+                        run = bridge.DeviceRun(settings, run_session) if args.automatic else None
+                        if run:
+                            run.start()
+                            cloud.run_id = run.id
                         serial = SerialFixture()
                         result = bridge.process_trigger("boot-e2e:1", settings, bridge.PhoneCamera(settings, phone_session), cloud, journal, serial)
                         assert result == "GREEN" and serial.writes == [b"SORT:GREEN\n"] and cloud_session.calls == 2
                         assert bridge.process_trigger("boot-e2e:1", settings, bridge.PhoneCamera(settings, phone_session), cloud, journal, serial) is None
                     current = client.get("/api/session/current").json()
                     assert len(current["fruits"]) == 1 and current["fruits"][0]["label"] == "GREEN"
+                    if run:
+                        assert current['automatic'] is True
+                        run.stop('NORMAL_STOP')
+                        assert client.get('/api/session/current').json() is None
+                        completed = client.get('/api/sessions/'+current['id']).json()
+                        assert completed['status']=='COMPLETED' and completed['endReason']=='NORMAL_STOP'
+                        again=bridge.DeviceRun(settings,run_session)
+                        next_session=again.start()
+                        assert next_session['sessionId']!=current['id']
+                        again.stop('NORMAL_STOP')
+                        run_session.close()
+                        client.post('/api/auth/logout').raise_for_status()
+                        print(f'E2E OK ({args.task}, automatic): device session -> phone JPEG -> bridge -> Spring Boot -> ORT -> PostgreSQL -> one Serial command; stop closes session; next start opens a distinct session.')
+                        stop(process)
+                        process=None
+                        return
                     viewer_password = secrets.token_urlsafe(24)
                     client.post("/api/admin/users", json={"username": "operator", "password": viewer_password}).raise_for_status()
                     with httpx.Client(base_url=origin, headers={"Origin": origin}, timeout=10) as viewer:

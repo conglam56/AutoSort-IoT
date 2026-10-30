@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="auth-pending">
   <a class="skip-link" href="#main-content">Đến nội dung chính</a>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
@@ -52,7 +52,7 @@
     <div class="sidebar-bottom">
       <div class="connection-row" id="cloud-status-pill"><span class="pip offline" aria-hidden="true"></span><span>Máy chủ AI</span><strong id="cloud-latency">Chưa kiểm tra</strong></div>
       <div class="model-row"><span>Mô hình</span><strong id="model-ver">Chưa xác định</strong></div>
-      <div class="operator"><span class="operator-avatar">AS</span><div><strong id="account-name">Khách tham quan</strong><span id="account-role">Dữ liệu mô phỏng</span></div></div>
+      <div class="operator"><span class="operator-avatar">AS</span><div><strong id="account-name">Đang tải</strong><span id="account-role">Đang xác thực</span></div></div>
       <div class="account-actions"><button id="btn-password" class="btn btn-neutral account-button" hidden>Đổi mật khẩu</button><button id="btn-account" class="btn btn-neutral account-button">Đăng nhập máy chủ</button></div>
     </div>
   </aside>
@@ -67,18 +67,21 @@
       <div class="page-heading">
         <div><h1 id="page-title">Tổng quan phân loại</h1><p id="page-subtitle">Một góc nhìn rõ ràng cho từng phiên vận hành.</p></div>
         <div class="header-actions" id="header-controls">
-          <label class="source-select"><span>Nguồn</span><select id="data-source" aria-label="Nguồn dữ liệu"><option value="demo">Mô phỏng</option><option value="live">Máy chủ AI</option></select></label>
-          <button id="btn-new-session" class="btn btn-action" hidden disabled><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Phiên mới</button><button id="btn-end-session" class="btn btn-neutral" hidden disabled>Kết thúc phiên</button>
+          <button id="btn-start" class="btn btn-action" disabled>Bắt đầu</button>
+          <button id="btn-pause" class="btn btn-neutral" disabled>Tạm dừng</button>
+          <button id="btn-stop" class="btn btn-neutral" disabled>Kết thúc</button>
+          <button id="btn-end-session" class="btn btn-neutral" hidden disabled>Đóng phiên cũ</button>
         </div>
       </div>
-      <p id="session-permission-note" class="permission-note">Demo công khai · Đăng nhập để vận hành phiên thật.</p>
+      <p id="session-permission-note" class="permission-note">Bắt đầu mở phiên mới. Tạm dừng giữ nguyên phiên; Kết thúc dừng trạm và đóng phiên.</p>
+      <p id="station-status" class="station-status" role="status" aria-live="polite">Đang kiểm tra kết nối trạm…</p>
 
-      <div class="source-notice" id="source-notice" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span id="source-notice-text">Chế độ mô phỏng · Ảnh và số liệu mẫu để trải nghiệm giao diện.</span><span class="notice-tag" id="source-state">Demo</span></div>
+      <div class="source-notice" id="source-notice" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span id="source-notice-text">Đang kết nối máy chủ…</span><span class="notice-tag" id="source-state">Đang kết nối</span></div>
 
       <section id="tab-live" class="view-panel active" aria-labelledby="tab-live-btn">
         <div class="session-strip">
-          <div class="session-identity"><div class="session-title-row"><span class="session-status-tag" id="session-status-tag"><span class="pip online" aria-hidden="true"></span>Đang chạy</span><h2 id="live-session-name">Đang tải phiên…</h2></div><div class="session-timestamps"><span>Bắt đầu <strong id="live-session-start">--:--</strong></span><span class="session-divider"></span><span>Thời gian chạy <strong id="live-session-uptime">00:00:00</strong></span></div></div>
-          <button id="btn-sim-trigger" class="btn btn-neutral"><svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>Mô phỏng một quả</button>
+          <div class="session-identity"><div class="session-title-row"><span class="session-status-tag" id="session-status-tag"><span class="pip online" aria-hidden="true"></span>Đang chạy</span><h2 id="live-session-name">Đang tải phiên…</h2></div><div class="session-timestamps"><span>Bắt đầu <strong id="live-session-start">--:--</strong></span><span class="session-divider"></span><span>Thời gian phiên <strong id="live-session-uptime">00:00:00</strong></span></div></div>
+          <button id="btn-sim-trigger" class="btn btn-neutral"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Thử kết nối lại</button>
         </div>
 
         <div class="overview-metrics" aria-label="Chỉ số phiên hiện tại">
@@ -90,7 +93,7 @@
 
         <div class="console-stage">
           <section class="panel optical-chamber" aria-labelledby="camera-title">
-            <header class="panel-header"><div><h3 id="camera-title">Khu vực chụp ảnh</h3><p>Hình ảnh ghi nhận gần nhất</p></div><span class="camera-source-tag" id="camera-fps"><span class="pip" aria-hidden="true"></span>Ảnh mô phỏng</span></header>
+            <header class="panel-header"><div><h3 id="camera-title">Khu vực chụp ảnh</h3><p>Hình ảnh ghi nhận gần nhất</p></div><span class="camera-source-tag" id="camera-fps"><span class="pip" aria-hidden="true"></span>Ảnh từ máy chủ</span></header>
             <div class="optical-aperture" id="camera-viewport">
               <div class="viewport-meta"><span><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg>Camera 01</span><span id="image-source-label">Ảnh mẫu</span></div>
               <img id="latest-fruit-img" src="samples/ripe_1.jpg" alt="Ảnh mẫu quả quất" class="optical-subject">
@@ -151,26 +154,13 @@
           <div class="admin-pagination"><button id="admin-audit-prev" class="btn btn-neutral">Trước</button><span id="admin-audit-page" role="status"></span><button id="admin-audit-next" class="btn btn-neutral">Sau</button></div>
         </section>
       </section>
-      <footer class="workspace-footer"><span>AutoSort IoT <span class="footer-divider">/</span> Giám sát phân loại quất</span><span id="footer-source">Dữ liệu mô phỏng</span></footer>
+      <footer class="workspace-footer"><span>AutoSort IoT <span class="footer-divider">/</span> Giám sát phân loại quất</span><span id="footer-source">Chưa đồng bộ</span></footer>
     </main>
   </div>
 
-  <dialog id="session-dialog" class="app-dialog" aria-labelledby="session-dialog-title"><form method="dialog"><div class="dialog-icon"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></div><h2 id="session-dialog-title">Tạo phiên dữ liệu mới?</h2><p>Phiên bắt đầu với 0 quả. Chỉ tạo khi chưa có phiên chạy. Thao tác này không bật motor hoặc điều khiển ESP32.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Giữ phiên hiện tại</button><button class="btn btn-action" value="confirm">Tạo phiên mới</button></div></form></dialog>
   <dialog id="end-session-dialog" class="app-dialog" aria-labelledby="end-session-title"><form method="dialog"><h2 id="end-session-title">Kết thúc phiên dữ liệu?</h2><p id="end-session-target"></p><p>Kết quả cũ được giữ. Máy chủ ngừng nhận ảnh mới cho phiên này. Đây không phải lệnh dừng băng tải; kiểm tra thiết bị theo quy trình phần cứng.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Hủy</button><button class="btn btn-action" value="confirm">Kết thúc phiên dữ liệu</button></div></form></dialog>
-  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Theo dõi phiên phân loại</h2><ol class="guide-steps"><li>Chọn <strong>Mô phỏng</strong> để xem ảnh và số liệu mẫu.</li><li><strong>Operator và Admin</strong> đăng nhập để tạo/kết thúc phiên dữ liệu thật; thao tác này không bật/tắt thiết bị.</li><li>Mở <strong>Lịch sử phiên</strong> để tìm kiếm, lọc nhãn và xuất báo cáo CSV.</li><li>Đăng nhập để xem dữ liệu <strong>Máy chủ AI</strong>. Quản trị viên có thêm mục <strong>Quản trị</strong> để quản lý tài khoản và xem nhật ký.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
+  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Vận hành trạm phân loại</h2><ol class="guide-steps"><li>Chạy bridge tại trạm và chờ trạng thái sẵn sàng.</li><li><strong>Bắt đầu</strong> chạy băng chuyền và tạo phiên mới.</li><li><strong>Tạm dừng</strong> giữ nguyên phiên và tiến độ; <strong>Tiếp tục</strong> chạy tiếp.</li><li><strong>Kết thúc</strong> dừng trạm và đóng phiên. Chờ trạng thái được xác nhận rồi thao tác tiếp.</li><li>Mở <strong>Lịch sử phiên</strong> để xem và xuất CSV. Lỗi trạm cần kiểm tra tại chỗ.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
   <div class="toast-shelf" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
-  <dialog id="login-dialog" class="app-dialog login-dialog" aria-labelledby="login-title">
-    <form id="login-form" method="post">
-      <div class="login-emblem" aria-hidden="true"><svg class="icon"><use href="#i-leaf"/></svg> AutoSort IoT</div>
-      <h2 id="login-title">Đăng nhập trạm phân loại</h2>
-      <p>Xem dữ liệu vận hành và lịch sử bằng tài khoản được quản trị viên cấp.</p>
-      <label class="login-field" for="login-username">Tên đăng nhập<input id="login-username" name="username" autocomplete="username" required maxlength="64" autofocus></label>
-      <label class="login-field" for="login-password">Mật khẩu<input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
-      <p id="login-error" class="login-error" role="alert" hidden></p>
-      <button id="btn-login-submit" class="btn btn-action account-button" type="submit">Đăng nhập</button>
-      <button id="btn-login-demo" class="text-button login-demo" type="button">Tiếp tục xem mô phỏng</button>
-    </form>
-  </dialog>
   <dialog id="admin-create-dialog" class="app-dialog account-dialog" aria-labelledby="admin-create-title"><form id="admin-create-form" method="post">
     <h2 id="admin-create-title">Thêm tài khoản</h2><p>Cấp quyền phù hợp với công việc của từng thành viên.</p>
     <p id="admin-create-error" class="form-error" role="alert" tabindex="-1" hidden></p>

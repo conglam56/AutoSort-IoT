@@ -33,6 +33,10 @@ jobs:
           cache-dependency-path: cloud-ai/requirements-dev.txt
       - run: pip install -r cloud-ai/requirements-dev.txt
       - run: python -m unittest discover -s tests -v
+      - name: Firmware state machine
+        run: |
+          g++ -std=c++17 -Wall -Wextra -Werror tests/firmware_controller_test.cpp -o "$RUNNER_TEMP/controller-test"
+          "$RUNNER_TEMP/controller-test"
       - run: mvn -B -f backend/pom.xml verify
         env:
           AUTOSORT_TEST_DATABASE_URL: postgresql://autosort:integration-test-only@127.0.0.1:5432/autosort
@@ -42,5 +46,8 @@ jobs:
         env:
           AUTOSORT_TEST_DATABASE_URL: postgresql://autosort:integration-test-only@127.0.0.1:5432/autosort
       - run: python tests/integration_spring_bridge.py --task detect
+        env:
+          AUTOSORT_TEST_DATABASE_URL: postgresql://autosort:integration-test-only@127.0.0.1:5432/autosort
+      - run: python tests/integration_spring_bridge.py --task detect --web-control
         env:
           AUTOSORT_TEST_DATABASE_URL: postgresql://autosort:integration-test-only@127.0.0.1:5432/autosort

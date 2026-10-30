@@ -193,16 +193,117 @@ class CameraBridgeTests(unittest.TestCase):
         settings = bridge.Settings(phone_url=self.settings.phone_url, api_key=self.settings.api_key, serial_port="COM-test")
         with patch.object(sys, "argv", ["bridge.py"]), patch.object(bridge.Settings, "from_environment", return_value=settings), \
                 patch.object(bridge.CloudAI, "check_ready"), patch.object(bridge, "EventJournal") as journal, \
+                patch.object(bridge, "DeviceRun") as run, \
                 patch.object(bridge.serial, "Serial", side_effect=serial.SerialException("private")), patch("builtins.input") as manual:
-            self.assertEqual(bridge.main(), 1)
+            self.assertEqual(bridge.legacy_main(), 1)
             manual.assert_not_called()
             journal.return_value.close.assert_called_once()
+            run.return_value.stop.assert_called_once_with("SERIAL_ERROR")
 
     def test_trigger_protocol(self):
         self.assertIsNone(bridge.parse_trigger("TRIGGER"))
         self.assertEqual(bridge.parse_trigger("TRIGGER:boot-123:4"), "boot-123:4")
         for line in ("TRIGGER:", "hello", "TRIGGER:bad id", "TRIGGER:" + "x" * 97):
             self.assertEqual(bridge.parse_trigger(line), "")
+
+    def test_controller_arm_uses_new_session_and_rejects_oversize_budget(self):
+        port = Mock()
+        port.write.side_effect = len
+        first = bridge.arm_controller(port, self.settings)
+        second = bridge.arm_controller(port, self.settings)
+        self.assertNotEqual(first, second)
+        self.assertRegex(first, r"^[a-f0-9]{32}$")
+        self.assertEqual(port.write.call_args_list[0].args[0], f"BRIDGE:READY:{first}\n".encode())
+        long_job = bridge.Settings(phone_url=self.settings.phone_url, api_key=self.settings.api_key, job_timeout=26)
+        port.reset_mock()
+        with self.assertRaises(bridge.BridgeError):
+            bridge.arm_controller(port, long_job)
+        port.write.assert_not_called()
+
+    def test_heartbeat_partial_write_is_never_retried(self):
+        port = Mock()
+        port.write.return_value = 3
+        with self.assertRaises(serial.SerialException):
+            bridge.controller_write(port, b"BRIDGE:PING\n")
+        port.write.assert_called_once()
+        port.flush.assert_not_called()
+
+    def test_main_arms_only_after_cloud_check_and_stops_on_firmware_fault(self):
+        events = []
+        port = Mock()
+        def write(data):
+            events.append(data)
+            return len(data)
+        port.write.side_effect = write
+        port.read_until.return_value = b"FAULT:SECOND_FRUIT\n"
+        def open_port(*args, **kwargs):
+            events.append("open")
+            return port
+        with patch.object(sys, "argv", ["bridge.py"]), \
+                patch.object(bridge.Settings, "from_environment", return_value=self.settings), \
+                patch.object(bridge.CloudAI, "check_ready", side_effect=lambda: events.append("cloud-ready")), \
+                patch.object(bridge.requests, "Session"), patch.object(bridge, "EventJournal"), \
+                patch.object(bridge, "DeviceRun") as run, patch.object(bridge, "wait_controller_started"), \
+                patch.object(bridge.serial, "Serial", side_effect=open_port), \
+                patch.object(bridge.time, "sleep"), patch.object(bridge, "process_trigger") as process:
+            self.assertEqual(bridge.legacy_main(), 1)
+        self.assertEqual(events[:2], ["cloud-ready", "open"])
+        self.assertRegex(events[2].decode(), r"^BRIDGE:READY:[a-f0-9]{32}\n$")
+        self.assertEqual(events[3], b"BRIDGE:PING\n")
+        process.assert_not_called()
+        port.close.assert_called_once()
+        run.return_value.stop.assert_called_once_with("CONTROLLER_FAULT")
+
+    def test_failed_cloud_start_never_opens_or_arms_controller(self):
+        with patch.object(sys, "argv", ["bridge.py"]), \
+                patch.object(bridge.Settings, "from_environment", return_value=self.settings), \
+                patch.object(bridge.CloudAI, "check_ready", side_effect=bridge.BridgeError("Not ready")), \
+                patch.object(bridge.requests, "Session"), patch.object(bridge.serial, "Serial") as open_port:
+            self.assertEqual(bridge.legacy_main(), 1)
+        open_port.assert_not_called()
+
+    def test_device_run_retry_reuses_id_and_stop_confirms_completion(self):
+        run = bridge.DeviceRun(self.settings, self.session)
+        live = {"runId": run.id, "status": "RUNNING", "sessionId": "test", "leaseSeconds": 90}
+        self.session.post.side_effect = [requests.Timeout(), response(live), response({**live, "status": "COMPLETED"})]
+        with patch.object(bridge.time, "sleep"):
+            run.start()
+        first, second = self.session.post.call_args_list[:2]
+        self.assertEqual(first.args, second.args)
+        self.assertEqual(first.kwargs, second.kwargs)
+        self.assertEqual(first.kwargs['json'], {"cameraId": self.settings.camera_id, "mode": "CONVEYOR"})
+        run.stop("NORMAL_STOP")
+        self.assertEqual(self.session.post.call_args.kwargs['json']['reason'], "NORMAL_STOP")
+
+    def test_inference_result_from_other_run_is_rejected(self):
+        self.cloud.run_id = "current-run"
+        with self.assertRaises(bridge.BridgeError):
+            self.cloud.validate(prediction(run_id="old-run"), "F-test", "request-test")
+        self.assertEqual(self.cloud.validate(prediction(run_id="current-run"), "F-test", "request-test"), "GREEN")
+
+    def test_normal_exit_stops_firmware_and_closes_cloud_run(self):
+        port = Mock()
+        port.write.side_effect = len
+        port.read_until.side_effect = [KeyboardInterrupt(), b"FAULT:BRIDGE_STOP\n"]
+        with patch.object(sys, "argv", ["bridge.py"]), \
+                patch.object(bridge.Settings, "from_environment", return_value=self.settings), \
+                patch.object(bridge.CloudAI, "check_ready"), patch.object(bridge.requests, "Session"), \
+                patch.object(bridge, "EventJournal"), patch.object(bridge, "DeviceRun") as run, \
+                patch.object(bridge.serial, "Serial", return_value=port), patch.object(bridge.time, "sleep"), \
+                patch.object(bridge, "wait_controller_started"):
+            self.assertEqual(bridge.legacy_main(), 0)
+        self.assertEqual(port.write.call_args.args[0], b"BRIDGE:STOP\n")
+        run.return_value.stop.assert_called_once_with("NORMAL_STOP")
+
+    def test_missing_start_ack_and_uncertain_serial_write_do_not_claim_success(self):
+        port = Mock()
+        port.read_until.return_value = b""
+        with patch.object(bridge.time, "monotonic", side_effect=[0, 1, 6]):
+            with self.assertRaises(bridge.BridgeError):
+                bridge.wait_controller_started(port, "a" * 32)
+        port._autosort_uncertain_write = True
+        self.assertFalse(bridge.stop_controller(port))
+        port.write.assert_not_called()
 
 
 if __name__ == "__main__":

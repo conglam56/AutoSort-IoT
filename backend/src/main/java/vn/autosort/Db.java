@@ -45,6 +45,10 @@ public class Db {
     jdbc.queryForList("SELECT pg_advisory_xact_lock(83417001)");
   }
 
+  public void stationLock() {
+    jdbc.queryForList("SELECT pg_advisory_xact_lock(83417005)");
+  }
+
   public void audit(String action, Object user, String ip) {
     jdbc.update(
         "INSERT INTO audit_logs(user_id,action,ip_address) VALUES (?,?,?)", user, action, ip);
@@ -73,10 +77,13 @@ public class Db {
             throw new IllegalStateException(
                 "Initialize the database explicitly with INITIALIZE_DATABASE=true");
           boolean migrate =
-              exists && one("SELECT version FROM schema_version WHERE version=3") == null;
+              exists
+                  && (one("SELECT version FROM schema_version WHERE version=3") == null
+                      || one("SELECT version FROM schema_version WHERE version=4") == null
+                      || one("SELECT version FROM schema_version WHERE version=5") == null);
           if (migrate && !settings.enabled("MIGRATE_DATABASE"))
             throw new IllegalStateException(
-                "Set MIGRATE_DATABASE=true to migrate roles and session lifecycle to schema v3");
+                "Set MIGRATE_DATABASE=true to migrate database to schema v5");
           if (!exists || migrate) {
             var ds = Objects.requireNonNull(jdbc.getDataSource());
             var connection = DataSourceUtils.getConnection(ds);
@@ -87,6 +94,13 @@ public class Db {
                     connection,
                     new ClassPathResource(
                         "db/migration/V3__operator_roles_and_session_lifecycle.sql"));
+              if (one("SELECT version FROM schema_version WHERE version=4") == null)
+                ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource("db/migration/V4__automatic_device_runs.sql"));
+              if (one("SELECT version FROM schema_version WHERE version=5") == null)
+                ScriptUtils.executeSqlScript(
+                    connection, new ClassPathResource("db/migration/V5__web_station_control.sql"));
             } finally {
               DataSourceUtils.releaseConnection(connection, ds);
             }
@@ -120,7 +134,7 @@ public class Db {
   }
 
   public void ready() {
-    if (one("SELECT version FROM schema_version WHERE version=3") == null)
+    if (one("SELECT version FROM schema_version WHERE version=5") == null)
       throw new ApiError(503, "Database schema not ready");
   }
 }

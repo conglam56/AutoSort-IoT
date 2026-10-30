@@ -15,11 +15,13 @@ public class SortingService {
   private final Db db;
   private final AuthService auth;
   private final ObjectMapper json;
+  private final DeviceRunService runs;
 
-  public SortingService(Db db, AuthService auth, ObjectMapper json) {
+  public SortingService(Db db, AuthService auth, ObjectMapper json, DeviceRunService runs) {
     this.db = db;
     this.auth = auth;
     this.json = json;
+    this.runs = runs;
   }
 
   private Map<String, Object> session(Map<String, Object> row) {
@@ -33,7 +35,11 @@ public class SortingService {
         "startTime",
         Db.iso(row.get("start_time")),
         "endTime",
-        Db.iso(row.get("end_time")));
+        Db.iso(row.get("end_time")),
+        "automatic",
+        row.get("device_run_id") != null,
+        "endReason",
+        row.get("end_reason"));
   }
 
   private Map<String, Object> detail(Map<String, Object> row) {
@@ -77,10 +83,12 @@ public class SortingService {
   }
 
   public Map<String, Object> current() {
+    runs.expire();
     return detail(db.one("SELECT * FROM sorting_sessions WHERE status='RUNNING'"));
   }
 
   public Object list() {
+    runs.expire();
     return db
         .jdbc
         .queryForList(
@@ -165,6 +173,7 @@ public class SortingService {
           if (previous != null) return previous;
           var row = db.one("SELECT * FROM sorting_sessions WHERE id=? FOR UPDATE", id);
           if (row == null) throw new ApiError(404, "Session not found");
+          if (row.get("device_run_id") != null) throw new ApiError(409, "DEVICE_MANAGED_SESSION");
           if (row.get("status").equals("RUNNING")) {
             row =
                 db.one(
@@ -227,6 +236,16 @@ public class SortingService {
       String camera,
       byte[] bytes,
       Supplier<Map<String, Object>> classify) {
+    return infer(key, fruit, camera, bytes, null, classify);
+  }
+
+  public Map<String, Object> infer(
+      String key,
+      String fruit,
+      String camera,
+      byte[] bytes,
+      UUID runId,
+      Supplier<Map<String, Object>> classify) {
     return db.transaction(
         () -> {
           String hash = fingerprint(bytes);
@@ -247,15 +266,17 @@ public class SortingService {
               }
               if (!previous.get("image_sha256").equals(hash)
                   || !Objects.equals(receipt.get("fruit_id"), fruit)
-                  || !Objects.equals(receipt.get("camera_id"), camera))
+                  || !Objects.equals(receipt.get("camera_id"), camera)
+                  || !Objects.equals(
+                      receipt.get("run_id"), runId == null ? null : runId.toString()))
                 throw new ApiError(409, "IDEMPOTENCY_KEY_REUSED");
               return receipt;
             }
           }
           db.sortingLock();
-          if (db.one("SELECT id FROM sorting_sessions WHERE status='RUNNING'") == null)
-            throw new ApiError(409, "SESSION_NOT_RUNNING");
+          runs.assertActive(runId, camera);
           var result = new LinkedHashMap<>(classify.get());
+          if (runId != null) result.put("run_id", runId.toString());
           if (key != null) result.put("request_id", key);
           long sequence = insert(result, bytes);
           if (key != null) {
