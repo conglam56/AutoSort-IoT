@@ -146,9 +146,11 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     setText('session-permission-note', demo ? 'Demo công khai · Dữ liệu mẫu chỉ lưu trong trình duyệt. Đăng nhập để vận hành phiên thật.' : 'Thao tác phiên chỉ quản lý ghi dữ liệu. Không phải lệnh bật/tắt ESP32 hoặc xác nhận trạng thái máy.');
     setText('btn-account', state.user ? 'Đăng xuất' : 'Đăng nhập máy chủ');
     const percent = Math.round(state.threshold * 100);
+    const highestConfidence = !demo && state.health?.decision_policy === 'highest_confidence';
+    $('confidence-threshold').hidden = highestConfidence;
     $('confidence-threshold').style.left = percent + '%';
     $('confidence-threshold').title = 'Ngưỡng phân loại ' + percent + '%';
-    setText('threshold-label', 'Ngưỡng đạt ' + percent + '%');
+    setText('threshold-label', highestConfidence ? 'Chọn điểm cao nhất' : 'Ngưỡng đạt ' + percent + '%');
   }
   function renderLive() {
     const session = state.currentSession;
@@ -175,7 +177,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
       $(prefix + '-bar').style.width = summary.percent(label) + '%';
     }
     $('current-session-donut').setAttribute('aria-label', 'Phân bố ' + summary.total + ' quả: xanh ' + summary.counts.GREEN + ', chín ' + summary.counts.RIPE + ', loại ' + summary.counts.REJECT + ', chưa phân loại ' + summary.counts.MOCK);
-    const note = summary.counts.MOCK ? summary.counts.MOCK + ' kết quả MOCK chưa được phân loại. Tỉ lệ đạt chỉ tính trên quả đã phân loại.' : 'Quả dưới ngưỡng tin cậy được xếp vào khay loại để kiểm tra lại.';
+    const note = summary.counts.MOCK ? summary.counts.MOCK + ' kết quả MOCK chưa được phân loại. Tỉ lệ đạt chỉ tính trên quả đã phân loại.' : state.mode === 'live' && state.health?.decision_policy === 'highest_confidence' ? 'Chọn nhãn có điểm cao nhất trong vùng nhận diện. Không áp ngưỡng 70% và không ưu tiên riêng nhãn REJECT.' : 'Quả dưới ngưỡng tin cậy được xếp vào khay loại để kiểm tra lại.';
     document.querySelector('.quality-note p').textContent = note;
     drawDonut(summary);
     renderRecent(session?.fruits || []);

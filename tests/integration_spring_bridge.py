@@ -55,6 +55,7 @@ def main():
             metadata = {"classes": ["GREEN", "RIPE", "REJECT"] if args.task == 'detect' else ["GREEN", "REJECT", "RIPE"], "imgsz": size, "threshold": .7, "model_version": "integration-fixture", 'task': args.task}
             if args.task == 'detect':
                 metadata['output_format'] = 'yolo11_raw'
+                metadata.update(decision_policy='highest_confidence', threshold=0.0)
             (folder / "classes.json").write_text(json.dumps(metadata))
             with socket.socket() as sock:
                 sock.bind(("127.0.0.1", 0))

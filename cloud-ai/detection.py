@@ -75,7 +75,7 @@ def detection_candidates(output, classes, geometry, candidate_threshold=.25, nms
     return result
 
 
-def decide_detection(candidates, threshold, roi=(0, 0, 1, 1), target_iou=.5, class_margin=.15):
+def decide_detection(candidates, threshold, roi=(0, 0, 1, 1), target_iou=.5, class_margin=.15, decision_policy='threshold'):
     # class_margin is accepted for existing callers/metadata, but policy2 uses
     # the highest eligible maturity score rather than a second margin veto.
     def uncertain(detail, raw='REJECT', confidence=0.0):
@@ -88,6 +88,15 @@ def decide_detection(candidates, threshold, roi=(0, 0, 1, 1), target_iou=.5, cla
             targets.append(candidate)
     if not targets:
         return uncertain('NO_TARGET')
+    if decision_policy == 'highest_confidence':
+        # All classes compete equally, including REJECT. Stable tie-breaking
+        # makes replay independent of candidate order; no 70% or margin veto.
+        best = min(targets, key=lambda c: (-c['confidence'], c['label'], tuple(c['box'])))
+        return {'label': best['label'], 'raw_label': best['label'],
+                'confidence': round(best['confidence'], 4),
+                'decision_reason': 'CLASSIFIED', 'decision_detail': 'HIGHEST_CONFIDENCE'}
+    if decision_policy != 'threshold':
+        raise ValueError('Unsupported detection decision policy')
     cutoff = float(np.asarray(threshold, dtype=np.float32))
     eligible = [candidate for candidate in targets if candidate['confidence'] >= cutoff]
     if not eligible:
@@ -112,17 +121,21 @@ def decide_detection(candidates, threshold, roi=(0, 0, 1, 1), target_iou=.5, cla
 
 
 def validate_detection_metadata(meta, threshold):
+    decision_policy = meta.get('decision_policy', 'threshold')
     candidate_threshold = float(meta.get('candidate_threshold', .25))
     nms_iou = float(meta.get('nms_iou', .7))
     target_iou = float(meta.get('target_iou', .5))
     class_margin = float(meta.get('class_margin', .15))
     roi = meta.get('target_roi', [0, 0, 1, 1])
     values = [candidate_threshold, nms_iou, target_iou, class_margin]
-    if not all(math.isfinite(v) and 0 < v <= 1 for v in values) or candidate_threshold > threshold:
+    if decision_policy not in {'threshold', 'highest_confidence'}:
+        raise ValueError('Unsupported detection decision policy')
+    if not all(math.isfinite(v) and 0 < v <= 1 for v in values) or (decision_policy == 'threshold' and candidate_threshold > threshold):
         raise ValueError('Invalid detection policy')
     if len(roi) != 4 or not all(isinstance(v, (int, float)) and math.isfinite(v) and 0 <= v <= 1 for v in roi) or roi[2] <= roi[0] or roi[3] <= roi[1]:
         raise ValueError('Invalid normalized target ROI')
     if meta.get('output_format') != 'yolo11_raw':
         raise ValueError('Unsupported detection export format')
     return {'candidate_threshold': candidate_threshold, 'nms_iou': nms_iou,
-            'target_iou': target_iou, 'class_margin': class_margin, 'roi': roi}
+            'target_iou': target_iou, 'class_margin': class_margin, 'roi': roi,
+            'decision_policy': decision_policy}

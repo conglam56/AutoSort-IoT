@@ -14,8 +14,9 @@ def main():
     parser.add_argument('--destination', type=Path, required=True)
     parser.add_argument('--dataset', type=Path, required=True)
     parser.add_argument('--imgsz', type=int, default=320)
-    parser.add_argument('--threshold', type=float, default=.7)
-    parser.add_argument('--model-version', default='autosort-yolo11n-detect-v1-policy2')
+    parser.add_argument('--threshold', type=float, default=0.0, help='Legacy decision threshold; unused by highest_confidence')
+    parser.add_argument('--decision-policy', choices=['threshold', 'highest_confidence'], default='highest_confidence')
+    parser.add_argument('--model-version', default='autosort-yolo11n-detect-v1-policy3')
     args = parser.parse_args()
     if args.destination.exists():
         raise ValueError('Export destination exists; existing artifacts preserved')
@@ -42,7 +43,7 @@ def main():
     meta = {'task': 'detect', 'output_format': 'yolo11_raw', 'classes': names,
             'idx_to_class': {str(i): name for i, name in enumerate(names)},
             'class_to_idx': {name: i for i, name in enumerate(names)},
-            'num_classes': 3, 'imgsz': args.imgsz, 'threshold': args.threshold,
+            'num_classes': 3, 'imgsz': args.imgsz, 'threshold': args.threshold, 'decision_policy': args.decision_policy,
             'model_version': args.model_version, 'candidate_threshold': .25,
             'nms_iou': .7, 'target_iou': .5, 'class_margin': .15,
             'target_roi': [0, 0, 1, 1], 'deployment_status': 'candidate_pending_review'}
@@ -90,7 +91,7 @@ def main():
         decisions = []
         for raw in [reference, actual]:
             candidates = detection_candidates(raw, names, geometry, policy['candidate_threshold'], policy['nms_iou'])
-            decisions.append(decide_detection(candidates, args.threshold, policy['roi'], policy['target_iou'], policy['class_margin']))
+            decisions.append(decide_detection(candidates, args.threshold, policy['roi'], policy['target_iou'], policy['class_margin'], policy['decision_policy']))
         if any(decisions[0][k] != decisions[1][k] for k in ['label', 'raw_label', 'decision_reason', 'decision_detail']):
             raise ValueError(f'PT/ONNX decision mismatch: {path.name}')
         details.append({'image': str(path), 'input_max_abs_error': input_error,

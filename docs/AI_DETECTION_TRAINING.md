@@ -4,9 +4,10 @@ Ba checkpoint GREEN/RIPE/REJECT được bàn giao là ba YOLO11n detector một
 Kiểm thử chéo cho thấy chúng thường cùng nhận một quả. Luồng mới huấn luyện
 một detector ba lớp với ID cố định: GREEN=0, RIPE=1, REJECT=2.
 
-Quy tắc nghiệp vụ đã xác nhận: quả có lỗi ngoại quan luôn vào REJECT, dù còn
-xanh hay đã chín. Đây là quy tắc cho cùng một quả, không phải ưu tiên bất kỳ
-quả REJECT nào xuất hiện ở vị trí khác trong ảnh.
+Khi hợp nhất nhãn train, quả có lỗi ngoại quan được gán REJECT dù còn xanh
+hay đã chín. Chính sách suy luận hiện tại theo yêu cầu mới là
+[policy3](AI_DETECTION_POLICY3.md): chọn nhãn có điểm cao nhất, không cưỡng
+chế ưu tiên REJECT. Nhãn ground truth và trọng số huấn luyện được giữ nguyên.
 
 ## Chuẩn bị dữ liệu
 
@@ -55,7 +56,7 @@ test sau khi kết thúc. Không ghi credentials vào source hoặc artifact.
 Cài ONNX/ONNX Runtime vào môi trường export, sau đó:
 
 ```powershell
-python training/export_detection.py --weights .local/ai-training/runs/unified-v1/weights/best.pt --dataset .local/ai-training/unified-detection-v1 --destination .local/ai-training/export-v1 --imgsz 320 --threshold 0.7
+python training/export_detection.py --weights .local/ai-training/runs/unified-v1/weights/best.pt --dataset .local/ai-training/unified-detection-v1 --destination .local/ai-training/export-policy3 --imgsz 320 --decision-policy highest_confidence
 ```
 
 Export cố định batch 1, FP32, opset 17, không gắn NMS vào graph. Metadata
@@ -78,18 +79,17 @@ chấp nhận thành GREEN/RIPE và quả tốt bị đưa vào REJECT.
 
 Worker vẫn trả GREEN/RIPE/REJECT hoặc MOCK và giữ hai reason mà Bridge hiểu:
 
-- CLASSIFIED: một quả mục tiêu được phân loại đủ tin cậy.
-- LOW_CONFIDENCE: REJECT do không có mục tiêu, nhiều mục tiêu, độ tin cậy thấp
-  hoặc xung đột độ chín. `decision_detail` phân biệt nguyên nhân.
+- CLASSIFIED: chọn nhãn có điểm cao nhất của khung hợp lệ trong ROI.
+- LOW_CONFIDENCE: không tìm thấy mục tiêu hợp lệ trong policy3; metadata
+  threshold cũ còn có các lý do khác. `decision_detail` phân biệt nguyên nhân.
 
-NMS giữ riêng từng lớp để áp dụng REJECT cho cùng quả. Mặc định ROI là toàn
-ảnh và worker từ chối tự chọn một quả khi nhiều mục tiêu không nhất quán.
-Từ [policy2](AI_DETECTION_POLICY2.md), chỉ khung đạt ngưỡng quyết định (>= 70%
-mặc định) mới tham gia kiểm tra nhiều mục tiêu. Khung yếu ở mép không phủ
-quyết quả chính đã đủ tin cậy; không còn veto bởi `class_margin` cũ.
+NMS giữ riêng từng lớp; [policy3](AI_DETECTION_POLICY3.md) chọn nhãn của khung
+có điểm cao nhất trong ROI sau lọc phát hiện/NMS. Mặc định ROI là toàn ảnh.
+Không có ngưỡng quyết định 70%, margin veto hay ưu tiên REJECT. Bộ lọc phát
+hiện 25% vẫn được giữ. Metadata cũ tiếp tục dùng policy threshold tương thích.
 `target_roi` trong classes.json là [left, top, right, bottom] chuẩn hóa và cần
-hiệu chỉnh bằng camera trạm. Không coi nhiều mục tiêu là một quả chỉ vì có
-điểm confidence lớn hơn.
+hiệu chỉnh bằng camera trạm. Khi có nhiều quả, kết quả chỉ đại diện cho khung
+được chọn, không đại diện cho toàn bộ ảnh.
 
 Metadata cũ không có task tiếp tục dùng classification như trước. Đặt model
 vào cloud-ai/model chỉ sau khi kiểm tra chất lượng, parity và tài nguyên.

@@ -22,7 +22,8 @@ class BundledModelTests(unittest.TestCase):
         self.assertEqual(health['mode'], 'onnx')
         self.assertEqual(health['task'], 'detect')
         self.assertEqual(health['classes'], ['GREEN', 'RIPE', 'REJECT'])
-        self.assertEqual(health['model_version'], 'autosort-yolo11n-detect-v1-policy2')
+        self.assertEqual(health['model_version'], 'autosort-yolo11n-detect-v1-policy3')
+        self.assertEqual(health['decision_policy'], 'highest_confidence')
         for name in ('quatsample.jpg', 'ripe.jpg', 'reject.jpg'):
             with self.subTest(image=name):
                 result = engine.classify('release-probe', 'sample-only', (ROOT / 'cloud-ai' / name).read_bytes())
