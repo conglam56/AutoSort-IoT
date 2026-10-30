@@ -7,8 +7,10 @@ lịch sử gốc trong PostgreSQL.
 
 ## Vận hành
 
-1. Nạp firmware mới vào ESP32, giữ `Controller.h` cùng thư mục sketch.
-2. Bật snapshot JPEG trên điện thoại, kiểm tra `.env` của bridge và cổng COM.
+1. Nạp firmware mới vào ESP32, giữ `Controller.h` và `StationConfig.h` cùng
+   thư mục sketch. Xem [chu trình](STATION_CYCLE.md) và [hiệu chỉnh](STATION_CALIBRATION.md).
+2. Bật DroidCam USB/webcam hoặc snapshot JPEG trên điện thoại, kiểm tra
+   [nguồn camera](DROIDCAM_SETUP.md), `.env` của bridge và cổng COM.
 3. Chạy `camera-bridge/bridge.py`. Bridge kiểm tra cloud, kết nối ESP32 và
    đăng ký trạm; **motor vẫn dừng**, chưa tạo phiên dữ liệu.
 4. Mở dashboard và đăng nhập Admin hoặc Operator. Khi trạm sẵn sàng:

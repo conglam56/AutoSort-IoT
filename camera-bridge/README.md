@@ -1,6 +1,8 @@
 # Bridge điện thoại → Cloud AI → ESP32
 
-Camera là điện thoại chạy dịch vụ snapshot JPEG, không dùng ESP32-CAM.
+Camera là điện thoại qua **DroidCam USB/webcam** hoặc dịch vụ snapshot JPEG,
+không dùng ESP32-CAM. Có chế độ video mẫu để thử khi chưa có thiết bị.
+Xem [hướng dẫn DroidCam và thử offline](../docs/DROIDCAM_SETUP.md).
 Bridge nhận lệnh từ dashboard đã đăng nhập và điều khiển ESP32 qua USB Serial.
 **Mở bridge chỉ kết nối trạm, motor vẫn dừng.** Xem [WEB_CONTROL.md](../docs/WEB_CONTROL.md).
 
@@ -16,7 +18,10 @@ Cấu hình `.env` (không commit key/mật khẩu):
 
 | Biến | Giá trị cần điền |
 |---|---|
-| PHONE_IP_WEBCAM_URL | URL snapshot JPEG điện thoại, ví dụ http://192.168.1.15:8080/shot.jpg |
+| CAMERA_SOURCE | `webcam` cho DroidCam, `phone` cho URL JPEG, `video` chỉ để thử |
+| CAMERA_INDEX / CAMERA_BACKEND | Index webcam đã xác nhận bằng `camera_check.py`; backend `auto`, `dshow`, `msmf` |
+| PHONE_IP_WEBCAM_URL | Chỉ dùng với `phone`: URL snapshot JPEG điện thoại, ví dụ http://192.168.1.15:8080/shot.jpg |
+| CAMERA_VIDEO_PATH | Chỉ dùng với `video`: file video trên laptop |
 | SERIAL_PORT | Cổng ESP32, ví dụ COM3 |
 | SERIAL_BAUD_RATE | 115200, phải khớp firmware |
 | CAMERA_ID | Định danh ổn định, ví dụ phone_cam01 |
@@ -24,8 +29,10 @@ Cấu hình `.env` (không commit key/mật khẩu):
 | DEVICE_API_KEY | Key thiết bị riêng từ cloud, không phải mật khẩu đăng nhập |
 | JOB_TIMEOUT_SECONDS | Mặc định 20, tối đa 25 với firmware watchdog AI 30 giây |
 
-Điện thoại và PC cần truy cập cùng mạng nội bộ. URL phải trả JPEG, không phải
-trang xem camera hay MJPEG. Ảnh tối đa 1.000.000 byte và 25 megapixel.
+Với `phone`, điện thoại và PC cần truy cập cùng mạng nội bộ. URL phải trả JPEG,
+không phải trang xem camera hay MJPEG. Với `webcam`, DroidCam Client cung cấp
+camera trên laptop; không cần URL điện thoại. Ảnh gửi API tối đa 1.000.000
+byte và 25 megapixel. Video mẫu không được dùng cho chế độ điều khiển motor.
 
 ```powershell
 & camera-bridge/.venv/Scripts/python.exe camera-bridge/bridge.py

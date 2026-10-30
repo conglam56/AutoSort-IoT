@@ -1,20 +1,9 @@
 #pragma once
 #include <stdint.h>
 #include <string.h>
+#include "StationConfig.h"
 
 namespace autosort {
-
-struct Config {
-  uint32_t irToCameraMs = 300;
-  uint32_t settleMs = 150;
-  uint32_t aiTimeoutMs = 30000;
-  uint32_t heartbeatMs = 5000;
-  uint32_t debounceMs = 20;
-  uint32_t cameraToGate1Ms = 1200;
-  uint32_t cameraToGate2Ms = 2500;
-  uint32_t gateHoldMs = 400;
-  uint32_t exitClearMs = 500;
-};
 
 enum class State { WAIT_BRIDGE, RUNNING, TO_CAMERA, SETTLING, WAIT_AI, DISPATCH, FAULT, IDLE, PAUSED };
 enum class Label { GREEN, RIPE, REJECT };
@@ -23,9 +12,12 @@ enum class Label { GREEN, RIPE, REJECT };
 // Exactly one fruit may occupy the conveyor. There is deliberately no overlapping queue.
 class Controller {
  public:
-  explicit Controller(Config config = Config()) : config_(config) {}
+  explicit Controller(Config config = Config()) : config_(config), configValid_(config.valid()) {}
 
   void begin(uint32_t now, bool irBlocked) {
+    motor_ = trigger_ = false;
+    restGates();
+    if (!configValid_) { stop("INVALID_CONFIG"); return; }
     state_ = State::WAIT_BRIDGE;
     entered_ = lastContact_ = rawChanged_ = now;
     rawBlocked_ = stableBlocked_ = irBlocked;
@@ -36,7 +28,7 @@ class Controller {
     state_ = State::FAULT;
     fault_ = reason;
     motor_ = false;
-    gate1_ = gate2_ = 0;
+    restGates();
     trigger_ = false;
     ackPending_ = false;
   }
@@ -142,16 +134,17 @@ class Controller {
         break;
       case State::DISPATCH: {
         const uint32_t gateDelay = label_ == Label::GREEN ? config_.cameraToGate1Ms : config_.cameraToGate2Ms;
+        const uint32_t gateHold = label_ == Label::GREEN ? config_.gate1HoldMs : config_.gate2HoldMs;
         if (label_ != Label::REJECT && !gateFired_ && age >= gateDelay) {
-          if (age >= gateDelay + config_.gateHoldMs) { stop("MISSED_GATE"); return; }
+          if (age >= gateDelay + gateHold) { stop("MISSED_GATE"); return; }
           gateFired_ = true;
           gateStarted_ = now;
-          if (label_ == Label::GREEN) gate1_ = 90;
-          else gate2_ = 90;
+          if (label_ == Label::GREEN) gate1_ = config_.gate1SortDeg;
+          else gate2_ = config_.gate2SortDeg;
         }
-        if (gateFired_ && elapsed(now, gateStarted_) >= config_.gateHoldMs) gate1_ = gate2_ = 0;
-        const uint32_t end = config_.cameraToGate2Ms + config_.gateHoldMs + config_.exitClearMs;
-        if (age >= end && gate1_ == 0 && gate2_ == 0) {
+        if (gateFired_ && elapsed(now, gateStarted_) >= gateHold) restGates();
+        const uint32_t end = config_.dispatchWindowMs();
+        if (age >= end && gate1_ == config_.gate1RestDeg && gate2_ == config_.gate2RestDeg) {
           if (label_ == Label::GREEN) ++green_;
           else if (label_ == Label::RIPE) ++ripe_;
           else ++reject_;
@@ -182,6 +175,10 @@ class Controller {
   uint32_t rejected() const { return reject_; }
 
  private:
+  void restGates() {
+    gate1_ = configValid_ ? config_.gate1RestDeg : 0;
+    gate2_ = configValid_ ? config_.gate2RestDeg : 0;
+  }
   static bool hex32(const char* s) {
     if(strlen(s)!=32)return false;
     for(int i=0;i<32;++i)if(!((s[i]>='0'&&s[i]<='9')||(s[i]>='a'&&s[i]<='f')))return false;
@@ -205,7 +202,7 @@ class Controller {
     if(strcmp(action,"START")==0) {
       if(state_!=State::IDLE||stableBlocked_||rawBlocked_)return;
       strcpy(session_,run); counter_=0;trigger_=false;deferred_=false;timeoutDispatch_=false;
-      gateFired_=false;gate1_=gate2_=0;state_=State::RUNNING;motor_=true;entered_=now;
+      gateFired_=false;restGates();state_=State::RUNNING;motor_=true;entered_=now;
       strcpy(ackState_,"RUNNING");
     } else {
       if(strcmp(action,"STOP")==0 && state_==State::IDLE){strcpy(ackState_,"IDLE");lastContact_=now;return;}
@@ -220,7 +217,7 @@ class Controller {
         if(deferred_){deferred_=false;dispatch(deferredLabel_,now,false);}
         strcpy(ackState_,"RUNNING");
       } else if(strcmp(action,"STOP")==0) {
-        state_=State::IDLE;motor_=false;gate1_=gate2_=0;trigger_=false;deferred_=false;timeoutDispatch_=false;
+        state_=State::IDLE;motor_=false;restGates();trigger_=false;deferred_=false;timeoutDispatch_=false;
         strcpy(ackState_,"IDLE");
       }
     }
@@ -233,12 +230,13 @@ class Controller {
     label_ = label;
     timeoutDispatch_ = timedOut;
     gateFired_ = false;
-    gate1_ = gate2_ = 0;
+    restGates();
     motor_ = true;
     trigger_ = false;
   }
 
   Config config_;
+  bool configValid_;
   State state_ = State::WAIT_BRIDGE;
   Label label_ = Label::REJECT;
   uint32_t entered_ = 0, lastContact_ = 0, rawChanged_ = 0, gateStarted_ = 0, counter_ = 0;

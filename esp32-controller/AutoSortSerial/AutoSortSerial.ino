@@ -8,25 +8,20 @@
 #error "Select Arduino-ESP32 core 3.x (tested 3.3.12)"
 #endif
 
-constexpr int PIN_IR = 14;
-constexpr int PIN_SERVO1 = 18;
-constexpr int PIN_SERVO2 = 19;
-constexpr int PIN_MOTOR_INA1 = 16;
-constexpr int PIN_MOTOR_INA2 = 17;
-constexpr uint32_t MOTOR_SPEED_PWM = 150;
-constexpr uint32_t SERVO_MIN_US = 500, SERVO_MAX_US = 2400;
-constexpr uint8_t SERVO_BITS = 14;
-// Retains the supplied MX1508 HIGH/HIGH stop; disable if the actual driver needs coast.
-constexpr bool DYNAMIC_BRAKE = true;
+using namespace autosort::hardware;
 
-autosort::Controller controller;
+autosort::Controller controller(STATION_CONFIG);
 bool pwmReady = false, hardwareFault = false;
 bool appliedMotor = false;
-uint8_t appliedGate1 = 0, appliedGate2 = 0;
+uint8_t appliedGate1 = STATION_CONFIG.gate1RestDeg, appliedGate2 = STATION_CONFIG.gate2RestDeg;
 char lineBuffer[128];
 size_t lineLength = 0;
 bool discardLine = false;
 uint32_t partialSince = 0;
+
+bool irBlocked() {
+  return digitalRead(PIN_IR) == (IR_ACTIVE_LOW ? LOW : HIGH);
+}
 
 uint32_t servoDuty(uint8_t degrees) {
   const uint32_t pulse = SERVO_MIN_US + (SERVO_MAX_US - SERVO_MIN_US) * degrees / 180;
@@ -47,8 +42,8 @@ void hardwareStop() {
   pinMode(PIN_MOTOR_INA1, OUTPUT);
   digitalWrite(PIN_MOTOR_INA1, LOW);
   digitalWrite(PIN_MOTOR_INA2, LOW);
-  ledcWrite(PIN_SERVO1, servoDuty(0));
-  ledcWrite(PIN_SERVO2, servoDuty(0));
+  ledcWrite(PIN_SERVO1, servoDuty(STATION_CONFIG.gate1RestDeg));
+  ledcWrite(PIN_SERVO2, servoDuty(STATION_CONFIG.gate2RestDeg));
   hardwareFault = true;
   controller.stop("PWM_FAILURE");
 }
@@ -102,14 +97,15 @@ void setup() {
   pinMode(PIN_MOTOR_INA1, OUTPUT); digitalWrite(PIN_MOTOR_INA1, LOW);
   pinMode(PIN_MOTOR_INA2, OUTPUT); digitalWrite(PIN_MOTOR_INA2, LOW);
   pinMode(PIN_IR, INPUT);
-  Serial.begin(115200);
+  Serial.begin(SERIAL_BAUD);
   // Distinct channels, distinct motor/servo frequency. Core manages timer allocation.
   pwmReady = ledcAttachChannel(PIN_MOTOR_INA1, 1000, 8, 0)
       && ledcAttachChannel(PIN_SERVO1, 50, SERVO_BITS, 2)
       && ledcAttachChannel(PIN_SERVO2, 50, SERVO_BITS, 3);
-  controller.begin(millis(), digitalRead(PIN_IR) == LOW);
+  controller.begin(millis(), irBlocked());
   if (!pwmReady || !setMotor(false)
-      || !ledcWrite(PIN_SERVO1, servoDuty(0)) || !ledcWrite(PIN_SERVO2, servoDuty(0))) {
+      || !ledcWrite(PIN_SERVO1, servoDuty(STATION_CONFIG.gate1RestDeg))
+      || !ledcWrite(PIN_SERVO2, servoDuty(STATION_CONFIG.gate2RestDeg))) {
     hardwareStop();
     Serial.println("FAULT:PWM_FAILURE");
     return;
@@ -122,7 +118,7 @@ void loop() {
   static uint32_t lastStats = 0;
   const uint32_t now = millis();
   readCommands(now);
-  controller.tick(now, digitalRead(PIN_IR) == LOW);
+  controller.tick(now, irBlocked());
   const bool applied = applyOutputs();
   if(applied && reported==autosort::State::WAIT_BRIDGE && controller.state()==autosort::State::IDLE) Serial.println("CONTROLLER:IDLE");
   if(applied && controller.takeAck()) Serial.printf("ACK:%s:%s\n",controller.ackId(),controller.ackState());

@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 import requests
 import serial
 
-from bridge import (BridgeError, CloudAI, DeviceRun, EventJournal, PhoneCamera,
+from bridge import (BridgeError, CloudAI, DeviceRun, EventJournal, PhoneCamera, create_camera,
                     controller_write, parse_trigger, response_json, stop_controller)
 
 LOG = logging.getLogger('autosort-bridge')
@@ -27,6 +27,8 @@ class WebAgent:
         self.pool = ThreadPoolExecutor(max_workers=2)
         self.last_poll = self.last_ping = 0.0
         self.state = 'IDLE'
+        # A local camera has one persistent owner, including across pause/new runs.
+        self.local_camera = create_camera(settings, None) if settings.camera_source != 'phone' else None
 
     def api(self, action, body=None):
         base = self.settings.cloud_url.rsplit('/infer', 1)[0]
@@ -127,7 +129,8 @@ class WebAgent:
 
     def infer(self, run_id, request_id, deadline):
         with requests.Session() as phone_http, requests.Session() as cloud_http:
-            camera, cloud = PhoneCamera(self.settings, phone_http), CloudAI(self.settings, cloud_http)
+            camera = self.local_camera or PhoneCamera(self.settings, phone_http)
+            cloud = CloudAI(self.settings, cloud_http)
             cloud.run_id = run_id
             try:
                 image = camera.capture(deadline)
@@ -171,6 +174,8 @@ class WebAgent:
             except BridgeError: pass
             self.run.session.close()
         self.pool.shutdown(wait=False, cancel_futures=True)
+        if self.local_camera is not None:
+            self.local_camera.close()
 
 
 def web_main(settings):

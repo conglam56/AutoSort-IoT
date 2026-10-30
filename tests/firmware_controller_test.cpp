@@ -11,7 +11,8 @@ struct Rig {
   Controller control;
   uint32_t now;
   bool blocked = false, heartbeat = true;
-  explicit Rig(uint32_t start = 0) : now(start) { control.begin(now, false); }
+  explicit Rig(uint32_t start = 0, autosort::Config config = autosort::Config())
+      : control(config), now(start) { control.begin(now, false); }
   void advance(uint32_t ms) {
     for (uint32_t i = 0; i < ms; ++i) {
       ++now;
@@ -193,11 +194,89 @@ void paused_ai_never_restarts_motor_and_old_results_are_ignored() {
   assert(r.control.state()==State::WAIT_AI);
 }
 
+void calibrated_stop_capture_dispatch_cycle() {
+  autosort::Config config;
+  config.irToCameraMs=80;config.settleMs=60;
+  config.cameraToGate1Ms=180;config.cameraToGate2Ms=260;
+  config.gate1HoldMs=70;config.gate2HoldMs=90;config.exitClearMs=80;
+  config.gate1RestDeg=15;config.gate1SortDeg=110;
+  config.gate2RestDeg=165;config.gate2SortDeg=70;
+  for (const char* label : {"GREEN", "RIPE", "REJECT"}) {
+    Rig r(0,config);
+    r.control.command("BRIDGE:CONNECT",r.now);control(r,CMD1,"START");
+    assert(r.control.gate1()==15&&r.control.gate2()==165);
+    r.ir(true);r.ir(false);r.advance(config.irToCameraMs-20-1);
+    assert(r.control.motor()&&r.control.state()==State::TO_CAMERA&&!r.control.takeTrigger());
+    r.advance(1);assert(!r.control.motor()&&r.control.state()==State::SETTLING);
+    r.advance(config.settleMs-1);assert(!r.control.takeTrigger());
+    r.advance(1);assert(r.control.takeTrigger()&&!r.control.takeTrigger());
+    assert(r.control.state()==State::WAIT_AI);
+    r.advance(1500);assert(!r.control.motor()&&!r.control.takeTrigger());
+    std::string result=std::string("RESULT:")+RUN1+":1:"+label;
+    r.control.command(result.c_str(),r.now);
+    assert(r.control.state()==State::DISPATCH&&r.control.motor());
+    const bool green=strcmp(label,"GREEN")==0,ripe=strcmp(label,"RIPE")==0;
+    for (uint32_t age=1;age<=config.dispatchWindowMs();++age) {
+      r.advance(1);
+      assert(r.control.gate1()==(green&&age>=180&&age<250?110:15));
+      assert(r.control.gate2()==(ripe&&age>=260&&age<350?70:165));
+      if (age<config.dispatchWindowMs())assert(r.control.state()==State::DISPATCH);
+    }
+    assert(r.control.state()==State::RUNNING&&r.control.counter()==1);
+    assert(r.control.green()==(green?1U:0U)&&r.control.ripe()==(ripe?1U:0U));
+    assert(r.control.rejected()==(!green&&!ripe?1U:0U));
+    control(r,CMD2,"STOP");assert(!r.control.motor());
+    assert(r.control.gate1()==15&&r.control.gate2()==165);
+    std::cout<<"Cycle "<<label<<": IR -> travel -> motor OFF -> settle -> one capture -> WAIT_AI motor OFF -> motor ON -> gate route -> clear -> ready\n";
+  }
+  // A longer first gate hold must extend the single-fruit window, not admit a new fruit early.
+  config.gate1HoldMs=500;
+  Rig longHold(0,config);longHold.arm();longHold.ir(true);longHold.ir(false);longHold.advance(120);
+  assert(longHold.control.takeTrigger());longHold.control.command("SORT:GREEN",longHold.now);
+  longHold.advance(350);assert(longHold.control.state()==State::DISPATCH&&longHold.control.gate1()==110);
+  longHold.advance(330);assert(longHold.control.gate1()==15&&longHold.control.state()==State::DISPATCH);
+  longHold.advance(79);assert(longHold.control.state()==State::DISPATCH);
+  longHold.advance(1);assert(longHold.control.state()==State::RUNNING&&longHold.control.green()==1);
+}
+
+void pause_while_settling_and_zero_camera_offset() {
+  Rig r;r.control.command("BRIDGE:CONNECT",r.now);control(r,CMD1,"START");
+  r.ir(true);r.ir(false);r.advance(280+50);
+  assert(r.control.state()==State::SETTLING&&!r.control.motor());
+  control(r,CMD2,"PAUSE");r.advance(10000);assert(!r.control.takeTrigger());
+  control(r,CMD3,"RESUME");r.advance(99);assert(!r.control.takeTrigger());
+  r.advance(1);assert(r.control.takeTrigger()&&!r.control.motor());
+  autosort::Config config;config.irToCameraMs=0;
+  Rig atCamera(0,config);atCamera.arm();atCamera.ir(true);
+  assert(atCamera.control.state()==State::SETTLING&&!atCamera.control.motor());
+  atCamera.ir(false);atCamera.advance(130);
+  assert(atCamera.control.takeTrigger()&&atCamera.control.state()==State::WAIT_AI);
+}
+
+void invalid_calibration_never_starts_motor() {
+  autosort::Config config;
+  auto invalid=[](autosort::Config c) {
+    assert(!c.valid());Rig r(0,c);r.control.command(READY,r.now);
+    assert(r.control.state()==State::FAULT&&!r.control.motor());
+    assert(std::string(r.control.fault())=="INVALID_CONFIG");
+    assert(r.control.gate1()==0&&r.control.gate2()==0);
+  };
+  config.settleMs=0;invalid(config);config=autosort::Config();
+  config.gate1HoldMs=0;invalid(config);config=autosort::Config();
+  config.gate2RestDeg=181;invalid(config);config=autosort::Config();
+  config.gate1SortDeg=config.gate1RestDeg;invalid(config);config=autosort::Config();
+  config.cameraToGate1Ms=3000;invalid(config);config=autosort::Config();
+  config.cameraToGate2Ms=UINT32_MAX;invalid(config);config=autosort::Config();
+  config.exitClearMs=UINT32_MAX;invalid(config);
+}
+
 int main() {
   startup_and_rearm(); green_and_ripe_timing(); reject_no_servo();
   timeout_latches_and_ignores_late_sort(); second_fruit_and_noise();
   heartbeat_and_missed_gate(); wrap_and_session_validation();
   web_standby_start_stop_and_dedup();pause_freezes_travel_and_gate_time();
   paused_ai_never_restarts_motor_and_old_results_are_ignored();
+  calibrated_stop_capture_dispatch_cycle();pause_while_settling_and_zero_camera_offset();
+  invalid_calibration_never_starts_motor();
   std::cout << "Firmware controller: all state/timing/failure scenarios passed\n";
 }
