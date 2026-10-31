@@ -139,8 +139,9 @@ class LocalCameraTests(unittest.TestCase):
         connection.recv.side_effect = ['capture', 'close']
         driver.read.side_effect = [(True, np.full((4, 4, 3), 10, np.uint8)),
                                    (True, np.full((4, 4, 3), 200, np.uint8))]
-        with patch.object(cv2, 'VideoCapture', return_value=driver) as capture:
-            local_camera.camera_worker(connection, 'webcam', 2, 'dshow', '')
+        with patch.object(cv2, 'VideoCapture', return_value=driver) as capture, \
+                patch.object(cv2.videoio_registry, 'hasBackend', return_value=True):
+            local_camera.camera_worker(connection, 'webcam', 2, 'dshow', '', 0)
         capture.assert_called_once_with(2, cv2.CAP_DSHOW)
         kind, content = connection.send.call_args.args[0]
         self.assertEqual(kind, 'frame')
@@ -148,13 +149,36 @@ class LocalCameraTests(unittest.TestCase):
             self.assertGreater(float(np.asarray(image).mean()), 190)
         driver.release.assert_called_once()
 
+    def test_unavailable_backend_is_reported_without_opening_or_switching_camera(self):
+        connection = Mock()
+        with patch.object(cv2.videoio_registry, 'hasBackend', return_value=False), \
+                patch.object(cv2, 'VideoCapture') as capture:
+            local_camera.camera_worker(connection, 'webcam', 1, 'msmf', '')
+        capture.assert_not_called()
+        connection.send.assert_called_once_with(('error', 'BACKEND_UNAVAILABLE'))
+
+    def test_warmup_discards_virtual_camera_splash_before_pending_first_snapshot(self):
+        connection, driver = Mock(), Mock()
+        connection.poll.return_value = True
+        connection.recv.side_effect = ['capture', 'close']
+        driver.read.side_effect = [(True, np.full((4, 4, 3), 10, np.uint8)),
+                                   (True, np.full((4, 4, 3), 200, np.uint8))]
+        with patch.object(cv2, 'VideoCapture', return_value=driver), \
+                patch.object(local_camera.time, 'monotonic', side_effect=[0, .5, 1.5, 1.5]), \
+                patch.object(local_camera.time, 'sleep'):
+            local_camera.camera_worker(connection, 'webcam', 1, 'auto', '', 1)
+        kind, content = connection.send.call_args.args[0]
+        self.assertEqual(kind, 'frame')
+        with Image.open(io.BytesIO(content)) as image:
+            self.assertGreater(float(np.asarray(image).mean()), 190)
+
     def test_disconnected_webcam_sends_error_and_never_reuses_last_frame(self):
         connection, driver = Mock(), Mock()
         connection.poll.return_value = True
         connection.recv.return_value = 'capture'
         driver.read.return_value = (False, None)
         with patch.object(cv2, 'VideoCapture', return_value=driver):
-            local_camera.camera_worker(connection, 'webcam', 0, 'auto', '')
+            local_camera.camera_worker(connection, 'webcam', 0, 'auto', '', 0)
         connection.send.assert_called_once_with(('error', 'CAMERA_LOST'))
         driver.release.assert_called_once()
 

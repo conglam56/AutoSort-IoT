@@ -1,4 +1,6 @@
 onnxruntime
 numpy
 pillow
-opencv-python-headless>=4.10,<6
+# Windows camera capture needs Media Foundation; do not install both cv2 wheels.
+opencv-python==4.12.0.88; sys_platform == "win32"
+opencv-python-headless>=4.10,<6; sys_platform != "win32"

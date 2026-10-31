@@ -25,7 +25,7 @@ def encode_frame(frame):
     raise ValueError("JPEG too large")
 
 
-def camera_worker(connection, source, index, backend, video_path):
+def camera_worker(connection, source, index, backend, video_path, warmup_seconds=1.5):
     """One capture handle. Webcams drain continuously; files advance per request."""
     capture = None
     try:
@@ -33,14 +33,20 @@ def camera_worker(connection, source, index, backend, video_path):
         import cv2
         cv2.setNumThreads(1)
         api = {"auto": cv2.CAP_ANY, "dshow": cv2.CAP_DSHOW, "msmf": cv2.CAP_MSMF}[backend]
+        if source != "video" and api != cv2.CAP_ANY and not cv2.videoio_registry.hasBackend(api):
+            connection.send(("error", "BACKEND_UNAVAILABLE"))
+            return
         capture = cv2.VideoCapture(video_path if source == "video" else index,
                                    cv2.CAP_ANY if source == "video" else api)
         if not capture.isOpened():
             connection.send(("error", "OPEN_FAILED"))
             return
+        # Virtual cameras can initially produce their "Start DroidCam" splash frame.
+        # Drain startup frames once; all work remains inside the parent's deadline.
+        ready_at = time.monotonic() + (warmup_seconds if source == "webcam" else 0)
         # Consume pending request BEFORE reading, so a previous frame is never reused.
         while True:
-            if source == "video" or connection.poll():
+            if source == "video" or (time.monotonic() >= ready_at and connection.poll()):
                 command = connection.recv()
                 if command == "close":
                     return
@@ -52,6 +58,9 @@ def camera_worker(connection, source, index, backend, video_path):
             else:
                 ok, _ = capture.read()
                 if not ok:
+                    if time.monotonic() < ready_at:
+                        time.sleep(.02)
+                        continue
                     connection.send(("error", "CAMERA_LOST"))
                     return
                 time.sleep(.002)
@@ -79,7 +88,8 @@ class LocalCamera:
         connection, child = context.Pipe()
         video_path = str(Path(self.settings.video_path).resolve()) if self.settings.camera_source == "video" else ""
         process = context.Process(target=camera_worker, args=(child, self.settings.camera_source,
-                                  self.settings.camera_index, self.settings.camera_backend, video_path), daemon=True)
+                                  self.settings.camera_index, self.settings.camera_backend, video_path,
+                                  self.settings.camera_warmup), daemon=True)
         try:
             process.start()
         except Exception as error:
@@ -106,6 +116,8 @@ class LocalCamera:
                 raise BridgeError("Camera quá hạn; đã ngắt tiến trình lấy ảnh. Kiểm tra và chạy lại bridge.")
             kind, payload = self._connection.recv()
             if kind != "frame":
+                if payload == "BACKEND_UNAVAILABLE":
+                    raise BridgeError("Bản OpenCV hiện tại thiếu backend camera đã chọn. Windows cần opencv-python trong requirements, không dùng đồng thời bản headless.")
                 if payload == "END_OF_VIDEO":
                     raise BridgeError("Đã hết video mẫu; không tự lặp lại ảnh. Chạy lại để thử từ đầu.")
                 raise BridgeError("Không mở/đọc được camera. Kiểm tra DroidCam, camera index và quyền camera.")
