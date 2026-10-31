@@ -47,6 +47,7 @@ class Settings:
     camera_index: int = 0
     camera_backend: str = "auto"
     video_path: str = ""
+    camera_warmup: float = 1.5
 
     @classmethod
     def from_environment(cls, manual=False, camera_only=False):
@@ -65,6 +66,7 @@ class Settings:
                 camera_index=int(os.getenv("CAMERA_INDEX", "0")),
                 camera_backend=os.getenv("CAMERA_BACKEND", "auto"),
                 video_path=os.getenv("CAMERA_VIDEO_PATH", ""),
+                camera_warmup=float(os.getenv("CAMERA_WARMUP_SECONDS", "1.5")),
             )
         except ValueError as error:
             raise BridgeError("Cấu hình số không hợp lệ trong camera-bridge/.env.") from error
@@ -72,6 +74,9 @@ class Settings:
             raise BridgeError("CAMERA_SOURCE phải là phone, webcam hoặc video.")
         if not 0 <= settings.camera_index <= 64 or settings.camera_backend not in {"auto", "dshow", "msmf"}:
             raise BridgeError("CAMERA_INDEX phải trong 0–64; CAMERA_BACKEND là auto, dshow hoặc msmf.")
+        if (not math.isfinite(settings.camera_warmup) or not 0 <= settings.camera_warmup <= 10
+                or (settings.camera_source == "webcam" and settings.camera_warmup >= settings.capture_timeout)):
+            raise BridgeError("CAMERA_WARMUP_SECONDS phải trong 0–10 giây và nhỏ hơn CAPTURE_TIMEOUT_SECONDS khi dùng webcam.")
         if settings.camera_source == "video":
             if not manual:
                 raise BridgeError("Video chỉ dùng xem trước hoặc --manual, không dùng để điều khiển băng chuyền.")

@@ -34,6 +34,29 @@ Chế độ này không cần DEVICE_API_KEY, không gọi cloud, không tạo/�
 không mở Serial và không gửi lệnh xuống ESP32. Dùng đúng model v1 tại
 `cloud-ai/model`, không chuyển sang v2.
 
+## Phụ thuộc Windows và lỗi thiếu MSMF
+
+Windows dùng `opencv-python==4.12.0.88` (đã kiểm tra với DroidCam/MSMF),
+Linux/Render giữ bản `opencv-python-headless`. Không cài hai gói vào cùng
+venv vì chúng ghi vào cùng module `cv2`. Nếu venv Windows cũ đã cài headless,
+chuyển sang phụ thuộc mới trước khi thử:
+
+```powershell
+& .\cloud-ai\.venv312\Scripts\python.exe -m pip uninstall -y opencv-python-headless opencv-python
+& .\cloud-ai\.venv312\Scripts\python.exe -m pip install -r cloud-ai/requirements-dev.txt
+```
+
+Trong trường hợp đã tái hiện trên Windows: client có hình USB nhưng `dshow`
+không mở được, bản headless không có MSMF, còn bản đầy đủ đọc thành công với
+`--backend msmf --index 1`. Đây là index của máy đã thử, không phải mặc định
+cố định cho mọi laptop. Lỗi thiếu backend được báo riêng, không tự đổi camera.
+Khi mở camera ảo, các khung đầu có thể chỉ chứa màn hình “Start DroidCam”.
+Bridge đọc bỏ các khung khởi động trong `CAMERA_WARMUP_SECONDS=1.5` trước
+lần chụp đầu, vẫn nằm trong thời hạn capture. Đây không phải bước nhận diện
+placeholder: luôn kiểm tra ảnh đã lưu đúng là quả. Nếu máy cần lâu hơn, tăng
+warmup và giữ nó nhỏ hơn `CAPTURE_TIMEOUT_SECONDS`; không đổi thời hạn job AI
+vượt watchdog firmware.
+
 ## Khi có điện thoại và DroidCam
 
 1. Cài ứng dụng điện thoại và [DroidCam Windows Client chính thức](https://droidcam.app/windows/).
@@ -47,9 +70,10 @@ không mở Serial và không gửi lệnh xuống ESP32. Dùng đúng model v1 
 ```
 
 Mở `index.html` được in ra. Nếu là webcam laptop, thử `--index 1`, `--index 2`...
-Không giả định DroidCam luôn có index 0. Camera index có thể đổi khi thêm/tháo
-thiết bị. Nếu Windows không mở được với mặc định, thử `--backend dshow` hoặc
-`--backend msmf`, mỗi lần xác nhận đúng ảnh. Không mở preview và bridge đồng
+Không giả định DroidCam luôn có index 0. Camera index có thể đổi theo backend
+hoặc khi thêm/tháo thiết bị. Windows DroidCam đã được đọc thành công qua
+`--backend msmf`. Nếu `auto`/`dshow` không mở được, thử MSMF và xác nhận đúng
+ảnh; index của DirectShow không đảm bảo trùng index của MSMF. Không mở preview và bridge đồng
 thời; một số driver chỉ cho một ứng dụng dùng camera. Công cụ không tự dò/mở
 mọi camera để tránh chọn nhầm nguồn.
 
@@ -58,7 +82,7 @@ Trong `camera-bridge/.env` (không commit key), đặt:
 ```dotenv
 CAMERA_SOURCE=webcam
 CAMERA_INDEX=1
-CAMERA_BACKEND=auto
+CAMERA_BACKEND=msmf
 ```
 
 Thay index/backend bằng giá trị đã xác nhận. Với `webcam` không cần
