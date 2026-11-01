@@ -20,6 +20,7 @@ from PIL import Image, UnidentifiedImageError
 import requests
 import serial
 from bridge_errors import BridgeError
+from serial_lines import read_controller_line
 
 LOG = logging.getLogger("autosort-bridge")
 LABELS = frozenset({"GREEN", "RIPE", "REJECT"})
@@ -403,7 +404,7 @@ def arm_controller(port, settings):
 def wait_controller_started(port, session_id):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
-        line = port.read_until(b"\n", 128)
+        line = read_controller_line(port)
         if line in (f"CONTROLLER:RUNNING:{session_id}\n".encode("ascii"),
                     f"CONTROLLER:RUNNING:{session_id}\r\n".encode("ascii")): return
         if line.startswith(b"FAULT:"): raise BridgeError("Firmware từ chối chạy. Kiểm tra trạm rồi reset ESP32.")
@@ -415,7 +416,7 @@ def stop_controller(port):
     controller_write(port, b"BRIDGE:STOP\n")
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
-        line = port.read_until(b"\n", 128)
+        line = read_controller_line(port)
         if line in (b"FAULT:BRIDGE_STOP\n", b"FAULT:BRIDGE_STOP\r\n"): return True
         if line.startswith(b"FAULT:"): return False
     return False
@@ -462,7 +463,7 @@ def legacy_main():
                     if time.monotonic() - last_ping >= 1.0:
                         controller_write(port, b"BRIDGE:PING\n")
                         last_ping = time.monotonic()
-                    raw = port.read_until(b"\n", 128)
+                    raw = read_controller_line(port)
                     if not raw:
                         continue
                     if not raw.endswith(b"\n"):
@@ -497,7 +498,7 @@ def legacy_main():
             elif not serial_failed:
                 try:
                     if not stop_controller(port): run_reason = "STOP_UNCONFIRMED"
-                except (serial.SerialException, OSError): run_reason = "SERIAL_ERROR"
+                except (serial.SerialException, OSError, BridgeError): run_reason = "SERIAL_ERROR"
             port.close()
         if journal is not None:
             journal.close()

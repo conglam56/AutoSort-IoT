@@ -21,7 +21,11 @@ def run_web_e2e(client,settings,folder,capture_gate):
                 self.lines.append(f'ACK:{id}:{self.state}\r\n'.encode())
             return len(data)
         def flush(self):pass
-        def read_until(self,*args):return self.lines.popleft() if self.lines else b''
+        def read_until(self,terminator=b'\n',size=128):
+            if not self.lines:return b''
+            line=self.lines.popleft();length=min(7,size,len(line))
+            if length<len(line):self.lines.appendleft(line[length:])
+            return line[:length]  # USB read timeouts may split a single firmware line.
     port=SerialFixture()
     with requests.Session() as http,bridge.EventJournal(folder/'web-bridge.sqlite3') as journal:
         agent=WebAgent(settings,port,http,journal)

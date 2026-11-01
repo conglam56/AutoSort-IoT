@@ -67,6 +67,13 @@ hoặc kết nối lại USB rồi chạy bridge mới. Không dùng lệnh web 
 đang khóa. Khi nạp firmware hoặc mở Serial Monitor, đóng bridge trước để
 tránh hai chương trình chiếm cùng cổng COM.
 
+USB có thể trả một dòng thành nhiều đoạn sau mỗi timeout đọc 100 ms. Bridge
+ghép các đoạn tới newline, tối đa 128 byte và 1 giây kể từ đoạn đầu; đoạn
+chưa đủ không được xử lý thành ACK/TRIGGER. Trong lúc ghép, bridge vẫn kiểm
+tra deadline ACK và gửi heartbeat, ưu tiên hoàn tất dòng trước HTTP polling.
+Lỗi dòng quá dài hoặc quá 1 giây vẫn dừng trạm; không bỏ giới hạn hoặc gửi
+lại lệnh servo để thử lại.
+
 ## Điều khiển và kết quả
 
 - Mỗi kết nối bridge có agent UUID riêng, được kiểm tra lease trên cloud.

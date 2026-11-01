@@ -10,6 +10,7 @@ import serial
 
 from bridge import (BridgeError, CloudAI, DeviceRun, EventJournal, PhoneCamera, create_camera,
                     controller_write, parse_trigger, response_json, stop_controller)
+from serial_lines import read_controller_line, controller_line_pending
 
 LOG = logging.getLogger('autosort-bridge')
 DEVICE_CONFLICT_CODES = frozenset({'ACK_STATE_MISMATCH', 'AGENT_EXPIRED', 'BRIDGE_ALREADY_CONNECTED',
@@ -54,7 +55,7 @@ class WebAgent:
         controller_write(self.port, b'BRIDGE:CONNECT\n')
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
-            line = self.port.read_until(b'\n', 128)
+            line = read_controller_line(self.port)
             # Arduino Serial.println emits CRLF; Serial.printf fixtures may emit LF.
             if line in (b'CONTROLLER:IDLE\n', b'CONTROLLER:IDLE\r\n'): break
             if line.startswith(b'FAULT:'): raise BridgeError('ESP32 đang khóa lỗi; kiểm tra và reset trạm.')
@@ -165,9 +166,12 @@ class WebAgent:
         if now - self.last_ping >= 1:
             controller_write(self.port, b'BRIDGE:PING\n')
             self.last_ping = now
-        self.handle_line(self.port.read_until(b'\n', 128))
+        self.handle_line(read_controller_line(self.port))
         if self.pending and time.monotonic() >= self.pending['deadline']:
             raise BridgeError('Không nhận được ACK đúng hạn; không gửi lại lệnh motor.')
+        if controller_line_pending(self.port):
+            # Keep PING and ACK deadlines active. Assemble RX before a blocking HTTP poll.
+            return
         if now - self.last_poll >= .5:
             response = self.api('poll')
             self.last_poll = now
