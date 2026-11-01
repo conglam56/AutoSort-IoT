@@ -1,6 +1,47 @@
-Unified three-class detection dataset
-Derived from the three user-supplied Roboflow exports.
-Source declarations (verify upstream rights before redistribution):
-{"file": "green_fruit.zip", "sha256": "542b195ed548b176e4d8e2e840db0a86c5a53e19f50c51a41452eba7cea9d340", "class": "GREEN", "attribution": {"workspace": "ronaldo-quang", "project": "iot-gbubp", "version": 1, "license": "CC BY 4.0", "url": "https://universe.roboflow.com/ronaldo-quang/iot-gbubp/dataset/1"}}
-{"file": "ripe_fruit.zip", "sha256": "0c7aa0d6274094b2c8d9c31e15d7570f683f6572edafabeb4b6e10427cc73950", "class": "RIPE", "attribution": {"workspace": "ronaldo-quang", "project": "iot2-9dwlk", "version": 1, "license": "CC BY 4.0", "url": "https://universe.roboflow.com/ronaldo-quang/iot2-9dwlk/dataset/1"}}
-{"file": "reject_fruit.zip", "sha256": "85db3041e4e2c881c911ff8460099215bc95736e4087acf234a51fc5f8c52eee", "class": "REJECT", "attribution": {"workspace": "ronaldo-quang", "project": "iot3-gupfi", "version": 1, "license": "CC BY 4.0", "url": "https://universe.roboflow.com/ronaldo-quang/iot3-gupfi/dataset/1"}}
+AutoSort three-class dataset, GREEN v1 plus RIPE/REJECT v2.
+Both source exports declare CC BY 4.0. Original source metadata, URLs and SHA-256:
+{
+  "sources": [
+    {
+      "file": "green_fruit.zip",
+      "sha256": "542b195ed548b176e4d8e2e840db0a86c5a53e19f50c51a41452eba7cea9d340",
+      "role": "GREEN v1 unchanged"
+    },
+    {
+      "file": "IoT Project.v1i.yolov11.zip",
+      "sha256": "b736abd18ac710d1cfc72f1bca80d2b9af9cc239ef91d73215c27d6289169f22",
+      "role": "RIPE/REJECT v2",
+      "metadata": {
+        "train": "../train/images",
+        "val": "../valid/images",
+        "test": "../test/images",
+        "nc": 2,
+        "names": [
+          "reject fruit",
+          "ripe fruit"
+        ],
+        "roboflow": {
+          "workspace": "ronaldo-quang",
+          "project": "iot-project-57dzj",
+          "version": 1,
+          "license": "CC BY 4.0",
+          "url": "https://universe.roboflow.com/ronaldo-quang/iot-project-57dzj/dataset/1"
+        }
+      }
+    }
+  ],
+  "class_remap": {
+    "green_v1:0": 0,
+    "ripe_reject_v2:1": 1,
+    "ripe_reject_v2:0": 2
+  },
+  "source_counts_before_merge": {
+    "images": 582,
+    "boxes": {
+      "RIPE": 260,
+      "REJECT": 313
+    },
+    "empty_images": 9
+  },
+  "physical_or_new_camera_accuracy_tested": false
+}

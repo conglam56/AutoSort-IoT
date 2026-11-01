@@ -17,10 +17,10 @@
     "REJECT": 2
   },
   "num_classes": 3,
-  "imgsz": 320,
+  "imgsz": 640,
   "threshold": 0.0,
   "decision_policy": "highest_confidence",
-  "model_version": "autosort-yolo11n-detect-v1-policy3",
+  "model_version": "autosort-yolo11n-detect-v2-13714d07b0-640",
   "candidate_threshold": 0.25,
   "nms_iou": 0.7,
   "target_iou": 0.5,
@@ -31,5 +31,5 @@
     1,
     1
   ],
-  "deployment_status": "candidate_pending_review"
+  "deployment_status": "experimental_user_selected"
 }
