@@ -12,9 +12,16 @@ from bridge import (BridgeError, CloudAI, DeviceRun, EventJournal, PhoneCamera, 
                     controller_write, parse_trigger, response_json, stop_controller)
 
 LOG = logging.getLogger('autosort-bridge')
+DEVICE_CONFLICT_CODES = frozenset({'ACK_STATE_MISMATCH', 'AGENT_EXPIRED', 'BRIDGE_ALREADY_CONNECTED',
+                                  'BRIDGE_OFFLINE', 'COMMAND_EXPIRED', 'COMMAND_PENDING',
+                                  'IDEMPOTENCY_KEY_REUSED', 'INVALID_STATION_STATE',
+                                  'SESSION_ALREADY_RUNNING', 'STATION_CHANGED'})
 
 class DeviceConflict(BridgeError):
-    def __init__(self,detail): super().__init__(detail);self.detail=detail
+    def __init__(self, detail):
+        # Remote response bodies are not operator-safe; log only recognized codes.
+        self.detail = detail if isinstance(detail, str) and detail in DEVICE_CONFLICT_CODES else 'DEVICE_CONFLICT'
+        super().__init__('Cloud báo xung đột trạm (' + self.detail + '). Kiểm tra bridge/phiên đang chạy.')
 
 
 class WebAgent:
@@ -38,7 +45,9 @@ class WebAgent:
             if response.status_code != 200:
                 if response.status_code==409:
                     raise DeviceConflict(response_json(response).get('detail','DEVICE_CONFLICT'))
-                raise BridgeError('Không xác nhận được kênh điều khiển web; dừng và kiểm tra trạm.')
+                if response.status_code in (401, 403):
+                    raise BridgeError(f'Cloud từ chối device key (HTTP {response.status_code}). Kiểm tra DEVICE_API_KEY trong .env khớp với cloud; không dùng mật khẩu đăng nhập.')
+                raise BridgeError(f'Không xác nhận được kênh điều khiển web (HTTP {response.status_code}); dừng và kiểm tra trạm.')
             return response_json(response)
 
     def connect(self):
@@ -46,7 +55,8 @@ class WebAgent:
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             line = self.port.read_until(b'\n', 128)
-            if line == b'CONTROLLER:IDLE\n': break
+            # Arduino Serial.println emits CRLF; Serial.printf fixtures may emit LF.
+            if line in (b'CONTROLLER:IDLE\n', b'CONTROLLER:IDLE\r\n'): break
             if line.startswith(b'FAULT:'): raise BridgeError('ESP32 đang khóa lỗi; kiểm tra và reset trạm.')
         else: raise BridgeError('Cần firmware điều khiển web mới; ESP32 chưa xác nhận chờ lệnh.')
         self.api('register', {'cameraId': self.settings.camera_id})
@@ -182,19 +192,25 @@ def web_main(settings):
     agent = None
     try:
         with requests.Session() as http:
+            LOG.info('Đang kiểm tra cloud/database và model AI...')
             CloudAI(settings, http).check_ready()
             if settings.job_timeout > 25: raise BridgeError('JOB_TIMEOUT_SECONDS phải <=25 giây.')
+            LOG.info('Cloud sẵn sàng. Đang mở cổng USB Serial của ESP32...')
             with EventJournal(settings.state_path) as journal, serial.Serial(settings.serial_port, settings.baud_rate,
                                                                            timeout=.1, write_timeout=2) as port:
                 time.sleep(2)
                 agent = WebAgent(settings, port, http, journal)
                 try:
+                    LOG.info('Đang chờ ESP32 xác nhận kết nối; motor vẫn dừng...')
                     agent.connect()
                     while True: agent.step()
                 finally: agent.close()
     except KeyboardInterrupt:
         LOG.info('Đã dừng bridge; trạm cần kết nối lại trước khi điều khiển web.')
         return 0
-    except (BridgeError, requests.RequestException, serial.SerialException, OSError, ValueError) as error:
+    except BridgeError as error:
+        LOG.error('Kênh điều khiển đã dừng: %s', error)
+        return 1
+    except (requests.RequestException, serial.SerialException, OSError, ValueError) as error:
         LOG.error('Kênh điều khiển đã dừng (%s). Kiểm tra cloud/Serial và trạm rồi chạy lại bridge.', type(error).__name__)
         return 1

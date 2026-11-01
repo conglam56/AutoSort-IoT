@@ -305,6 +305,15 @@ class CameraBridgeTests(unittest.TestCase):
         self.assertFalse(bridge.stop_controller(port))
         port.write.assert_not_called()
 
+    def test_start_and_stop_acknowledgements_accept_arduino_crlf(self):
+        port=Mock()
+        port.write.side_effect=len
+        port.read_until.return_value=b'CONTROLLER:RUNNING:run-id\r\n'
+        bridge.wait_controller_started(port,'run-id')
+        port._autosort_uncertain_write=False
+        port.read_until.return_value=b'FAULT:BRIDGE_STOP\r\n'
+        self.assertTrue(bridge.stop_controller(port))
+
 
 if __name__ == "__main__":
     unittest.main()

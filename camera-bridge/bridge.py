@@ -404,7 +404,8 @@ def wait_controller_started(port, session_id):
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         line = port.read_until(b"\n", 128)
-        if line == f"CONTROLLER:RUNNING:{session_id}\n".encode("ascii"): return
+        if line in (f"CONTROLLER:RUNNING:{session_id}\n".encode("ascii"),
+                    f"CONTROLLER:RUNNING:{session_id}\r\n".encode("ascii")): return
         if line.startswith(b"FAULT:"): raise BridgeError("Firmware từ chối chạy. Kiểm tra trạm rồi reset ESP32.")
     raise BridgeError("ESP32 chưa xác nhận chạy; cần firmware USB Serial mới.")
 
@@ -415,7 +416,7 @@ def stop_controller(port):
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
         line = port.read_until(b"\n", 128)
-        if line == b"FAULT:BRIDGE_STOP\n": return True
+        if line in (b"FAULT:BRIDGE_STOP\n", b"FAULT:BRIDGE_STOP\r\n"): return True
         if line.startswith(b"FAULT:"): return False
     return False
 
