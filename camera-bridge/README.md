@@ -52,6 +52,21 @@ khi kết nối ESP32. Backend cần schema **v5**, firmware mới phải trả
 `CONTROLLER:IDLE` sau `BRIDGE:CONNECT`. Sau đó đăng nhập web để Bắt đầu,
 Tạm dừng/Tiếp tục hoặc Kết thúc. Không mở Serial Monitor đồng thời.
 
+## Nếu bridge dừng ngay khi khởi động
+
+Bridge ghi lần lượt: kiểm tra cloud, mở Serial, chờ ESP32 và trạm đã kết nối.
+Với `BridgeError`, dòng cuối có nguyên nhân cụ thể thay vì chỉ tên exception.
+HTTP 401/403 khi đăng ký trạm: kiểm tra device key khớp cloud. Lỗi xung đột
+`BRIDGE_ALREADY_CONNECTED`: kiểm tra còn bridge khác đang giữ trạm.
+Không gửi `.env` hoặc key vào log/chat để chẩn đoán.
+
+Firmware Arduino `Serial.println` trả CRLF. Bridge nhận cả LF và CRLF cho
+bắt tay IDLE; không chấp nhận dòng chưa có newline. Nếu ESP32 đã bị khóa lỗi
+từ lượt thử thất bại, dừng bridge, kiểm tra trạm tại chỗ, reset ESP32 bằng EN
+hoặc kết nối lại USB rồi chạy bridge mới. Không dùng lệnh web để bỏ qua lỗi
+đang khóa. Khi nạp firmware hoặc mở Serial Monitor, đóng bridge trước để
+tránh hai chương trình chiếm cùng cổng COM.
+
 ## Điều khiển và kết quả
 
 - Mỗi kết nối bridge có agent UUID riêng, được kiểm tra lease trên cloud.

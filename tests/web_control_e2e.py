@@ -13,12 +13,12 @@ def run_web_e2e(client,settings,folder,capture_gate):
         def write(self,data):
             self.writes.append(data)
             line=data.decode().strip()
-            if line=='BRIDGE:CONNECT':self.lines.append(b'CONTROLLER:IDLE\n')
-            elif line=='BRIDGE:STOP':self.state='FAULT';self.lines.append(b'FAULT:BRIDGE_STOP\n')
+            if line=='BRIDGE:CONNECT':self.lines.append(b'CONTROLLER:IDLE\r\n')
+            elif line=='BRIDGE:STOP':self.state='FAULT';self.lines.append(b'FAULT:BRIDGE_STOP\r\n')
             elif line.startswith('CONTROL:'):
                 _,id,action,run=line.split(':')
                 self.state={'START':'RUNNING','RESUME':'RUNNING','PAUSE':'PAUSED','STOP':'IDLE'}[action]
-                self.lines.append(f'ACK:{id}:{self.state}\n'.encode())
+                self.lines.append(f'ACK:{id}:{self.state}\r\n'.encode())
             return len(data)
         def flush(self):pass
         def read_until(self,*args):return self.lines.popleft() if self.lines else b''

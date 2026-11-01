@@ -1,5 +1,6 @@
 """Commands, ACKs and late inference with a single mocked Serial owner."""
 from concurrent.futures import Future
+import json
 from pathlib import Path
 import sys
 import time
@@ -10,7 +11,7 @@ from uuid import UUID, uuid4
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'camera-bridge'))
 import bridge
-from web_control import WebAgent
+from web_control import WebAgent, DeviceConflict, web_main
 
 class WebControlTests(unittest.TestCase):
     def setUp(self):
@@ -31,6 +32,51 @@ class WebControlTests(unittest.TestCase):
         self.assertIsNone(self.agent.run)
         self.port.write.assert_called_once_with(b'BRIDGE:CONNECT\n')
         self.agent.api.assert_called_once_with('register',{'cameraId':self.settings.camera_id})
+
+    def test_arduino_println_crlf_handshake_registers_station_without_starting_motor(self):
+        self.port.read_until.side_effect=[b'CONTROLLER:WAIT_BRIDGE\r\n',b'CONTROLLER:IDLE\r\n']
+        self.agent.connect()
+        self.assertIsNone(self.agent.run)
+        self.agent.api.assert_called_once_with('register',{'cameraId':self.settings.camera_id})
+        self.port.write.assert_called_once_with(b'BRIDGE:CONNECT\n')
+
+    def test_incomplete_idle_line_is_not_accepted_as_a_handshake(self):
+        self.port.read_until.side_effect=[b'CONTROLLER:IDLE',b'FAULT:BRIDGE_LOST\r\n']
+        with self.assertRaises(bridge.BridgeError): self.agent.connect()
+        self.agent.api.assert_not_called()
+
+    def test_startup_bridge_error_reports_operator_safe_reason(self):
+        with patch('web_control.CloudAI') as cloud, patch('web_control.serial.Serial') as serial:
+            cloud.return_value.check_ready.side_effect=bridge.BridgeError('Database chưa sẵn sàng.')
+            with self.assertLogs('autosort-bridge',level='ERROR') as logs:
+                self.assertEqual(web_main(self.settings),1)
+        self.assertIn('Database chưa sẵn sàng.', '\n'.join(logs.output))
+        serial.assert_not_called()
+
+    def test_transport_exception_details_are_not_logged(self):
+        with patch('web_control.CloudAI') as cloud:
+            cloud.return_value.check_ready.side_effect=bridge.requests.ConnectionError('https://private/?key=secret-test-token')
+            with self.assertLogs('autosort-bridge',level='ERROR') as logs:
+                self.assertEqual(web_main(self.settings),1)
+        self.assertNotIn('secret-test-token','\n'.join(logs.output))
+
+    def test_device_auth_http_status_is_visible_without_reading_response_body(self):
+        reply=Mock(status_code=401)
+        reply.__enter__=Mock(return_value=reply);reply.__exit__=Mock(return_value=False)
+        self.agent.http.post.return_value=reply
+        with self.assertRaisesRegex(bridge.BridgeError,'HTTP 401.*DEVICE_API_KEY'):
+            WebAgent.api(self.agent,'register',{})
+        reply.iter_content.assert_not_called()
+
+    def test_unknown_device_conflict_body_is_not_exposed(self):
+        reply=Mock(status_code=409)
+        reply.__enter__=Mock(return_value=reply);reply.__exit__=Mock(return_value=False)
+        reply.iter_content.return_value=[json.dumps({'detail':'secret-test-token'}).encode()]
+        self.agent.http.post.return_value=reply
+        with self.assertRaises(DeviceConflict) as caught:
+            WebAgent.api(self.agent,'register',{})
+        self.assertEqual(caught.exception.detail,'DEVICE_CONFLICT')
+        self.assertNotIn('secret-test-token',str(caught.exception))
     def test_default_entrypoint_uses_web_standby(self):
         with patch.object(sys,'argv',['bridge.py']),patch.object(bridge.Settings,'from_environment',return_value=self.settings),patch('web_control.web_main',return_value=0) as run:
             self.assertEqual(bridge.main(),0)
