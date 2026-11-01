@@ -11,8 +11,17 @@ Bridge nhận lệnh từ dashboard đã đăng nhập và điều khiển ESP32
 ```powershell
 py -3.12 -m venv camera-bridge/.venv
 & camera-bridge/.venv/Scripts/python.exe -m pip install -r camera-bridge/requirements.txt
-Copy-Item camera-bridge/.env.example camera-bridge/.env
+if (!(Test-Path -LiteralPath camera-bridge/.env)) {
+    Copy-Item camera-bridge/.env.example camera-bridge/.env
+}
 ```
+
+Mẫu `.env.example` đã có trong Git và mặc định dùng **DroidCam USB trên Windows**
+(`webcam`, backend `msmf`). Trước khi chạy, thay `SERIAL_PORT` bằng cổng ESP32
+thật và `DEVICE_API_KEY` bằng key thiết bị hiện có của cloud, nhận riêng từ
+người quản lý dự án. Key này không phải mật khẩu Admin/Operator. Xác nhận lại
+`CAMERA_INDEX` trên từng laptop; số 1 chỉ là giá trị đã thử trên máy dự án.
+Lệnh trên giữ nguyên `.env` nếu đã có; không đưa `.env` riêng lên Git.
 
 Cấu hình `.env` (không commit key/mật khẩu):
 
