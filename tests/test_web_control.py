@@ -42,8 +42,34 @@ class WebControlTests(unittest.TestCase):
 
     def test_incomplete_idle_line_is_not_accepted_as_a_handshake(self):
         self.port.read_until.side_effect=[b'CONTROLLER:IDLE',b'FAULT:BRIDGE_LOST\r\n']
-        with self.assertRaises(bridge.BridgeError): self.agent.connect()
+        with patch('serial_lines.monotonic',side_effect=[0,1.1]):
+            with self.assertRaises(bridge.BridgeError): self.agent.connect()
         self.agent.api.assert_not_called()
+
+    def test_fragmented_handshake_connects_once_after_complete_newline(self):
+        self.port.read_until.side_effect=[b'CONTROLLER:',b'IDLE\r',b'',b'\n']
+        self.agent.connect()
+        self.agent.api.assert_called_once_with('register',{'cameraId':self.settings.camera_id})
+        self.port.write.assert_called_once_with(b'BRIDGE:CONNECT\n')
+
+    def test_fragmented_stats_keep_station_alive_and_poll_after_line_completes(self):
+        self.port.read_until.side_effect=[b'COUNTS:G=0,',b'',b'R=0,X=0\r\n']
+        self.agent.step();self.agent.step()
+        self.agent.api.assert_not_called()
+        self.agent.step()
+        self.agent.api.assert_called_once_with('poll')
+        self.assertEqual(self.agent.state,'IDLE')
+
+    def test_fragmented_trigger_is_claimed_only_once_after_full_counter(self):
+        self.active()
+        self.journal.claim.return_value='request'
+        self.port.read_until.side_effect=[f'TRIGGER:{UUID(self.run).hex}:'.encode(),b'1\r',b'\n']
+        with patch.object(self.agent.pool,'submit',return_value=Future()) as submit:
+            self.agent.step();self.agent.step()
+            self.journal.claim.assert_not_called();submit.assert_not_called()
+            self.agent.step()
+        self.journal.claim.assert_called_once_with(self.settings.camera_id,UUID(self.run).hex+':1')
+        submit.assert_called_once()
 
     def test_startup_bridge_error_reports_operator_safe_reason(self):
         with patch('web_control.CloudAI') as cloud, patch('web_control.serial.Serial') as serial:
