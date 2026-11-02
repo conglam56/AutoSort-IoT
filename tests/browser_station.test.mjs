@@ -113,3 +113,65 @@ test('an ambiguous Serial write never appends STOP to a possibly partial command
   await s.close();
   assert.equal(writes, 1);
 });
+
+test('a temporary poll timeout keeps USB heartbeats alive and recovers without STOP', async () => {
+  let attempts = 0;
+  const { station: s, writes } = fixture(async () => {
+    if (++attempts === 1) throw new DOMException('signal timed out', 'TimeoutError');
+    return { command: null };
+  });
+  s.active = true; s.lastCloudPoll = performance.now();
+  await s.pollOnce(); s.tick(); await flush();
+  assert(!s.closed); assert(s.pollDegraded); assert(writes.includes('BRIDGE:PING\n'));
+  await s.pollOnce(); await s.operations;
+  assert(!s.closed); assert.equal(s.pollDegraded, false);
+  assert(!writes.includes('BRIDGE:STOP\n')); await s.close();
+});
+
+test('transient network and server poll failures do not extend the last confirmed lease', async () => {
+  for (const error of [new TypeError('Failed to fetch'), Object.assign(new Error('proxy'), { status: 503 })]) {
+    const { station: s, writes } = fixture(async () => { throw error; });
+    s.active = true; s.lastCloudPoll = performance.now();
+    const confirmed = s.lastCloudPoll;
+    await s.pollOnce(); assert(!s.closed); assert.equal(s.lastCloudPoll, confirmed);
+    s.lastCloudPoll = performance.now() - 12001;
+    s.tick(); await flush();
+    assert(s.closed); assert(writes.includes('BRIDGE:STOP\n'));
+  }
+});
+
+test('auth and station conflicts are fatal immediately, not transient poll errors', async () => {
+  for (const status of [401, 403, 409]) {
+    const { station: s, writes, calls } = fixture(async () => { throw Object.assign(new Error('denied'), { status }); });
+    s.active = true; s.lastCloudPoll = performance.now();
+    await s.pollOnce(); assert(s.closed);
+    assert.equal(calls.filter(x => x[0].endsWith('/poll')).length, 1);
+    assert(writes.includes('BRIDGE:STOP\n'));
+  }
+});
+
+test('a late successful poll cannot revive the station or dispatch a stale START', async () => {
+  const { station: s, writes } = fixture(async () => {
+    s.lastCloudPoll = performance.now() - 12001;
+    return { command: start };
+  });
+  s.active = true; s.lastCloudPoll = performance.now();
+  await s.pollOnce(); await s.operations;
+  assert(s.closed); assert(!writes.some(x => x.startsWith('CONTROL:')));
+});
+
+test('recovering a poll after a lost response delivers START once despite redelivery', async () => {
+  let polls = 0;
+  const { station: s, writes } = fixture(async path => {
+    if (path.endsWith('/poll')) {
+      if (++polls === 1) throw new DOMException('signal timed out', 'TimeoutError');
+      return { command: start };
+    }
+    return { runId: run, status: 'RUNNING' };
+  });
+  s.active = true; s.lastCloudPoll = performance.now();
+  await s.pollOnce(); await s.pollOnce(); await s.operations;
+  await s.pollOnce(); await s.operations;
+  assert.equal(writes.filter(x => x.startsWith('CONTROL:')).length, 1);
+  assert(!s.closed); await s.close();
+});

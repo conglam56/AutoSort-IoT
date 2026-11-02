@@ -3,6 +3,10 @@ const hex = value => value.replaceAll('-', '');
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const labels = new Set(['GREEN', 'RIPE', 'REJECT']);
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+// Stay below the server's 15-second station lease, including slow responses.
+const cloudSilenceLimit = 12000;
+const transientPollError = error => [408, 429, 500, 502, 503, 504].includes(error?.status)
+  || (!error?.status && ['TimeoutError', 'TypeError'].includes(error?.name));
 export const bounded = (promise, ms, message) => {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })])
@@ -32,8 +36,9 @@ export class BrowserStation {
       const idle = new Promise(resolve => { this.idle = resolve; });
       await this.write('BRIDGE:CONNECT');
       await bounded(idle, 7000, 'ESP32 chưa sẵn sàng. Nhấn EN/RESET, kiểm tra firmware rồi kết nối lại.');
-      const registered = await this.api('register');
+      const registeredAt = performance.now(), registered = await this.api('register');
       this.cameraId = registered.cameraId; this.registered = true;
+      this.lastCloudPoll = registeredAt;
       if (this.closed) {
         try { await this.api('disconnect'); } catch { /* Its lease will expire. */ }
         throw new Error('ESP32 đã ngắt trong lúc đăng ký trạm.');
@@ -60,6 +65,8 @@ export class BrowserStation {
   tick() {
     if (this.closed) return;
     const now = performance.now();
+    if (this.active && now - this.lastCloudPoll >= cloudSilenceLimit)
+      return this.fail(new Error('Mất liên lạc cloud quá 12 giây. Trạm đã ngắt; kiểm tra mạng rồi kết nối lại.'));
     if (this.buffer && now - this.partialAt >= 1000) return this.fail(new Error('Dòng Serial nhận dở quá hạn.'));
     if (this.pending && now >= this.pending.deadline) return this.fail(new Error('ESP32 chưa xác nhận lệnh đúng hạn.'));
     if (!this.lastPing || now - this.lastPing >= 1000) {
@@ -93,13 +100,36 @@ export class BrowserStation {
   }
   async pollLoop() {
     while (!this.closed) {
-      const started = performance.now();
-      try {
-        const result = await this.api('poll');
-        this.enqueue(() => this.handleCommand(result.command, started));
-      } catch (error) { await this.fail(error); break; }
+      await this.pollOnce();
       await delay(500);
     }
+  }
+  async pollOnce() {
+    if (this.closed) return;
+    const started = performance.now();
+    const remaining = cloudSilenceLimit - (started - this.lastCloudPoll);
+    const disconnected = () => this.fail(new Error('Mất liên lạc cloud quá 12 giây. Trạm đã ngắt; kiểm tra mạng rồi kết nối lại.'));
+    if (!(remaining > 0)) return disconnected();
+    let result;
+    try {
+      // Only polls are retried. START/prepare/ACK and Serial writes are never replayed.
+      result = await this.api('poll', { timeoutMs: Math.min(4000, remaining) });
+    } catch (error) {
+      if (this.closed) return;
+      if (!transientPollError(error)) return this.fail(error);
+      if (performance.now() - this.lastCloudPoll >= cloudSilenceLimit) return disconnected();
+      if (!this.pollDegraded) {
+        this.pollDegraded = true;
+        this.notify('Cloud phản hồi chậm. Đang thử lại kết nối; giữ tab này hiển thị.');
+      }
+      return;
+    }
+    if (this.closed) return;
+    // A response arriving after our lease budget must not revive a stale station.
+    if (performance.now() - this.lastCloudPoll >= cloudSilenceLimit) return disconnected();
+    this.lastCloudPoll = started;
+    if (this.pollDegraded) { this.pollDegraded = false; this.notify('Đã khôi phục kết nối cloud.'); }
+    this.enqueue(() => this.handleCommand(result.command, started));
   }
   async handleCommand(command, polledAt) {
     if (!command || this.seen.has(command.id)) return;
@@ -191,7 +221,8 @@ export class BrowserStation {
   async fail(error) {
     if (this.closed) return;
     this.notify(error?.status ? 'Cloud từ chối kết nối (' + (error.detail || error.status) + '). Trạm đã ngắt.' :
-      (error?.message || 'Mất kết nối trạm.'), true);
+      (error?.name === 'TimeoutError' ? 'Cloud phản hồi quá hạn khi xác nhận trạm. Kiểm tra mạng rồi kết nối lại.' :
+        error?.message || 'Mất kết nối trạm.'), true);
     await this.close();
   }
   async close() {

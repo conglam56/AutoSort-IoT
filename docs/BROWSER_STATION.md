@@ -46,6 +46,12 @@ tức thì khi trang hoặc máy tính bị treo.
   Route /infer cũ của thiết bị vẫn yêu cầu device key.
 - PING USB độc lập với request AI/poll. Buffer Serial có giới hạn, ghép
   CRLF/LF và hạn 1 giây cho dòng dở; ghi lỗi không nối STOP vào dòng chưa rõ.
+- Timeout mạng ngắn hoặc HTTP 408/429/500/502/503/504 khi poll được thử lại
+  sau 0,5 giây, giữ PING USB. Hạn mỗi request tối đa 4 giây và hạn im lặng
+  cloud 12 giây tính bảo thủ từ lúc gửi poll thành công gần nhất; timer USB
+  cũng kiểm tra hạn này, trước lease server 15 giây. Quá hạn thì ngắt trạm;
+  phản hồi đến muộn không làm trạm chạy lại. Lỗi quyền/xung đột ngắt ngay.
+  Chỉ thử lại poll, không phát lại lệnh motor, prepare hoặc ACK.
 - Mỗi TRIGGER tạo một JPEG mới, tối đa một RESULT đúng run/counter.
   STOP hủy job và bỏ kết quả muộn. PAUSE giữ phiên.
 - Model vẫn là V2-640, giữ policy hiện tại; không thêm zoom/crop/ghép model.
