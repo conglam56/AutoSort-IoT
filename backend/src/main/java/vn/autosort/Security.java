@@ -88,6 +88,7 @@ public class Security {
       response.setHeader("X-Content-Type-Options", "nosniff");
       response.setHeader("Referrer-Policy", "same-origin");
       response.setHeader("X-Frame-Options", "DENY");
+      response.setHeader("Permissions-Policy", "camera=(self), microphone=(), serial=(self)");
       if (path.startsWith("/api/")
           || path.equals("/infer")
           || path.startsWith("/device/")

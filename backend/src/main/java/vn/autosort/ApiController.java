@@ -52,6 +52,7 @@ public class ApiController {
             true);
     result.put("automatic_sessions_supported", true);
     result.put("web_control_supported", true);
+    result.put("browser_station_supported", true);
     result.putAll(engine.health());
     return result;
   }

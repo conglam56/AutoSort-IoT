@@ -321,4 +321,31 @@ public class StationService {
           return snapshot();
         });
   }
+
+  public Object prepareBrowserStart(UUID agent, UUID id) {
+    return db.transaction(
+        () -> {
+          db.stationLock();
+          expireLocked();
+          var s = agent(agent);
+          var c = db.one("SELECT * FROM station_commands WHERE id=? AND agent_id=?", id, agent);
+          if (c == null || !c.get("status").equals("DELIVERED") || !c.get("action").equals("START"))
+            throw new ApiError(409, "COMMAND_EXPIRED");
+          var result =
+              runs.start((UUID) c.get("run_id"), s.get("camera_id").toString(), "CONVEYOR");
+          if (!((Map<?, ?>) result).get("status").equals("RUNNING"))
+            throw new ApiError(409, "RUN_ENDED");
+          return result;
+        });
+  }
+
+  public Object disconnectBrowser(UUID agent) {
+    return db.transaction(
+        () -> {
+          db.stationLock();
+          fault(agent);
+          db.jdbc.update("UPDATE station_state SET reported='OFFLINE',last_seen=NULL WHERE id=1");
+          return snapshot();
+        });
+  }
 }

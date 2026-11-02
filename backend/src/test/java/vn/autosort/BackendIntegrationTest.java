@@ -1121,4 +1121,111 @@ class BackendIntegrationTest {
         0, ((Number) db.one("SELECT count(*) AS n FROM fruit_results").get("n")).intValue());
     infer("atomic", "F-1", "phone", jpeg, 200);
   }
+
+  @Test
+  void browserStationRequiresCsrfAndBindsIdentityToTheLoginSession() throws Exception {
+    UUID connection = UUID.randomUUID();
+    String base = "/api/browser-station/" + connection;
+    mvc.perform(post(base + "/register").contentType("application/json").content("{}"))
+        .andExpect(status().isUnauthorized());
+    var user = login("operator");
+    mvc.perform(
+            post(base + "/register")
+                .cookie(user.cookie)
+                .header("Origin", ORIGIN)
+                .contentType("application/json")
+                .content("{}"))
+        .andExpect(status().isForbidden());
+    var registered = value(write(base + "/register", Map.of(), user, 200));
+    assertTrue(registered.path("cameraId").asText().startsWith("browser-"));
+    write(base + "/poll", Map.of(), user, 200);
+    var otherLogin =
+        login("operator"); // Even the same account in another login cannot seize the agent.
+    write(base + "/poll", Map.of(), otherLogin, 409);
+    write(base + "/register", Map.of(), otherLogin, 409);
+    write("/api/browser-station/" + UUID.randomUUID() + "/poll", Map.of(), user, 409);
+    stationPost(
+        "/device/station/" + UUID.randomUUID() + "/register", Map.of("cameraId", "phone"), 409);
+    mvc.perform(get("/health")).andExpect(jsonPath("$.browser_station_supported").value(true));
+  }
+
+  MvcResult browserInfer(String base, Session user, UUID run, String counter, int status)
+      throws Exception {
+    return mvc.perform(
+            multipart(base + "/infer")
+                .file(new MockMultipartFile("image", "fruit.jpg", "image/jpeg", sample()))
+                .param("runId", run.toString())
+                .param("counter", counter)
+                .cookie(user.cookie)
+                .header("Origin", ORIGIN)
+                .header("X-CSRF-Token", user.csrf))
+        .andExpect(status().is(status))
+        .andReturn();
+  }
+
+  @Test
+  void browserFlowKeepsRunBoundariesReceiptsAndStopPrecedence() throws Exception {
+    var user = login("operator");
+    String base = "/api/browser-station/" + UUID.randomUUID();
+    write(base + "/register", Map.of(), user, 200);
+    write(base + "/prepare/" + UUID.randomUUID(), Map.of(), user, 409);
+    var start = control("START", user, "browser-start");
+    write(
+        base + "/prepare/" + start.path("id").asText(),
+        Map.of(),
+        user,
+        409); // Poll must deliver first.
+    write(base + "/poll", Map.of(), user, 200);
+    var prepared =
+        value(write(base + "/prepare/" + start.path("id").asText(), Map.of(), user, 200));
+    UUID run = UUID.fromString(prepared.path("runId").asText());
+    write(
+        base + "/ack/" + start.path("id").asText(),
+        Map.of("state", "RUNNING", "success", true),
+        user,
+        200);
+    var first = value(browserInfer(base, user, run, "1", 200));
+    assertEquals(
+        first,
+        value(browserInfer(base, user, run, "1", 200))); // One record despite a repeated upload.
+    assertEquals(1, ((List<?>) sorting.current().get("fruits")).size());
+    browserInfer(base, user, UUID.randomUUID(), "2", 409);
+    browserInfer(base, login("operator"), run, "2", 409);
+    browserInfer(base, user, run, "4294967296", 400);
+    var stop = control("STOP", user, "browser-stop");
+    browserInfer(base, user, run, "2", 409); // Pending STOP already vetoes a new image.
+    write(base + "/poll", Map.of(), user, 200);
+    write(
+        base + "/ack/" + stop.path("id").asText(),
+        Map.of("state", "IDLE", "success", true),
+        user,
+        200);
+    assertNull(sorting.current());
+    browserInfer(base, user, run, "2", 409);
+    write(base + "/prepare/" + start.path("id").asText(), Map.of(), user, 409);
+    assertEquals(1, ((List<?>) sorting.list()).size());
+    write(base + "/disconnect", Map.of(), user, 200);
+    assertEquals("OFFLINE", ((Map<?, ?>) station.current()).get("state"));
+    stationPost(
+        "/device/station/" + UUID.randomUUID() + "/register", Map.of("cameraId", "phone"), 200);
+  }
+
+  @Test
+  void supersededBrowserStartNeverCreatesASession() throws Exception {
+    var user = login("operator");
+    String base = "/api/browser-station/" + UUID.randomUUID();
+    write(base + "/register", Map.of(), user, 200);
+    var start = control("START", user, "browser-race-start");
+    write(base + "/poll", Map.of(), user, 200);
+    var stop = control("STOP", user, "browser-race-stop");
+    write(base + "/prepare/" + start.path("id").asText(), Map.of(), user, 409);
+    assertNull(sorting.current());
+    write(base + "/poll", Map.of(), user, 200);
+    write(
+        base + "/ack/" + stop.path("id").asText(),
+        Map.of("state", "IDLE", "success", true),
+        user,
+        200);
+    assertNull(sorting.current());
+  }
 }

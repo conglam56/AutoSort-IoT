@@ -443,3 +443,19 @@ h1 { font-size: clamp(22px, 2vw, 28px); font-weight: 600; letter-spacing: -1px; 
   .admin-row-action { min-height: 44px; }
   .permission-note { font-size: 11px; }
 }
+
+/* Browser station connection: uses the dashboard's existing controls and palette. */
+.device-dialog{width:min(740px,calc(100vw - 32px));max-width:740px;max-height:calc(100dvh - 40px);overflow:auto;padding:28px}
+.device-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.device-dialog-heading h2{margin:6px 0 12px}.device-eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#27815d}
+.device-setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0 16px}
+.device-step{border:1px solid #dce5df;border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.device-step h3,.device-step p{margin:0}.device-step p,.device-help,.device-inline p{font-size:13px;line-height:1.6;color:#58716a}
+.device-step-number{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;background:#eaf3ed;color:#27815d;font-weight:700;font-size:12px}
+.device-step label,.device-step small{font-size:12px;color:#58716a}.device-step select{width:100%;min-height:44px;padding:9px;border:1px solid #cbdad2;border-radius:8px;background:#fff;color:#193c30}
+.device-preview{width:100%;max-height:240px;aspect-ratio:16/9;object-fit:contain;background:#edf2ee;border-radius:12px}
+.device-message{padding:12px 14px;border-radius:10px;background:#edf5ef;color:#226947;line-height:1.6;font-size:14px}
+.device-error{background:#fcf0ed;color:#a43d35}.device-details{font-size:12px;margin-top:16px}.device-details summary{cursor:pointer;padding:8px 0}.device-details ol{padding-left:20px;max-height:140px;overflow:auto;line-height:1.7}
+.device-inline{display:flex;align-items:center;gap:20px;border:1px solid #dce5df;background:#fff;border-radius:14px;padding:14px 18px;margin:0 0 20px}.device-inline[hidden]{display:none}.device-inline video{width:180px;aspect-ratio:4/3;object-fit:contain;border-radius:8px;background:#edf2ee}.device-inline strong{font-size:14px}.device-inline p{margin:7px 0 0}
+.device-dialog :focus-visible{outline:3px solid #27815d;outline-offset:3px}
+@media(max-width:600px){.device-dialog{padding:20px}.device-setup-grid{grid-template-columns:1fr}.device-step{padding:16px}.device-inline{align-items:flex-start;flex-direction:column;gap:12px}.device-inline video{width:100%;max-height:180px}.device-dialog .dialog-actions{flex-wrap:wrap}.header-actions{flex-wrap:wrap}}

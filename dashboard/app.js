@@ -1,4 +1,5 @@
 import { createAdminConsole } from './admin.js';
+import { createDevicePanel } from './devices.js';
 import { canOperate, isAdminRole, roleLabel } from './permissions.js';
 
 /**
@@ -19,7 +20,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     apiBase: location.pathname.startsWith('/dashboard') || location.port === '8000' ? '' : 'http://127.0.0.1:8000'
   };
   const failedImageSources = new Set();
-  let adminConsole;
+  let adminConsole, devicePanel;
   const isAdmin = () => isAdminRole(state.user);
   const mayOperate = () => canOperate(state.user);
 
@@ -340,7 +341,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     const revision = state.revision, userId = state.user?.id;
     const { timeoutMs = 10000, ...fetchOptions } = options;
     const response = await fetch(state.apiBase + path, { cache: 'no-store', credentials: 'include', signal: AbortSignal.timeout(timeoutMs), ...fetchOptions,
-      headers: { ...(fetchOptions.method === 'POST' ? { 'Content-Type': 'application/json', 'X-CSRF-Token': state.user?.csrfToken || '' } : {}), ...fetchOptions.headers } });
+      headers: { ...(fetchOptions.method === 'POST' ? { ...(fetchOptions.body instanceof FormData ? {} : {'Content-Type': 'application/json'}), 'X-CSRF-Token': state.user?.csrfToken || '' } : {}), ...fetchOptions.headers } });
     if (!response.ok) {
       const error = new Error('HTTP ' + response.status); error.status = response.status;
       try { const body = await response.json(); error.detail = typeof body.detail === 'string' ? body.detail : ''; } catch { /* A proxy error may not return JSON. */ }
@@ -354,9 +355,11 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     state.lastSync=null; state.cloudOnline=false;
   }
   function loginExpired() {
+    void devicePanel?.disconnect();
     clearLiveData(); document.body.classList.add('auth-pending'); location.replace('login.html');
   }
   async function accountAction() {
+    await devicePanel?.disconnect();
     try { await request('/api/auth/logout', {method:'POST'}); loginExpired(); }
     catch {showToast('Chưa đăng xuất được. Kiểm tra mạng rồi thử lại.', 'error');}
   }
@@ -409,8 +412,8 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     $('btn-start').disabled=!ready||!state.health?.model_ready||!['IDLE','PAUSED'].includes(st?.state)||(st?.state==='IDLE'&&state.currentSession?.status==='RUNNING');
     $('btn-pause').disabled=!ready||st?.state!=='RUNNING';
     $('btn-stop').disabled=!mayOperate()||!state.cloudOnline||!st?.online||commandBusy||pending?.action==='STOP'||(!pending&&!['RUNNING','PAUSED'].includes(st?.state));
-    const labels={IDLE:'Trạm sẵn sàng · Đang dừng',RUNNING:'Băng chuyền đang vận hành',PAUSED:'Đã tạm dừng · Giữ nguyên phiên',FAULT:'Trạm đang khóa lỗi · Kiểm tra tại trạm và kết nối lại',OFFLINE:'Trạm chưa kết nối · Chạy bridge trên máy tính tại trạm'};
-    const text=pending?'Đang chờ ESP32 xác nhận '+({START:'bắt đầu',RESUME:'tiếp tục',PAUSE:'tạm dừng',STOP:'kết thúc'})[pending.action]+'…':!st?.online?'Trạm chưa kết nối · Chạy bridge trên máy tính tại trạm':labels[st.state];
+    const labels={IDLE:'Trạm sẵn sàng · Đang dừng',RUNNING:'Chế độ tự động đang hoạt động',PAUSED:'Đã tạm dừng · Giữ nguyên phiên',FAULT:'Trạm đang khóa lỗi · Kiểm tra tại trạm và kết nối lại',OFFLINE:'Trạm chưa kết nối · Chọn Kết nối thiết bị tại laptop nối ESP32'};
+    const text=pending?'Đang chờ ESP32 xác nhận '+({START:'bắt đầu',RESUME:'tiếp tục',PAUSE:'tạm dừng',STOP:'kết thúc'})[pending.action]+'…':!st?.online?labels.OFFLINE:labels[st.state];
     if(state.currentSession?.status==='RUNNING') {
       const tag=$('session-status-tag');
       const dot=document.createElement('span');dot.className='pip '+(st?.state==='PAUSED'?'paused':st?.online?'online':'offline');dot.setAttribute('aria-hidden','true');
@@ -439,6 +442,7 @@ import { canOperate, isAdminRole, roleLabel } from './permissions.js';
     $('toast-container').append(toast); setTimeout(() => toast.remove(), 4500);
   }
   function init() {
+    devicePanel = createDevicePanel({ request, changed: () => { if (state.user) void syncServer(); } });
     adminConsole = createAdminConsole({ request, getUser: () => state.user, onSessionLost: loginExpired, toast: showToast });
     adminConsole.identityChanged(null);
     document.querySelectorAll('.nav-btn').forEach(button => button.addEventListener('click', () => switchTab(button.dataset.tab)));

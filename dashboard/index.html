@@ -67,6 +67,7 @@
       <div class="page-heading">
         <div><h1 id="page-title">Tổng quan phân loại</h1><p id="page-subtitle">Một góc nhìn rõ ràng cho từng phiên vận hành.</p></div>
         <div class="header-actions" id="header-controls">
+          <button id="btn-devices" class="btn btn-neutral">Kết nối thiết bị</button>
           <button id="btn-start" class="btn btn-action" disabled>Bắt đầu</button>
           <button id="btn-pause" class="btn btn-neutral" disabled>Tạm dừng</button>
           <button id="btn-stop" class="btn btn-neutral" disabled>Kết thúc</button>
@@ -75,6 +76,10 @@
       </div>
       <p id="session-permission-note" class="permission-note">Bắt đầu mở phiên mới. Tạm dừng giữ nguyên phiên; Kết thúc dừng trạm và đóng phiên.</p>
       <p id="station-status" class="station-status" role="status" aria-live="polite">Đang kiểm tra kết nối trạm…</p>
+      <section id="device-inline" class="device-inline" aria-label="Camera tại laptop này" hidden>
+        <video id="device-video" autoplay muted playsinline></video>
+        <div><strong id="device-inline-status">Xem trước camera</strong><p>Đặt từng vật tại IR đầu vào. Bắt đầu bật chế độ tự động; motor chờ vật mới chạy.</p></div>
+      </section>
 
       <div class="source-notice" id="source-notice" role="status"><svg class="icon" aria-hidden="true"><use href="#i-info"/></svg><span id="source-notice-text">Đang kết nối máy chủ…</span><span class="notice-tag" id="source-state">Đang kết nối</span></div>
 
@@ -159,7 +164,7 @@
   </div>
 
   <dialog id="end-session-dialog" class="app-dialog" aria-labelledby="end-session-title"><form method="dialog"><h2 id="end-session-title">Kết thúc phiên dữ liệu?</h2><p id="end-session-target"></p><p>Kết quả cũ được giữ. Máy chủ ngừng nhận ảnh mới cho phiên này. Đây không phải lệnh dừng băng tải; kiểm tra thiết bị theo quy trình phần cứng.</p><div class="dialog-actions"><button class="btn btn-neutral" value="cancel" autofocus>Hủy</button><button class="btn btn-action" value="confirm">Kết thúc phiên dữ liệu</button></div></form></dialog>
-  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Vận hành trạm phân loại</h2><ol class="guide-steps"><li>Chạy bridge tại trạm và chờ trạng thái sẵn sàng.</li><li><strong>Bắt đầu</strong> chạy băng chuyền và tạo phiên mới.</li><li><strong>Tạm dừng</strong> giữ nguyên phiên và tiến độ; <strong>Tiếp tục</strong> chạy tiếp.</li><li><strong>Kết thúc</strong> dừng trạm và đóng phiên. Chờ trạng thái được xác nhận rồi thao tác tiếp.</li><li>Mở <strong>Lịch sử phiên</strong> để xem và xuất CSV. Lỗi trạm cần kiểm tra tại chỗ.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
+  <dialog id="guide-dialog" class="app-dialog" aria-labelledby="guide-title"><form method="dialog"><h2 id="guide-title">Vận hành trạm phân loại</h2><ol class="guide-steps"><li>Mở DroidCam, bấm Kết nối thiết bị trên Chrome tại laptop nối ESP32, chọn camera và cổng USB. Nếu dùng bridge Python, không kết nối đồng thời từ web.</li><li><strong>Bắt đầu</strong> tạo phiên và bật chế độ tự động. Với firmware chờ vật, motor chỉ chạy khi IR đầu vào thấy vật.</li><li><strong>Tạm dừng</strong> giữ nguyên phiên và tiến độ; <strong>Tiếp tục</strong> chạy tiếp.</li><li><strong>Kết thúc</strong> dừng trạm và đóng phiên. Chờ trạng thái được xác nhận rồi thao tác tiếp.</li><li>Mở <strong>Lịch sử phiên</strong> để xem và xuất CSV. Lỗi trạm cần kiểm tra tại chỗ.</li></ol><button class="btn btn-action dialog-close" value="close">Đã hiểu</button></form></dialog>
   <div class="toast-shelf" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
   <dialog id="admin-create-dialog" class="app-dialog account-dialog" aria-labelledby="admin-create-title"><form id="admin-create-form" method="post">
     <h2 id="admin-create-title">Thêm tài khoản</h2><p>Cấp quyền phù hợp với công việc của từng thành viên.</p>
@@ -192,6 +197,20 @@
     <div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="own-password-dialog">Hủy</button><button type="submit" class="btn btn-action">Đổi mật khẩu</button></div>
   </form></dialog>
   <dialog id="admin-revoke-dialog" class="app-dialog" aria-labelledby="admin-revoke-title"><form id="admin-revoke-form" method="post"><h2 id="admin-revoke-title">Đăng xuất các thiết bị?</h2><p id="admin-revoke-target"></p><p id="admin-revoke-error" class="form-error" role="alert" tabindex="-1" hidden></p><div class="dialog-actions"><button type="button" class="btn btn-neutral" data-close-dialog="admin-revoke-dialog">Giữ đăng nhập</button><button type="submit" class="btn btn-action">Đăng xuất thiết bị</button></div></form></dialog>
+  <dialog id="device-dialog" class="app-dialog device-dialog" aria-labelledby="device-title">
+    <div class="device-dialog-heading"><div><span class="device-eyebrow">Kết nối tại laptop</span><h2 id="device-title">Camera &amp; ESP32</h2></div><button id="device-close" class="btn btn-neutral" aria-label="Đóng hộp kết nối" autofocus>Đóng</button></div>
+    <p>Chọn thiết bị một lần, sau đó vận hành bằng các nút trên dashboard. Không cần chạy bridge trên terminal.</p>
+    <p id="device-supported" class="form-error" hidden>Dùng Chrome trên laptop, mở web qua HTTPS và cho phép camera/Serial.</p>
+    <div class="device-setup-grid">
+      <section class="device-step"><span class="device-step-number">01</span><h3>Kết nối ESP32</h3><p>Cắm dây USB, đóng Serial Monitor và bridge Python.</p><button id="device-serial" class="btn btn-neutral">Chọn ESP32</button><small id="device-serial-state">Chưa chọn ESP32</small></section>
+      <section class="device-step"><span class="device-step-number">02</span><h3>Chọn camera</h3><p>Mở DroidCam trước, rồi cho phép truy cập camera.</p><label for="device-camera">Nguồn hình ảnh</label><select id="device-camera" aria-label="Nguồn hình ảnh"></select><button id="device-camera-start" class="btn btn-neutral">Bật camera</button></section>
+    </div>
+    <video id="device-preview" class="device-preview" autoplay muted playsinline aria-label="Hình xem trước camera"></video>
+    <p id="device-message" class="device-message" role="status" aria-live="polite">Chưa kết nối thiết bị. Chọn ESP32 và kiểm tra hình camera.</p>
+    <p class="device-help">Giữ tab này hiển thị khi vận hành. Ẩn/đóng tab sẽ ngắt trạm. Nếu ESP32 đang khóa lỗi, nhấn EN/RESET trước khi kết nối lại.</p>
+    <details class="device-details"><summary>Nhật ký kết nối</summary><ol id="device-log"></ol></details>
+    <div class="dialog-actions"><button id="device-disconnect" class="btn btn-neutral" disabled>Ngắt thiết bị</button><button id="device-connect" class="btn btn-action" disabled>Kết nối trạm</button></div>
+  </dialog>
   <script type="module" src="app.js"></script>
 </body>
 </html>
