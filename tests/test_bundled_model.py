@@ -23,7 +23,7 @@ class BundledModelTests(unittest.TestCase):
         self.assertEqual(health['task'], 'detect')
         self.assertEqual(engine.img_size, 640)
         self.assertEqual(health['classes'], ['GREEN', 'RIPE', 'REJECT'])
-        self.assertEqual(health['model_version'], 'autosort-yolo11n-detect-v2-13714d07b0-640')
+        self.assertEqual(health['model_version'], 'autosort-yolo11n-detect-v21-5414fbf368-640')
         self.assertEqual(health['decision_policy'], 'highest_confidence')
         for name in ('quatsample.jpg', 'ripe.jpg', 'reject.jpg'):
             with self.subTest(image=name):

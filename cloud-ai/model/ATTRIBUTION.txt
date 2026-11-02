@@ -45,3 +45,5 @@ Both source exports declare CC BY 4.0. Original source metadata, URLs and SHA-25
   },
   "physical_or_new_camera_accuracy_tested": false
 }
+
+V2.1 supplementary photos: user-provided, no separate public license declared; private training handoff. See original-sources.json.

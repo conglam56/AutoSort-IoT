@@ -107,7 +107,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await page.waitForFunction(() => window.__serialWrites.some(x => /^RESULT:.*:1:(GREEN|RIPE|REJECT)\n$/.test(x)));
     const current = await (await page.request.get(origin + '/api/session/current')).json();
     assert.equal(current.fruits.length, 1);
-    assert.equal(current.fruits[0].modelVersion, 'autosort-yolo11n-detect-v2-13714d07b0-640');
+    assert.equal(current.fruits[0].modelVersion, 'autosort-yolo11n-detect-v21-5414fbf368-640');
     await page.evaluate(run => window.__emitSerial('TRIGGER:' + run + ':1\r\n'), runHex);
     await page.waitForTimeout(200); assert.equal(uploads, 1);
     await page.locator('#btn-start').click(); // Resume.
