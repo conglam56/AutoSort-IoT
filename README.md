@@ -1,90 +1,38 @@
-# AutoSort IoT — Băng chuyền phân loại nông sản bằng Cloud AI
+# AutoSort IoT
 
-Luồng vận hành: **đăng nhập trước khi vào dashboard**, không còn demo công
-khai. Chạy bridge để kết nối trạm rồi điều khiển bằng **Bắt đầu / Tạm dừng /
-Tiếp tục / Kết thúc** trên web. Bắt đầu mở phiên, Tạm dừng giữ phiên, Kết thúc
-đóng phiên sau xác nhận firmware. Xem [WEB_CONTROL.md](docs/WEB_CONTROL.md).
-Cần backend schema v5 và cập nhật bridge/firmware đồng bộ;
-xem [hướng dẫn triển khai](docs/RENDER_DEPLOY.md) để kiểm tra bản đang chạy.
+## Băng chuyền phân loại và kiểm tra lỗi sản phẩm tự động
 
-Backend HTTP dùng **Java 21 / Spring Boot**, PostgreSQL và Spring Security.
-AI ONNX chạy bằng Python worker nội bộ. Phần cứng và model cần được kiểm thử
-bằng camera tại trạm trước khi kết luận toàn bộ hệ thống hoạt động thực tế.
+AutoSort IoT là mô hình băng chuyền tự động nhận diện và phân loại sản phẩm từ hình ảnh. Bản trình diễn sử dụng **quả quất**: quất xanh đạt vào khay **GREEN**, quất chín đạt vào khay **RIPE**, còn quả có lỗi ngoại quan vào khay **REJECT**. Đốm đen, vết thâm, sẹo vỏ và mốc đều được xem là lỗi, bất kể màu vỏ.
 
-Luồng chuẩn hóa và huấn luyện **một detector ba lớp** từ bộ bàn giao mới nằm ở
-[AI_DETECTION_TRAINING.md](docs/AI_DETECTION_TRAINING.md). Pipeline classification
-cũ vẫn được giữ để tái tạo; ba detector một lớp không thể thay trực tiếp vào nó.
-Model thử nghiệm unified-v1 đã được train và đánh giá; xem
-[kết quả cùng giới hạn](docs/AI_DETECTION_RESULTS.md). Model được bàn giao riêng,
-không tự động cài vào dịch vụ cloud.
+Camera điện thoại ghi hình; laptop chuyển ảnh lên cloud để AI suy luận; ESP32 điều khiển băng chuyền và servo. Dashboard giúp theo dõi kết quả, lịch sử và điều khiển phiên vận hành.
 
-Mục tiêu cuối: IR phát hiện quả → ESP32 điều khiển dừng đúng vị trí → Điện thoại (IP Webcam) chụp JPEG → Máy tính gửi Internet tới Cloud → AI phân loại GREEN / RIPE / REJECT → ESP32 điều khiển băng chuyền & 2 servo gạt → Dashboard hiển thị kết quả.
+## Từ sản phẩm đến khay phân loại
 
-## Cấu trúc
+1. Người vận hành đăng nhập dashboard, kết nối ESP32 và camera DroidCam trên laptop, rồi bấm **Bắt đầu**. **Tạm dừng**, **Tiếp tục** và **Kết thúc** điều khiển cùng một phiên vận hành.
+2. Cảm biến hồng ngoại ở đầu vào phát hiện một sản phẩm. ESP32 điều khiển băng chuyền đưa sản phẩm tới vị trí chụp và dừng motor.
+3. Điện thoại truyền hình ảnh qua DroidCam tới laptop. Laptop lấy một ảnh JPEG và gửi tới máy chủ trên Render; không truyền video liên tục lên cloud.
+4. Backend **Java 21 / Spring Boot** gọi Python worker chạy model **ONNX** để suy luận. Kết quả GREEN / RIPE / REJECT được lưu trong **PostgreSQL** và trả về laptop.
+5. Laptop gửi kết quả qua **USB Serial** tới ESP32. ESP32 cho băng chuyền chạy tiếp, điều khiển hai servo để đưa GREEN và RIPE vào khay tương ứng; REJECT đi tới khay cuối. Sau một lượt, trạm chờ sản phẩm tiếp theo trong cùng phiên.
 
-| Thư mục | Người phụ trách | Hiện trạng |
-|---|---|---|
-| `backend/` | Cloud & Web | Spring Boot: API, dashboard, auth/admin, PostgreSQL và idempotency |
-| `cloud-ai/` | AI | Python ONNX worker nội bộ; trả `MOCK` khi chưa cài model hợp lệ vào `cloud-ai/model/` |
-| `training/` | A — AI & Cloud | Notebook Colab, kiểm tra dataset, train YOLO11, export ONNX và kiểm tra parity |
-| `tests/` | Cả nhóm | Kiểm thử confidence, xử lý ảnh, chuyển dữ liệu và đóng gói |
-| `esp32-controller/` | B — IoT | Firmware USB Serial đã ghép giao thức bridge; cần nạp và hiệu chỉnh trên băng tải thực |
-| `camera-bridge/` | B — IoT | Python lấy ảnh từ điện thoại và gọi Cloud Spring Boot |
-| `dashboard/` | C — Web | Đã hoàn thiện giao diện giám sát thời gian thực, quản lý phiên và xuất CSV |
-| `hardware/` | B — IoT | Chờ tài liệu phần cứng chính thức từ thành viên phụ trách |
-| `docs/` | Cả nhóm | Hướng dẫn train/deploy và nguồn dữ liệu |
+Hệ thống xử lý **một sản phẩm mỗi lượt**. Camera là **điện thoại**, không dùng ESP32-CAM. Một phiên có thể gồm nhiều lượt; băng chuyền dừng để chụp ảnh mà không tạo phiên mới. Xem [chu trình trạm](docs/STATION_CYCLE.md) và [giao thức điều khiển](docs/WEB_CONTROL.md) để hiểu các trạng thái và điều kiện dừng.
 
-**Camera của dự án là điện thoại, không phải ESP32-CAM.** ESP32 DevKit chỉ đọc
-cảm biến và điều khiển motor/servo. Thư mục giữ chỗ `esp32-camera/` đã được bỏ.
-Bridge có cấu hình `.env`, kiểm tra model thật, retry HTTP có chống ghi trùng và
-nhật ký trigger để tránh gửi lại lệnh. Xem [hướng dẫn camera điện thoại và giao thức
-bàn giao firmware](camera-bridge/README.md).
-Firmware từ bộ bàn giao phần cứng đã được chuyển sang USB Serial tại
-[`esp32-controller/AutoSortSerial`](esp32-controller/README.md), có CONTROL/ACK,
-heartbeat và watchdog AI. Mỗi lượt chỉ xử lý một quả, chưa xác nhận vận hành
-thực trên cơ khí của nhóm.
-Phiên dữ liệu [tạo khi Bắt đầu trên web, đóng sau Kết thúc](docs/WEB_CONTROL.md);
-Tạm dừng/Tiếp tục giữ nguyên phiên. Tính năng cần backend schema v5, bridge và firmware
-được cập nhật đồng bộ; kiểm tra `/health.web_control_supported=true` trước khi vận hành.
+## Sử dụng
 
-## Bắt đầu ngay (Người A)
+- **Dashboard:** [autosort-iot-java.onrender.com](https://autosort-iot-java.onrender.com/dashboard/index.html). Cần tài khoản Admin hoặc Operator; trang không có demo công khai. Khi chưa kết nối trạm, vẫn có thể xem lịch sử và kết quả đã lưu sau khi đăng nhập.
+- **Có thiết bị:** dùng Chrome trên laptop nối ESP32. Bật DroidCam, vào **Kết nối thiết bị → Chọn ESP32 → Bật camera → Kết nối trạm**, sau đó bấm **Bắt đầu**. Giữ tab điều khiển hiển thị trong lúc vận hành. Xem [hướng dẫn kết nối trên web](docs/BROWSER_STATION.md) và [hiệu chỉnh trạm](docs/STATION_CALIBRATION.md).
+- **Chưa có băng chuyền:** có thể [kiểm tra camera và suy luận trên laptop](docs/DROIDCAM_SETUP.md) mà không tạo phiên, gửi ảnh lên cloud hoặc điều khiển ESP32.
+- **Cách kết nối bằng Python:** `camera-bridge/bridge.py` vẫn có cho trường hợp cần bridge riêng; xem [hướng dẫn Camera Bridge](camera-bridge/README.md). Không chạy đồng thời Python bridge và kết nối trạm trên web vì cả hai dùng cùng cổng USB.
 
-Điện thoại qua USB dùng DroidCam Client và Camera Bridge. Có thể thử video mẫu
-và model v1 trên laptop khi chưa có thiết bị, không gọi cloud hoặc tạo phiên:
-xem [DroidCam và thử offline](docs/DROIDCAM_SETUP.md).
-Chu trình trạm: [dừng → chụp → chờ AI → chạy tiếp → gạt](docs/STATION_CYCLE.md).
-Thông số cơ khí nằm trong `StationConfig.h`; xem [bảng hiệu chỉnh](docs/STATION_CALIBRATION.md)
-trước khi thử thiết bị thật.
+## Khám phá mã nguồn
 
-1. Cài Java 21, Maven 3.9+, Python 3.12 và PostgreSQL.
-2. Cài phụ thuộc Python cho AI worker bằng `pip install -r cloud-ai/requirements.txt`.
-3. Cấu hình `backend/.env`, build/chạy Spring Boot theo [`backend/README.md`](backend/README.md).
-4. Mở `http://127.0.0.1:8000/dashboard/` và đăng nhập. Camera Bridge cần `DEVICE_API_KEY`.
-5. Gửi `kumquat-dataset-only.zip` cho người phụ trách huấn luyện; gói chỉ chứa dataset, không kèm code train. Nếu dùng notebook có sẵn của dự án, xem cách đóng gói riêng trong [`docs/AI_TRAIN_DEPLOY.md`](docs/AI_TRAIN_DEPLOY.md).
+- **Cloud và giao diện:** [`backend/`](backend/README.md) chứa Spring Boot API, xác thực, điều khiển phiên và lưu dữ liệu PostgreSQL. [`cloud-ai/`](cloud-ai/README.md) chứa Python worker chạy ONNX. [`dashboard/`](dashboard/) là giao diện web được backend phục vụ.
+- **Camera và thiết bị:** [`camera-bridge/`](camera-bridge/README.md) có công cụ thử camera và cách kết nối Python tùy chọn. [`esp32-controller/`](esp32-controller/README.md) chứa firmware cho cảm biến, motor, servo và USB Serial.
+- **Dữ liệu và tài liệu:** [`training/`](training/) chứa quy trình chuẩn bị, huấn luyện, đánh giá và xuất model; [`datasets/`](datasets/) chứa ảnh cùng nhãn. Hướng dẫn chi tiết nằm ở [`docs/`](docs/), còn kiểm thử ở [`tests/`](tests/).
 
-Chỉ giữ một dataset tại **`datasets/kumquat/`**, gồm **1.347 ảnh** đã rà soát:
-126 ảnh đổi sang `REJECT` theo tiêu chí loại cả quả xấu ngoại hình, 414 ảnh
-cách ly. **`kumquat-dataset-only.zip`** là bản nén để gửi người phụ trách train.
-Nhật ký và ảnh loại nằm trong `docs/dataset-review-2026-10-27.zip`; các thư mục
-bản gốc, bản trung gian và bản giải nén trùng đã được dọn. Xem
-[kết quả và giới hạn](docs/DATASET_REVIEW.md).
-Xem [nguồn và cách tạo lại dữ liệu](docs/PUBLIC_DATASET.md), cùng
-[hướng dẫn train và chạy API](docs/AI_TRAIN_DEPLOY.md).
+Muốn chạy tại máy phát triển, cần **Java 21, Maven 3.9+, Python 3.12 và PostgreSQL**. Bắt đầu với [hướng dẫn backend](backend/README.md); xem [hướng dẫn Render](docs/RENDER_DEPLOY.md) nếu cần triển khai cloud. Các file `.env.example` là mẫu cấu hình; không đưa mật khẩu hoặc device key vào Git.
 
-Chạy kiểm thử từ thư mục gốc sau khi cài các phụ thuộc của `cloud-ai`:
+## Trạng thái và giới hạn
 
-```powershell
-.\cloud-ai\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
-
-Cài `cloud-ai/requirements-dev.txt` cho kiểm thử Python. Đặt
-`AUTOSORT_TEST_DATABASE_URL` rồi chạy `mvn -f backend/pom.xml verify` để kiểm thử
-API Java với PostgreSQL riêng; xem [`backend/README.md`](backend/README.md).
-
-## Các bước phát triển về sau
-
-- A: chạy huấn luyện, kiểm tra PyTorch–ONNX và đưa model vào API. Luồng ảnh hiện dùng HTTP request/response có Idempotency-Key.
-- B: bàn giao firmware và tài liệu phần cứng chính thức, thống nhất giao thức với Camera Bridge để kiểm thử tích hợp.
-- C: lắp cơ khí, dựng Dashboard, thu thập dữ liệu thực và kiểm thử.
-
-**An toàn:** `MOCK` không phải GREEN/RIPE/REJECT; tuyệt đối không để ESP32 gạt servo từ phản hồi MOCK. Không commit mật khẩu Wi-Fi, token hay thông tin thanh toán. Nguồn servo/motor cần được kiểm tra riêng.
+- Model đóng gói trong repo là **V2.1-640**, ba nhãn GREEN / RIPE / REJECT, đang dùng để thử nghiệm. Xem [thông tin model và giới hạn](cloud-ai/model/README.md). Các gói V2.2 đang được đánh giá và chưa thay vào bản cloud.
+- Điểm tin cậy AI là điểm của model, không phải cam kết tỷ lệ đúng. Model vẫn có thể nhận nhầm quả xanh hoặc quả có lỗi vỏ; chưa bảo đảm nhận ra mọi vật không phải quả quất.
+- Luồng phần mềm đã có kiểm thử tự động với camera và Serial giả lập. Thời điểm dừng băng chuyền, vị trí chụp, servo và xử lý lỗi vẫn cần kiểm tra, hiệu chỉnh trên thiết bị thật trước khi trình diễn.
