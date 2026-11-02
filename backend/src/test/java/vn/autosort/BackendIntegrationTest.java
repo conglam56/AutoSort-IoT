@@ -1228,4 +1228,22 @@ class BackendIntegrationTest {
         200);
     assertNull(sorting.current());
   }
+
+  @Test
+  void browserDisconnectClosesPreparedStartBeforeItsAck() throws Exception {
+    var user = login("operator");
+    String base = "/api/browser-station/" + UUID.randomUUID();
+    write(base + "/register", Map.of(), user, 200);
+    var start = control("START", user, "browser-prepared-disconnect");
+    write(base + "/poll", Map.of(), user, 200);
+    write(base + "/prepare/" + start.path("id").asText(), Map.of(), user, 200);
+    assertNotNull(sorting.current());
+    write(base + "/disconnect", Map.of(), user, 200);
+    assertNull(sorting.current());
+    assertEquals("OFFLINE", ((Map<?, ?>) station.current()).get("state"));
+    var next = "/api/browser-station/" + UUID.randomUUID();
+    write(next + "/register", Map.of(), user, 200);
+    control(
+        "START", user, "browser-after-disconnect"); // No orphan session blocks the next connection.
+  }
 }

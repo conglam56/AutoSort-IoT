@@ -343,6 +343,19 @@ public class StationService {
     return db.transaction(
         () -> {
           db.stationLock();
+          var s = agent(agent);
+          // START may already have opened its run before the ESP32 ACK, while
+          // station_state.run_id is still null. Close those runs as well.
+          for (var pending :
+              db.jdbc.queryForList(
+                  "SELECT DISTINCT run_id FROM station_commands WHERE agent_id=?"
+                      + " AND status IN ('PENDING','DELIVERED')",
+                  agent))
+            runs.stop(
+                (UUID) pending.get("run_id"),
+                s.get("camera_id").toString(),
+                "CONVEYOR",
+                "BRIDGE_ERROR");
           fault(agent);
           db.jdbc.update("UPDATE station_state SET reported='OFFLINE',last_seen=NULL WHERE id=1");
           return snapshot();
