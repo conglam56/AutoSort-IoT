@@ -26,8 +26,8 @@ Camera là điện thoại; bridge gửi JPEG lên cloud để suy luận.
 | MX1508 INA1 PWM / INA2 | 16 / 17 |
 | USB Serial | 115200 baud |
 
-Motor: 1000 Hz, 8 bit, duty 150/255. Servo: 50 Hz, 14 bit, 500–2400 µs,
-góc nghỉ 0 và gạt 90 là giá trị ban đầu. Sửa pin/PWM/dải xung, thời gian
+Motor: 1000 Hz, 8 bit, PWM chạy 180/255 theo `AutoSortSerial (1).zip` ngày 07/11/2026.
+Servo: 50 Hz, 14 bit, 500–2400 µs. Sửa pin/PWM/dải xung, thời gian
 và góc tại **StationConfig.h**, không sửa logic `.ino`/Controller.h.
 `DYNAMIC_BRAKE=true` giữ dừng HIGH/HIGH của driver MX1508 bàn giao;
 đặt false nếu driver thực tế dùng thả trôi, rồi hiệu chỉnh lại vị trí dừng.
@@ -36,23 +36,43 @@ Timing trong `Config` ở `StationConfig.h`:
 
 | Tham số | Mặc định |
 |---|---:|
-| IR tới camera | 300 ms |
-| Chờ ổn định sau dừng | 150 ms |
+| Chờ sau khi IR phát hiện | 600 ms |
+| Xung khởi động | 230/255 trong 80 ms |
+| Thời gian motor chạy tới camera | 700 ms |
+| Giảm tốc trước camera | 300 ms cuối, từ 180 về gần 145/255 |
+| Chờ ổn định sau dừng | 600 ms |
 | Chờ AI | 30.000 ms |
-| Heartbeat ngoài WAIT_AI | 5.000 ms |
-| Debounce IR | 20 ms |
-| Camera tới servo 1 / servo 2 | 1.200 / 2.500 ms |
-| Giữ góc gạt servo 1 / 2 | 400 / 400 ms |
+| Heartbeat ngoài WAIT_AI | 10.000 ms |
+| Debounce IR | 120 ms |
+| Camera tới servo 1 / servo 2 | 1.000 / 1.500 ms |
+| Giữ góc gạt servo 1 / 2 | 2.100 / 2.100 ms |
 | Khoảng thoát bổ sung | 500 ms |
-| Góc nghỉ/gạt servo 1; servo 2 | 0°/90°; 0°/90° |
+| Góc nghỉ/gạt servo 1 / servo 2 | 43°/0° và 45°/0° |
 
-Các giá trị này **chưa được đo trên trạm thật**. Xem
+PWM/góc đã đối chiếu với code nhóm cung cấp; bản firmware cập nhật vẫn cần
+thử trên thiết bị. Các thời gian di chuyển **chưa được đo trên trạm thật**. Xem
 [chu trình dừng/chụp/xử lý/gạt](../docs/STATION_CYCLE.md) và
-[bảng hiệu chỉnh](../docs/STATION_CALIBRATION.md). Nếu IR đặt ngay tại camera,
-có thể hiệu chỉnh `irToCameraMs=0`; servo có góc nghỉ/gạt và thời gian giữ
-riêng. Gate timing bắt đầu từ lúc nhận RESULT và bật motor chạy tiếp.
+[bảng hiệu chỉnh](../docs/STATION_CALIBRATION.md). IR đã được người dùng xác nhận
+ở ngay chỗ đặt vật đầu vào. Bản này dùng cảm biến đó để đánh thức motor; nếu
+chuyển IR đến camera thì sẽ không tự phát hiện vật ở đầu vào. Servo có góc
+nghỉ/gạt và thời gian giữ riêng. Gate timing bắt đầu từ lúc nhận RESULT và bật motor chạy tiếp.
 Config sai góc/thời gian bị chặn khi build; bộ điều khiển cũng từ chối chạy
 với config không hợp lệ trong mô phỏng.
+
+## Chạy từng vật và dừng chờ
+
+- Để IR trống rồi bấm **Bắt đầu** một lần: phiên được mở, motor **vẫn dừng**.
+- Đặt vật ngay IR đầu vào. Sau 120 ms lọc nhiễu và 600 ms chờ, motor bắt đầu chạy.
+- Sau 700 ms di chuyển, gồm đoạn giảm tốc, motor dừng và chờ 600 ms trước khi chụp.
+- Nhận RESULT đúng lượt: chạy tiếp, gạt theo nhãn với timing trong bảng.
+- Hết cửa sổ 4.100 ms kể từ RESULT (khi hai servo đã về nghỉ), motor dừng,
+  vẫn giữ phiên để chờ vật tiếp. Cần IR nhả rồi mới nhận cạnh phát hiện mới.
+- RUNNING/ACK RUNNING nghĩa là chế độ tự động đang hoạt động; giữa các vật
+  motor không quay. Pause/Resume khi đang chờ vật cũng không tự quay motor.
+
+Không có cảm biến ở khay: mốc 4.100 ms là ước lượng vận chuyển, chưa xác nhận
+vật thực sự vào hộp. Hiệu chỉnh `exitClearMs` và timing nếu vật chưa thoát hết.
+Khi hoàn tất mỗi lượt **không bấm Kết thúc**; chỉ Kết thúc khi muốn đóng phiên.
 
 Chỉ đưa **một quả mỗi lượt dispatch**. Phát hiện quả thứ hai khi đang xử lý
 quả trước sẽ khóa lỗi. Pause giữ trạng thái/timing và góc servo đang hoạt động;

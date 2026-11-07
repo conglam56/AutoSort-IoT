@@ -5,17 +5,29 @@
 
 namespace autosort {
 
-enum class State { WAIT_BRIDGE, RUNNING, TO_CAMERA, SETTLING, WAIT_AI, DISPATCH, FAULT, IDLE, PAUSED };
+/*
+ * CÁC TRẠNG THÁI:
+ *   0 WAIT_BRIDGE: vừa khởi động, chờ laptop kết nối; motor dừng.
+ *   1 RUNNING:    chế độ tự động đã bật, motor DỪNG chờ vật tại IR đầu vào.
+ *   2 TO_CAMERA:  đã thấy quả, tiếp tục chạy cho quả tới vị trí chụp.
+ *   3 SETTLING:   đã yêu cầu dừng motor, đợi quả ổn định trước khi chụp.
+ *   4 WAIT_AI:    đã yêu cầu laptop chụp, motor dừng trong lúc chờ kết quả.
+ *   5 DISPATCH:   chạy tiếp và gạt theo nhãn; chờ quả thoát hết cửa sổ phân loại.
+ *   6 FAULT:      khóa lỗi, motor dừng; cần kiểm tra và reset ESP32.
+ *   7 IDLE:       đã kết nối bridge, chờ Bắt đầu; motor dừng.
+ *   8 PAUSED:     tạm dừng, giữ thông tin chu trình và góc servo hiện tại.
+ *   9 START_DELAY: chờ vật ổn định tại IR trước khi bật motor.
+ */
+enum class State { WAIT_BRIDGE, RUNNING, TO_CAMERA, SETTLING, WAIT_AI, DISPATCH, FAULT, IDLE, PAUSED, START_DELAY };
 enum class Label { GREEN, RIPE, REJECT };
 
-// Hardware-independent state machine; the sketch applies outputs before emitting a trigger.
-// Exactly one fruit may occupy the conveyor. There is deliberately no overlapping queue.
 class Controller {
  public:
   explicit Controller(Config config = Config()) : config_(config), configValid_(config.valid()) {}
 
   void begin(uint32_t now, bool irBlocked) {
     motor_ = trigger_ = false;
+    motorPwm_ = 0;
     restGates();
     if (!configValid_) { stop("INVALID_CONFIG"); return; }
     state_ = State::WAIT_BRIDGE;
@@ -28,6 +40,7 @@ class Controller {
     state_ = State::FAULT;
     fault_ = reason;
     motor_ = false;
+    motorPwm_ = 0;
     restGates();
     trigger_ = false;
     ackPending_ = false;
@@ -35,7 +48,7 @@ class Controller {
 
   void command(const char* line, uint32_t now) {
     if (strcmp(line, "BRIDGE:STOP") == 0) { stop("BRIDGE_STOP"); return; }
-    if (state_ == State::FAULT) return;  // Reset and inspect; READY cannot clear a fault.
+    if (state_ == State::FAULT) return;
     if (strcmp(line, "BRIDGE:CONNECT") == 0 && state_ == State::WAIT_BRIDGE) {
       state_ = State::IDLE; lastContact_ = now; webMode_=true; return;
     }
@@ -67,7 +80,8 @@ class Controller {
       memcpy(session_, id, 33);
       lastContact_ = entered_ = now;
       state_ = State::RUNNING;
-      motor_ = true;
+      motor_ = false;
+      motorPwm_ = 0;
       return;
     }
     if (strcmp(line, "BRIDGE:PING") == 0) { lastContact_ = now; return; }
@@ -79,7 +93,6 @@ class Controller {
     const bool pausedWait = state_ == State::PAUSED && savedState_ == State::WAIT_AI;
     if(state_ != State::WAIT_AI && !pausedWait) return;
     if(pausedWait && deferred_)return;
-    // At/after deadline even a syntactically valid late answer must not move this fruit.
     if (!pausedWait && elapsed(now, entered_) >= config_.aiTimeoutMs) return;
     Label label;
     if (strcmp(labelText, "GREEN") == 0) label = Label::GREEN;
@@ -102,8 +115,16 @@ class Controller {
         if (state_ == State::RUNNING) {
           if (counter_ == UINT32_MAX) { stop("COUNTER_EXHAUSTED"); return; }
           ++counter_;
-          state_ = State::TO_CAMERA;
           entered_ = now;
+          if (config_.irStartDelayMs > 0) {
+            motor_ = false;
+            motorPwm_ = 0;
+            state_ = State::START_DELAY;
+          } else {
+            motor_ = true;
+            motorPwm_ = (config_.kickStartMs > 0) ? config_.kickMotorPwm : hardware::MOTOR_SPEED_PWM;
+            state_ = State::TO_CAMERA;
+          }
         } else if (state_ != State::WAIT_BRIDGE && state_ != State::IDLE) {
           stop("SECOND_FRUIT"); return;
         }
@@ -115,13 +136,41 @@ class Controller {
     }
     const uint32_t age = elapsed(now, entered_);
     switch (state_) {
-      case State::TO_CAMERA:
-        if (age >= config_.irToCameraMs) {
-          motor_ = false;
-          state_ = State::SETTLING;
+      case State::START_DELAY:
+        if (age >= config_.irStartDelayMs) {
+          motor_ = true;
+          motorPwm_ = (config_.kickStartMs > 0) ? config_.kickMotorPwm : hardware::MOTOR_SPEED_PWM;
+          state_ = State::TO_CAMERA;
           entered_ = now;
         }
         break;
+      case State::TO_CAMERA: {
+        const uint32_t totalMs = config_.irToCameraMs;
+        const uint32_t rampMs = config_.rampDownMs;
+        const uint32_t kickMs = config_.kickStartMs;
+
+        if (age >= totalMs) {
+          motor_ = false;
+          motorPwm_ = 0;
+          state_ = State::SETTLING;
+          entered_ = now;
+        } else if (kickMs > 0 && age < kickMs) {
+          // Xung xuất phát nhanh thắng ma sát nghỉ
+          motor_ = true;
+          motorPwm_ = config_.kickMotorPwm;
+        } else if (rampMs > 0 && totalMs > rampMs && age >= (totalMs - rampMs)) {
+          // Giảm tốc từ từ trước khi dừng
+          const uint32_t decelElapsed = age - (totalMs - rampMs);
+          const uint32_t pwmRange = hardware::MOTOR_SPEED_PWM - config_.minMotorPwm;
+          motor_ = true;
+          motorPwm_ = hardware::MOTOR_SPEED_PWM - (pwmRange * decelElapsed / rampMs);
+        } else {
+          // Chạy tốc độ chuẩn
+          motor_ = true;
+          motorPwm_ = hardware::MOTOR_SPEED_PWM;
+        }
+        break;
+      }
       case State::SETTLING:
         if (age >= config_.settleMs) {
           state_ = State::WAIT_AI;
@@ -133,6 +182,15 @@ class Controller {
         if (age >= config_.aiTimeoutMs) dispatch(Label::REJECT, now, true);
         break;
       case State::DISPATCH: {
+        // Tích hợp Kick-Start khi bắt đầu chạy tiếp
+        if (config_.kickStartMs > 0 && age < config_.kickStartMs) {
+          motor_ = true;
+          motorPwm_ = config_.kickMotorPwm;
+        } else {
+          motor_ = true;
+          motorPwm_ = hardware::MOTOR_SPEED_PWM;
+        }
+
         const uint32_t gateDelay = label_ == Label::GREEN ? config_.cameraToGate1Ms : config_.cameraToGate2Ms;
         const uint32_t gateHold = label_ == Label::GREEN ? config_.gate1HoldMs : config_.gate2HoldMs;
         if (label_ != Label::REJECT && !gateFired_ && age >= gateDelay) {
@@ -149,6 +207,8 @@ class Controller {
           else if (label_ == Label::RIPE) ++ripe_;
           else ++reject_;
           if (timeoutDispatch_) { stop("AI_TIMEOUT_CHECK_STATION"); return; }
+          motor_ = false;
+          motorPwm_ = 0;
           if (stableBlocked_ || rawBlocked_) { stop("IR_NOT_CLEAR"); return; }
           state_ = State::RUNNING;
           entered_ = now;
@@ -165,6 +225,7 @@ class Controller {
   const char* ackState() const {return ackState_;}
   State state() const { return state_; }
   bool motor() const { return motor_; }
+  uint8_t motorPwm() const { return motorPwm_; }
   uint8_t gate1() const { return gate1_; }
   uint8_t gate2() const { return gate2_; }
   const char* session() const { return session_; }
@@ -202,14 +263,14 @@ class Controller {
     if(strcmp(action,"START")==0) {
       if(state_!=State::IDLE||stableBlocked_||rawBlocked_)return;
       strcpy(session_,run); counter_=0;trigger_=false;deferred_=false;timeoutDispatch_=false;
-      gateFired_=false;restGates();state_=State::RUNNING;motor_=true;entered_=now;
+      gateFired_=false;restGates();state_=State::RUNNING;motor_=false;motorPwm_ = 0;entered_=now;
       strcpy(ackState_,"RUNNING");
     } else {
       if(strcmp(action,"STOP")==0 && state_==State::IDLE){strcpy(ackState_,"IDLE");lastContact_=now;return;}
       if(strcmp(session_,run)!=0)return;
       if(strcmp(action,"PAUSE")==0 && state_!=State::IDLE && state_!=State::PAUSED && !timeoutDispatch_) {
         if(state_==State::WAIT_AI && elapsed(now,entered_)>=config_.aiTimeoutMs)return;
-        savedState_=state_;pausedAt_=now;savedMotor_=motor_;state_=State::PAUSED;motor_=false;
+        savedState_=state_;pausedAt_=now;savedMotor_=motor_;state_=State::PAUSED;motor_=false;motorPwm_ = 0;
         strcpy(ackState_,"PAUSED");
       } else if(strcmp(action,"RESUME")==0 && state_==State::PAUSED) {
         const uint32_t duration=elapsed(now,pausedAt_);
@@ -217,7 +278,7 @@ class Controller {
         if(deferred_){deferred_=false;dispatch(deferredLabel_,now,false);}
         strcpy(ackState_,"RUNNING");
       } else if(strcmp(action,"STOP")==0) {
-        state_=State::IDLE;motor_=false;restGates();trigger_=false;deferred_=false;timeoutDispatch_=false;
+        state_=State::IDLE;motor_=false;motorPwm_ = 0;restGates();trigger_=false;deferred_=false;timeoutDispatch_=false;
         strcpy(ackState_,"IDLE");
       }
     }
@@ -232,6 +293,7 @@ class Controller {
     gateFired_ = false;
     restGates();
     motor_ = true;
+    motorPwm_ = (config_.kickStartMs > 0) ? config_.kickMotorPwm : hardware::MOTOR_SPEED_PWM;
     trigger_ = false;
   }
 
@@ -243,6 +305,7 @@ class Controller {
   uint32_t green_ = 0, ripe_ = 0, reject_ = 0;
   bool rawBlocked_ = false, stableBlocked_ = false, irArmed_ = true;
   bool motor_ = false, trigger_ = false, gateFired_ = false, timeoutDispatch_ = false;
+  uint8_t motorPwm_ = 0;
   uint8_t gate1_ = 0, gate2_ = 0;
   char session_[33] = {};
   const char* fault_ = "";

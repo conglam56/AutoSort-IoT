@@ -17,14 +17,16 @@ lịch sử gốc trong PostgreSQL.
 
 | Nút | Hành vi sau khi firmware xác nhận |
 |---|---|
-| Bắt đầu | Tạo phiên mới, chạy băng chuyền |
+| Bắt đầu | Tạo phiên mới, bật chế độ tự động; motor dừng chờ vật ở IR đầu vào |
 | Tạm dừng | Dừng motor, giữ nguyên phiên và tiến độ quả đang xử lý |
-| Tiếp tục | Chạy tiếp cùng phiên; dùng vị trí/timer đang giữ |
+| Tiếp tục | Tiếp tục cùng phiên; nếu đang chờ vật thì motor vẫn dừng, nếu đang vận chuyển thì dùng timer đang giữ |
 | Kết thúc | Dừng motor, thu servo, về trạng thái chờ và đóng phiên |
 
 Khi đang tạm dừng, nút Bắt đầu đổi thành **Tiếp tục**. Các lần dừng nội bộ
 để chụp/chờ AI không phải thao tác Tạm dừng từ người vận hành và không tạo
-phiên mới. Thời gian phiên trên web là thời gian từ bắt đầu đến kết thúc,
+phiên mới. Dừng chờ vật giữa hai lượt cũng giữ nguyên phiên. RUNNING/ACK
+RUNNING xác nhận chế độ tự động, không phải tín hiệu motor luôn quay.
+Thời gian phiên trên web là thời gian từ bắt đầu đến kết thúc,
 bao gồm thời gian tạm dừng.
 
 Dashboard hiển thị **đang chờ ESP32 xác nhận** sau khi gửi lệnh. Gửi HTTP

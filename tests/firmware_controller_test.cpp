@@ -7,11 +7,23 @@ using autosort::Controller;
 using autosort::State;
 constexpr const char* READY = "BRIDGE:READY:0123456789abcdef0123456789abcdef";
 
+// Stable, short timing fixture for the existing timing scenarios. Production
+// settings from the user's ZIP are exercised separately below.
+autosort::Config timingFixture() {
+  autosort::Config c;
+  c.irStartDelayMs=0;c.kickStartMs=0;c.rampDownMs=0;c.debounceMs=20;
+  c.irToCameraMs=300;c.settleMs=150;
+  c.cameraToGate1Ms=1200;c.cameraToGate2Ms=2500;
+  c.gate1HoldMs=400;c.gate2HoldMs=400;c.heartbeatMs=5000;
+  c.gate1RestDeg=55;c.gate2RestDeg=55;
+  return c;
+}
+
 struct Rig {
   Controller control;
   uint32_t now;
   bool blocked = false, heartbeat = true;
-  explicit Rig(uint32_t start = 0, autosort::Config config = autosort::Config())
+  explicit Rig(uint32_t start = 0, autosort::Config config = timingFixture())
       : control(config), now(start) { control.begin(now, false); }
   void advance(uint32_t ms) {
     for (uint32_t i = 0; i < ms; ++i) {
@@ -21,7 +33,7 @@ struct Rig {
     }
   }
   void ir(bool value) { blocked = value; control.tick(now, blocked); advance(20); }
-  void arm() { control.command(READY, now); assert(control.motor()); }
+  void arm() { control.command(READY, now); assert(control.state()==State::RUNNING && !control.motor()); }
   void waiting() {
     arm(); ir(true);
     assert(control.state() == State::TO_CAMERA);
@@ -39,6 +51,7 @@ void startup_and_rearm() {
   Rig r;
   r.advance(2000);
   assert(!r.control.motor() && !r.control.takeTrigger());
+  assert(r.control.gate1() == 55 && r.control.gate2() == 55);
   r.control.command("SORT:GREEN", r.now);
   assert(!r.control.motor());
   r.arm();
@@ -56,15 +69,16 @@ void green_and_ripe_timing() {
     assert(r.control.motor());
     r.control.command("SORT:REJECT", r.now);  // duplicate/stray result cannot replace first result.
     r.advance(green ? 1199 : 2499);
-    assert(r.control.gate1() == 0 && r.control.gate2() == 0);
+    assert(r.control.gate1() == 55 && r.control.gate2() == 55);
     r.advance(1);
-    assert((green ? r.control.gate1() : r.control.gate2()) == 90);
+    assert((green ? r.control.gate1() : r.control.gate2()) == 0);
+    assert((green ? r.control.gate2() : r.control.gate1()) == 55);
     r.advance(399);
-    assert((green ? r.control.gate1() : r.control.gate2()) == 90);
+    assert((green ? r.control.gate1() : r.control.gate2()) == 0);
     r.advance(1);
-    assert(r.control.gate1() == 0 && r.control.gate2() == 0);
+    assert(r.control.gate1() == 55 && r.control.gate2() == 55);
     r.advance(green ? 1800 : 500);
-    assert(r.control.state() == State::RUNNING);
+    assert(r.control.state() == State::RUNNING && !r.control.motor());
     assert((green ? r.control.green() : r.control.ripe()) == 1);
     assert(r.control.rejected() == 0);
     // New event only after the prior fruit has fully left the dispatch window.
@@ -76,7 +90,7 @@ void green_and_ripe_timing() {
 void reject_no_servo() {
   Rig r; r.waiting(); r.control.command("SORT:REJECT", r.now);
   for (int i = 0; i < 3400; ++i) {
-    r.advance(1); assert(r.control.gate1() == 0 && r.control.gate2() == 0);
+    r.advance(1); assert(r.control.gate1() == 55 && r.control.gate2() == 55);
   }
   assert(r.control.rejected() == 1 && r.control.state() == State::RUNNING);
 }
@@ -118,10 +132,10 @@ void heartbeat_and_missed_gate() {
   assert(lost.control.state() == State::FAULT && !lost.control.motor());
   Rig missed; missed.waiting(); missed.control.command("SORT:GREEN", missed.now);
   missed.now += 1600; missed.control.tick(missed.now, false);
-  assert(missed.control.state() == State::FAULT && missed.control.gate1() == 0);
+  assert(missed.control.state() == State::FAULT && missed.control.gate1() == 55);
   Rig stopped; stopped.waiting(); stopped.control.command("SORT:RIPE", stopped.now);
   stopped.advance(2500); stopped.control.command("BRIDGE:STOP", stopped.now);
-  assert(stopped.control.gate2() == 0 && !stopped.control.motor());
+  assert(stopped.control.gate2() == 55 && !stopped.control.motor());
 }
 
 void wrap_and_session_validation() {
@@ -155,13 +169,13 @@ void web_standby_start_stop_and_dedup() {
   assert(idle.control.state()==State::IDLE&&!idle.control.motor());
   Rig r;r.control.command("BRIDGE:CONNECT",r.now);r.advance(2000);
   assert(r.control.state()==State::IDLE&&!r.control.motor());
-  control(r,CMD1,"START");assert(r.control.state()==State::RUNNING&&r.control.motor());
+  control(r,CMD1,"START");assert(r.control.state()==State::RUNNING&&!r.control.motor());
   r.ir(true);assert(r.control.counter()==1);
   control(r,CMD1,"START");assert(r.control.counter()==1); // Exact retry never restarts movement or run.
   control(r,CMD2,"STOP");assert(r.control.state()==State::IDLE&&!r.control.motor());
   r.ir(false);control(r,CMD3,"START",RUN2);assert(r.control.counter()==0);
   control(r,CMD4,"STOP",RUN1);assert(std::string(r.control.ackState())=="REJECTED");
-  assert(r.control.state()==State::RUNNING&&r.control.motor());
+  assert(r.control.state()==State::RUNNING&&!r.control.motor());
 }
 
 void pause_freezes_travel_and_gate_time() {
@@ -170,12 +184,12 @@ void pause_freezes_travel_and_gate_time() {
   std::string result=std::string("RESULT:")+RUN1+":1:GREEN";
   r.control.command(result.c_str(),r.now);r.advance(1000);
   control(r,CMD2,"PAUSE");assert(!r.control.motor());r.advance(20000);
-  assert(r.control.gate1()==0&&r.control.state()==State::PAUSED);
-  control(r,CMD3,"RESUME");r.advance(199);assert(r.control.gate1()==0);
-  r.advance(1);assert(r.control.gate1()==90);
-  control(r,CMD4,"PAUSE");r.advance(10000);assert(r.control.gate1()==90);
-  control(r,CMD1,"RESUME");r.advance(399);assert(r.control.gate1()==90);
+  assert(r.control.gate1()==55&&r.control.state()==State::PAUSED);
+  control(r,CMD3,"RESUME");r.advance(199);assert(r.control.gate1()==55);
   r.advance(1);assert(r.control.gate1()==0);
+  control(r,CMD4,"PAUSE");r.advance(10000);assert(r.control.gate1()==0);
+  control(r,CMD1,"RESUME");r.advance(399);assert(r.control.gate1()==0);
+  r.advance(1);assert(r.control.gate1()==55);
 }
 
 void paused_ai_never_restarts_motor_and_old_results_are_ignored() {
@@ -195,7 +209,7 @@ void paused_ai_never_restarts_motor_and_old_results_are_ignored() {
 }
 
 void calibrated_stop_capture_dispatch_cycle() {
-  autosort::Config config;
+  autosort::Config config=timingFixture();
   config.irToCameraMs=80;config.settleMs=60;
   config.cameraToGate1Ms=180;config.cameraToGate2Ms=260;
   config.gate1HoldMs=70;config.gate2HoldMs=90;config.exitClearMs=80;
@@ -222,12 +236,12 @@ void calibrated_stop_capture_dispatch_cycle() {
       assert(r.control.gate2()==(ripe&&age>=260&&age<350?70:165));
       if (age<config.dispatchWindowMs())assert(r.control.state()==State::DISPATCH);
     }
-    assert(r.control.state()==State::RUNNING&&r.control.counter()==1);
+    assert(r.control.state()==State::RUNNING&&!r.control.motor()&&r.control.counter()==1);
     assert(r.control.green()==(green?1U:0U)&&r.control.ripe()==(ripe?1U:0U));
     assert(r.control.rejected()==(!green&&!ripe?1U:0U));
     control(r,CMD2,"STOP");assert(!r.control.motor());
     assert(r.control.gate1()==15&&r.control.gate2()==165);
-    std::cout<<"Cycle "<<label<<": IR -> travel -> motor OFF -> settle -> one capture -> WAIT_AI motor OFF -> motor ON -> gate route -> clear -> ready\n";
+    std::cout<<"Cycle "<<label<<": IR -> travel -> motor OFF -> settle -> one capture -> WAIT_AI motor OFF -> motor ON -> gate route -> clear -> motor OFF waiting for new object\n";
   }
   // A longer first gate hold must extend the single-fruit window, not admit a new fruit early.
   config.gate1HoldMs=500;
@@ -246,7 +260,7 @@ void pause_while_settling_and_zero_camera_offset() {
   control(r,CMD2,"PAUSE");r.advance(10000);assert(!r.control.takeTrigger());
   control(r,CMD3,"RESUME");r.advance(99);assert(!r.control.takeTrigger());
   r.advance(1);assert(r.control.takeTrigger()&&!r.control.motor());
-  autosort::Config config;config.irToCameraMs=0;
+  autosort::Config config=timingFixture();config.irToCameraMs=0;
   Rig atCamera(0,config);atCamera.arm();atCamera.ir(true);
   assert(atCamera.control.state()==State::SETTLING&&!atCamera.control.motor());
   atCamera.ir(false);atCamera.advance(130);
@@ -270,7 +284,74 @@ void invalid_calibration_never_starts_motor() {
   config.exitClearMs=UINT32_MAX;invalid(config);
 }
 
+
+void user_zip_config_is_preserved() {
+  const autosort::Config c=autosort::hardware::STATION_CONFIG;
+  assert(autosort::hardware::MOTOR_SPEED_PWM==180);
+  assert(c.irStartDelayMs==600&&c.kickStartMs==80&&c.kickMotorPwm==230);
+  assert(c.irToCameraMs==700&&c.rampDownMs==300&&c.minMotorPwm==145&&c.settleMs==600);
+  assert(c.cameraToGate1Ms==1000&&c.cameraToGate2Ms==1500);
+  assert(c.gate1HoldMs==2100&&c.gate2HoldMs==2100&&c.exitClearMs==500);
+  assert(c.heartbeatMs==10000&&c.aiTimeoutMs==30000&&c.debounceMs==120);
+  assert(c.gate1RestDeg==43&&c.gate1SortDeg==0&&c.gate2RestDeg==45&&c.gate2SortDeg==0);
+}
+
+void wait_for_object_then_stop_after_each_route() {
+  const autosort::Config config=autosort::hardware::STATION_CONFIG;
+  for(const char* label:{"GREEN","RIPE","REJECT"}) {
+    Rig r(0,config);r.control.command("BRIDGE:CONNECT",r.now);
+    control(r,CMD1,"START");assert(!r.control.motor());
+    assert(std::string(r.control.ackState())=="RUNNING"); // Automation armed, not physical motion.
+    r.advance(20000);
+    assert(r.control.state()==State::RUNNING&&!r.control.motor()&&r.control.counter()==0);
+    control(r,CMD1,"START");assert(!r.control.motor()); // Retried START never spins an empty belt.
+    r.blocked=true;r.control.tick(r.now,true);r.advance(config.debounceMs-1);
+    assert(!r.control.motor()&&r.control.counter()==0); // Require a debounced input.
+    r.advance(1);assert(!r.control.motor()&&r.control.state()==State::START_DELAY&&r.control.counter()==1);
+    r.advance(config.irStartDelayMs-1);assert(r.control.motorPwm()==0);
+    r.advance(1);assert(r.control.state()==State::TO_CAMERA&&r.control.motorPwm()==230);
+    r.ir(false);r.advance(config.kickStartMs-20-1);assert(r.control.motorPwm()==230);
+    r.advance(1);assert(r.control.motorPwm()==180);
+    r.advance(550-config.kickStartMs);assert(r.control.motorPwm()==163);
+    r.advance(config.irToCameraMs-550);
+    assert(r.control.state()==State::SETTLING&&!r.control.motor());
+    r.advance(config.settleMs);assert(r.control.takeTrigger()&&!r.control.takeTrigger());
+    r.advance(1800);assert(r.control.state()==State::WAIT_AI&&!r.control.motor());
+    std::string result=std::string("RESULT:")+RUN1+":1:"+label;
+    r.control.command(result.c_str(),r.now);assert(r.control.motorPwm()==230);
+    const bool green=strcmp(label,"GREEN")==0,ripe=strcmp(label,"RIPE")==0;
+    for(uint32_t age=1;age<=config.dispatchWindowMs();++age) {
+      r.advance(1);
+      assert(r.control.gate1()==(green&&age>=1000&&age<3100?0:43));
+      assert(r.control.gate2()==(ripe&&age>=1500&&age<3600?0:45));
+      assert(r.control.motor()==(age<config.dispatchWindowMs()));
+    }
+    assert(r.control.state()==State::RUNNING&&!r.control.motor());
+    assert(r.control.green()==(green?1U:0U)&&r.control.ripe()==(ripe?1U:0U));
+    assert(r.control.rejected()==(!green&&!ripe?1U:0U));
+    r.control.command(result.c_str(),r.now); // Late duplicate result cannot restart the belt.
+    r.advance(20000);assert(!r.control.motor()&&!r.control.takeTrigger()&&r.control.counter()==1);
+    r.ir(true);r.advance(config.debounceMs-20);
+    assert(!r.control.motor()&&r.control.counter()==2&&r.control.state()==State::START_DELAY);
+    control(r,CMD2,"STOP");assert(!r.control.motor()&&r.control.state()==State::IDLE);
+    std::cout<<"ZIP config "<<label<<": empty belt OFF -> IR ON -> capture/AI OFF -> dispatch ON -> waiting OFF -> new IR ON\n";
+  }
+}
+
+void pause_resume_waiting_keeps_motor_off() {
+  Rig r;r.control.command("BRIDGE:CONNECT",r.now);control(r,CMD1,"START");
+  control(r,CMD2,"PAUSE");r.advance(12000);
+  assert(!r.control.motor()&&r.control.state()==State::PAUSED);
+  control(r,CMD3,"RESUME");r.advance(12000);
+  assert(!r.control.motor()&&r.control.state()==State::RUNNING&&r.control.counter()==0);
+  r.ir(true);assert(r.control.motor()&&r.control.state()==State::TO_CAMERA);
+  control(r,CMD4,"STOP");r.ir(false);r.ir(true);r.advance(5000);
+  assert(!r.control.motor()&&r.control.state()==State::IDLE); // Object alone cannot override STOP.
+}
+
 int main() {
+  user_zip_config_is_preserved();wait_for_object_then_stop_after_each_route();
+  pause_resume_waiting_keeps_motor_off();
   startup_and_rearm(); green_and_ripe_timing(); reject_no_servo();
   timeout_latches_and_ignores_late_sort(); second_fruit_and_noise();
   heartbeat_and_missed_gate(); wrap_and_session_validation();
