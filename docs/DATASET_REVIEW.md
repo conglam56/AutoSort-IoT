@@ -79,16 +79,15 @@ byte ảnh sao chép/đổi nhãn khớp SHA-256 gốc; toàn bộ 1.761 ảnh n
 ZIP được kiểm tra CRC và đường dẫn bên trong. Chưa train lại, chưa có bằng chứng
 độ chính xác model tăng.
 
-Lớp `RIPE` còn rất ít ảnh; cần bổ sung quả chín đẹp chụp bằng camera thực tế.
-Ảnh trên cây và ảnh trên bàn có nền khác nhau; model có thể học nền. Các góc
-chụp cùng một quả hoặc ảnh gần trùng có thể xuất hiện ở các tập khác nhau;
-đợt này chưa giải quyết được vì không có mã định danh quả vật lý.
+Lớp `RIPE` có ít ảnh. Khác biệt giữa nền ảnh trên cây và trên bàn có thể làm
+model dựa vào nền. Đợt rà soát giữ cách chia tập theo ảnh của bộ gốc. Vì
+không có mã định danh từng quả, ảnh gần trùng hoặc nhiều góc của cùng một
+quả có thể nằm ở cả tập huấn luyện và tập đánh giá.
 
-Không dùng điểm trên val/test đã lọc để khẳng định model tốt hơn model cũ.
-Cần một tập đánh giá độc lập trên đúng giống quất/tắc và camera băng chuyền,
-gán nhãn theo tiêu chí ngoại hình vừa chốt, có cả tình huống khó. Các ảnh test
-bị cách ly vẫn được giữ để xem lại; nhãn test gốc cũng cần rà soát theo tiêu chí
-mới trước khi dùng so sánh.
+Các điểm val/test của bộ này dùng để theo dõi thử nghiệm. Để so sánh chất
+lượng phân loại giữa các model, cần chụp quả mới tại trạm, gán nhãn theo cùng
+tiêu chí ngoại hình và giữ mọi góc của mỗi quả trong cùng một tập. Ảnh test
+bị cách ly vẫn có trong ZIP để đối chiếu khi rà lại nhãn gốc.
 
 ## Dataset khác đã tìm
 

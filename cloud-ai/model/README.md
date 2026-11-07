@@ -22,14 +22,15 @@ Không có phát hiện thì trả NO_TARGET/REJECT; đó là hướng dự phò
 
 ## Phạm vi đã kiểm tra
 
-V2.1 fine-tune từ checkpoint V2, bổ sung ảnh GREEN do người dùng cung cấp.
-Handoff khai báo test 175 ảnh, GREEN 209 / RIPE 40 / REJECT 50 đối tượng;
-GREEN precision 89.435%, recall 76.956%, mAP50 88.245%. Các chỉ số của tập
-dữ liệu gốc không phải độ chính xác vận hành từ DroidCam.
+V2.1 được tinh chỉnh từ checkpoint V2 với ảnh GREEN bổ sung. Tập test trong
+gói bàn giao gồm 175 ảnh với 209 đối tượng GREEN, 40 RIPE và 50 REJECT.
+Trên tập này, lớp GREEN đạt precision 89.435%, recall 76.956% và mAP50 88.245%.
 
-Người dùng đã thấy V2.1 nhận nhầm GREEN thành REJECT trên ảnh camera và chọn
-triển khai để đối chiếu trực tiếp trên cloud. Chưa xác nhận V2.1 tốt hơn V2
-ở trạm thật. Bản này giữ nguyên ảnh đầu vào, không thêm crop hoặc ghép model.
+Kiểm tra bằng ảnh DroidCam ghi nhận trường hợp quả xanh đạt bị phân loại
+thành REJECT. V2.1 được triển khai để đối chiếu với V2, và chất lượng phân
+loại trên băng chuyền cần được xác nhận bằng một tập quả mới chụp tại trạm.
+Khi báo cáo, ghi riêng kết quả chạy demo trên mẫu đã dùng để huấn luyện và
+kết quả đánh giá trên mẫu độc lập. Worker dùng toàn ảnh với một model ONNX.
 
 Model V2 trước đây còn trong lịch sử Git (bản trước thay model: `9210302`)
 và bản sao lưu cục bộ. Không ghi đè dữ liệu train hoặc kết quả lịch sử trong PostgreSQL.

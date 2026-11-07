@@ -1,11 +1,10 @@
-# Kết quả detector thống nhất phiên unified-v1
+# Báo cáo thử nghiệm detector unified-v1
 
-Trạng thái: **model thử nghiệm, chưa xác nhận vận hành trên trạm thật**.
-Các số liệu trong tài liệu này là của policy v1 trước khi thay đổi cách xét
-ngưỡng. Bản tích hợp mới dùng [policy3](AI_DETECTION_POLICY3.md); không dùng
-những số liệu cũ như đánh giá độc lập cho policy mới.
-Model đã train, xuất ONNX và kiểm tra bằng worker thực tế; chưa đưa vào cloud
-đang phục vụ hoặc điều khiển phần cứng. Không gọi mAP là độ chính xác băng chuyền.
+Tài liệu lưu kết quả của **unified-v1 với policy v1**. Đợt thử nghiệm đánh giá
+model đã xuất ONNX bằng worker trên dữ liệu ảnh. Các chỉ số và lỗi phân loại
+bên dưới thuộc phiên bản, ngưỡng và tập test của đợt này.
+
+Thông số và phạm vi đánh giá của bản trình diễn nằm trong [tài liệu V2.1](../cloud-ai/model/README.md).
 
 ## Dữ liệu và cấu hình
 
