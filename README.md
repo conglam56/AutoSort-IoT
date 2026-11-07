@@ -1,38 +1,50 @@
 # AutoSort IoT
 
-## Băng chuyền phân loại và kiểm tra lỗi sản phẩm tự động
+**Băng chuyền phân loại và kiểm tra lỗi sản phẩm tự động**
 
-AutoSort IoT là mô hình băng chuyền tự động nhận diện và phân loại sản phẩm từ hình ảnh. Bản trình diễn sử dụng **quả quất**: quất xanh đạt vào khay **GREEN**, quất chín đạt vào khay **RIPE**, còn quả có lỗi ngoại quan vào khay **REJECT**. Đốm đen, vết thâm, sẹo vỏ và mốc đều được xem là lỗi, bất kể màu vỏ.
+**[Mở dashboard AutoSort trên Render](https://autosort-iot-demo.onrender.com/dashboard/index.html)**
 
-Camera điện thoại ghi hình; laptop chuyển ảnh lên cloud để AI suy luận; ESP32 điều khiển băng chuyền và servo. Dashboard giúp theo dõi kết quả, lịch sử và điều khiển phiên vận hành.
+Bản trình diễn dùng quả quất. AI phân loại **GREEN** (quả xanh đạt), **RIPE** (quả chín đạt) và **REJECT** (quả lỗi ngoại quan). Hai servo đưa quả xanh và quả chín vào hai khay riêng. Quả loại đi tới khay cuối băng chuyền.
 
-## Từ sản phẩm đến khay phân loại
+## 1. Xem kết quả trên web
 
-1. Người vận hành đăng nhập dashboard, kết nối ESP32 và camera DroidCam trên laptop, rồi bấm **Bắt đầu**. **Tạm dừng**, **Tiếp tục** và **Kết thúc** điều khiển cùng một phiên vận hành.
-2. Cảm biến hồng ngoại ở đầu vào phát hiện một sản phẩm. ESP32 điều khiển băng chuyền đưa sản phẩm tới vị trí chụp và dừng motor.
-3. Điện thoại truyền hình ảnh qua DroidCam tới laptop. Laptop lấy một ảnh JPEG và gửi tới máy chủ trên Render; không truyền video liên tục lên cloud.
-4. Backend **Java 21 / Spring Boot** gọi Python worker chạy model **ONNX** để suy luận. Kết quả GREEN / RIPE / REJECT được lưu trong **PostgreSQL** và trả về laptop.
-5. Laptop gửi kết quả qua **USB Serial** tới ESP32. ESP32 cho băng chuyền chạy tiếp, điều khiển hai servo để đưa GREEN và RIPE vào khay tương ứng; REJECT đi tới khay cuối. Sau một lượt, trạm chờ sản phẩm tiếp theo trong cùng phiên.
+1. Mở dashboard ở đầu trang và đăng nhập bằng tài khoản **Operator** do nhóm cấp riêng. Nếu chưa có tài khoản, liên hệ nhóm để nhận thông tin đăng nhập.
+2. Vào **Tổng quan** để xem ảnh và nhãn AI, số quả đã xử lý và tỉ lệ đạt của phiên.
+3. Vào **Lịch sử phiên**, chọn một phiên đã chạy để xem kết quả từng quả hoặc bấm **Xuất CSV** để tải số liệu.
 
-Hệ thống xử lý **một sản phẩm mỗi lượt**. Camera là **điện thoại**, không dùng ESP32-CAM. Một phiên có thể gồm nhiều lượt; băng chuyền dừng để chụp ảnh mà không tạo phiên mới. Xem [chu trình trạm](docs/STATION_CYCLE.md) và [giao thức điều khiển](docs/WEB_CONTROL.md) để hiểu các trạng thái và điều kiện dừng.
+Chỉ cần trình duyệt và Internet để xem dữ liệu đã lưu. Nếu nhóm chưa chạy phiên nào trên bản deploy này, danh sách lịch sử sẽ trống.
 
-## Sử dụng
+## 2. Chạy băng chuyền từ dashboard
 
-- **Dashboard:** [autosort-iot-java.onrender.com](https://autosort-iot-java.onrender.com/dashboard/index.html). Cần tài khoản Admin hoặc Operator; trang không có demo công khai. Khi chưa kết nối trạm, vẫn có thể xem lịch sử và kết quả đã lưu sau khi đăng nhập.
-- **Có thiết bị:** dùng Chrome trên laptop nối ESP32. Bật DroidCam, vào **Kết nối thiết bị → Chọn ESP32 → Bật camera → Kết nối trạm**, sau đó bấm **Bắt đầu**. Giữ tab điều khiển hiển thị trong lúc vận hành. Xem [hướng dẫn kết nối trên web](docs/BROWSER_STATION.md) và [hiệu chỉnh trạm](docs/STATION_CALIBRATION.md).
-- **Chưa có băng chuyền:** có thể [kiểm tra camera và suy luận trên laptop](docs/DROIDCAM_SETUP.md) mà không tạo phiên, gửi ảnh lên cloud hoặc điều khiển ESP32.
-- **Cách kết nối bằng Python:** `camera-bridge/bridge.py` vẫn có cho trường hợp cần bridge riêng; xem [hướng dẫn Camera Bridge](camera-bridge/README.md). Không chạy đồng thời Python bridge và kết nối trạm trên web vì cả hai dùng cùng cổng USB.
+Chuẩn bị **laptop Windows có Chrome**, Internet, **điện thoại có DroidCam**, dây USB truyền dữ liệu, ESP32 đã đấu nối với băng chuyền và nguồn cho trạm.
 
-## Khám phá mã nguồn
+1. **Chuẩn bị ESP32.** Nếu board chưa nạp bản mới, mở sketch [AutoSortSerial.ino](esp32-controller/AutoSortSerial/AutoSortSerial.ino) bằng Arduino IDE. Giữ `Controller.h` và `StationConfig.h` cùng thư mục, chọn **ESP32 Dev Module** (Arduino-ESP32 **3.3.12**) và đúng cổng COM, rồi bấm **Upload**. [Sơ đồ chân và thông số firmware](esp32-controller/README.md)
+2. **Chuẩn bị camera.** Mở DroidCam trên điện thoại và DroidCam Client trên laptop. Kết nối điện thoại qua USB và kiểm tra hình trong Client. Cắm ESP32 vào laptop, đóng Arduino Serial Monitor và thoát bridge Python nếu đang chạy. [Hướng dẫn DroidCam](docs/DROIDCAM_SETUP.md)
+3. **Kết nối trạm.** Trên Chrome của laptop, mở dashboard và đăng nhập. Bấm **Kết nối thiết bị → Chọn ESP32**, rồi cấp quyền cho cổng USB của board. Bấm **Bật camera** và cấp quyền camera. Trong **Nguồn hình ảnh**, chọn **DroidCam** nếu đang thấy webcam laptop. Khi hình xem trước đã đúng, bấm **Kết nối trạm** và chờ trạng thái **Trạm sẵn sàng · Đang dừng**. [Hướng dẫn kết nối trên web](docs/BROWSER_STATION.md)
+4. **Chạy một lượt.** Để cảm biến IR ở đầu vào trống, bấm **Bắt đầu** và chờ web báo **Chế độ tự động đang hoạt động**. Đặt **một quả** trước IR. Băng chuyền chạy sau khi nhận vật, giảm tốc và dừng tại vị trí chụp. Khi có kết quả AI, băng chuyền chạy tiếp để đưa quả vào khay. Chờ quả ra khỏi băng và motor dừng hẳn rồi đặt quả tiếp theo. [Chu trình trạm](docs/STATION_CYCLE.md)
+5. **Điều khiển và kết thúc.** Giữ tab dashboard hiển thị trong lúc chạy. **Tạm dừng** giữ phiên hiện tại, **Tiếp tục** khôi phục bước đang làm. Khi demo xong, bấm **Kết thúc**, chờ trạm xác nhận đã dừng rồi chọn **Thiết bị đã kết nối → Ngắt thiết bị**.
 
-- **Cloud và giao diện:** [`backend/`](backend/README.md) chứa Spring Boot API, xác thực, điều khiển phiên và lưu dữ liệu PostgreSQL. [`cloud-ai/`](cloud-ai/README.md) chứa Python worker chạy ONNX. [`dashboard/`](dashboard/) là giao diện web được backend phục vụ.
-- **Camera và thiết bị:** [`camera-bridge/`](camera-bridge/README.md) có công cụ thử camera và cách kết nối Python tùy chọn. [`esp32-controller/`](esp32-controller/README.md) chứa firmware cho cảm biến, motor, servo và USB Serial.
-- **Dữ liệu và tài liệu:** [`training/`](training/) chứa quy trình chuẩn bị, huấn luyện, đánh giá và xuất model; [`datasets/`](datasets/) chứa ảnh cùng nhãn. Hướng dẫn chi tiết nằm ở [`docs/`](docs/), còn kiểm thử ở [`tests/`](tests/).
+Chrome gửi ảnh lên AI và trao đổi lệnh với ESP32 qua USB Serial. Với luồng này, mọi thao tác vận hành nằm trên dashboard.
 
-Muốn chạy tại máy phát triển, cần **Java 21, Maven 3.9+, Python 3.12 và PostgreSQL**. Bắt đầu với [hướng dẫn backend](backend/README.md); xem [hướng dẫn Render](docs/RENDER_DEPLOY.md) nếu cần triển khai cloud. Các file `.env.example` là mẫu cấu hình; không đưa mật khẩu hoặc device key vào Git.
+| Hiện tượng | Cách kiểm tra |
+| --- | --- |
+| Web báo **Chế độ tự động đang hoạt động**, băng chuyền vẫn đứng yên | Trạm đang chờ vật. Đặt một quả trước IR đầu vào. |
+| Không thấy cổng ESP32 | Kiểm tra dây USB truyền dữ liệu, cổng COM và đóng Serial Monitor hoặc ứng dụng đang dùng cổng. |
+| Hình xem trước sai camera | Chọn **DroidCam** trong **Nguồn hình ảnh** và kiểm tra lại góc chụp. |
+| Tab bị ẩn, mất USB hoặc trạm báo khóa lỗi | Kiểm tra thiết bị tại trạm, nhấn **EN/RESET** trên ESP32 rồi kết nối lại từ dashboard. |
 
-## Trạng thái và giới hạn
+Khi lắp đặt hoặc đổi vị trí camera, cảm biến hay servo, dùng [bảng hiệu chỉnh trạm](docs/STATION_CALIBRATION.md) để kiểm tra thời điểm dừng, chụp và gạt quả.
 
-- Model đóng gói trong repo là **V2.1-640**, ba nhãn GREEN / RIPE / REJECT, đang dùng để thử nghiệm. Xem [thông tin model và giới hạn](cloud-ai/model/README.md). Các gói V2.2 đang được đánh giá và chưa thay vào bản cloud.
-- Điểm tin cậy AI là điểm của model, không phải cam kết tỷ lệ đúng. Model vẫn có thể nhận nhầm quả xanh hoặc quả có lỗi vỏ; chưa bảo đảm nhận ra mọi vật không phải quả quất.
-- Luồng phần mềm đã có kiểm thử tự động với camera và Serial giả lập. Thời điểm dừng băng chuyền, vị trí chụp, servo và xử lý lỗi vẫn cần kiểm tra, hiệu chỉnh trên thiết bị thật trước khi trình diễn.
+## Cấu trúc dự án
+
+Điện thoại gửi hình về laptop qua DroidCam. Dashboard lấy một ảnh JPEG khi ESP32 yêu cầu chụp. Backend **Java 21 / Spring Boot** trên Render gọi Python worker chạy **YOLO11n V2.1** bằng ONNX, lưu kết quả vào **PostgreSQL** và trả nhãn về trạm. ESP32 điều khiển motor và servo theo nhãn nhận được.
+
+| Thư mục | Nội dung |
+| --- | --- |
+| [`dashboard/`](dashboard/) | Giao diện xem kết quả, lịch sử và điều khiển trạm |
+| [`esp32-controller/`](esp32-controller/) | Firmware điều khiển IR, motor và servo |
+| [`backend/`](backend/README.md) và [`cloud-ai/`](cloud-ai/README.md) | API, tài khoản, lưu dữ liệu và suy luận AI |
+| [`camera-bridge/`](camera-bridge/README.md) | Công cụ kiểm tra camera và kết nối trạm bằng Python |
+| [`training/`](training/) và [`datasets/`](datasets/) | Mã huấn luyện, ảnh và nhãn |
+
+Để chạy web trên máy phát triển, xem [hướng dẫn backend](backend/README.md). Để triển khai dịch vụ riêng, xem [hướng dẫn Render](docs/RENDER_DEPLOY.md).
